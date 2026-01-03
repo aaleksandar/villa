@@ -4,16 +4,23 @@ Public roadmap. Discuss in [GitHub Issues](https://github.com/rockfridrich/villa
 
 ## Phase 1: Passkey Login [IN PROGRESS]
 
-Core identity with passwordless auth via Porto SDK.
+Core identity with passwordless auth via WebAuthn.
 
-- [ ] Porto SDK integration with Villa theming
-- [ ] Welcome and onboarding screens
-- [ ] Profile setup (name, avatar)
-- [ ] Local storage persistence
-- [ ] E2E tests (Playwright)
-- [ ] Security tests
+- [x] WebAuthn implementation for native passkeys
+- [x] Welcome and onboarding screens
+- [x] Profile setup (name, avatar)
+- [x] Local storage persistence
+- [x] E2E tests (Playwright) — 69 tests
+- [x] Security tests — 24 tests
+- [x] Unit + integration tests — 76 tests
+- [x] DigitalOcean App Platform deployment
+- [x] Docker build optimization (BuildKit caching)
+- [x] Preview deployments for PRs
+- [x] E2E tests on deployed URLs
+- [x] Porto SDK integration verified on production
 - [ ] Mobile testing (iOS Safari, Android Chrome)
-- [ ] Deploy v1
+- [ ] Custom domain (villa.proofofretreat.me)
+- [ ] Porto iframe mode (requires domain registration)
 
 ## Phase 2: Recovery
 
@@ -49,11 +56,13 @@ Local-first AI with optional cloud (consent required).
 
 Open for community input. Create an issue to discuss!
 
+- **Porto SDK integration** — Web3 wallet with passkey signing (requires user understanding of blockchain concepts)
 - **Villa SDK** — Let other village projects use Villa auth
 - **Telegram bot** — Capture community context from chats
 - **Multi-language** — i18n support
 - **Desktop app** — Electron or Tauri wrapper
 - **Browser extension** — Quick identity access
+- **Bun package manager** — Replace npm with Bun for faster installs (~3x) and builds (~2x). Requires: Dockerfile update, CI workflow update, lock file migration
 
 ---
 

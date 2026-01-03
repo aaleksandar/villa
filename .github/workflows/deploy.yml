@@ -1,0 +1,385 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+
+# Permissions for PR commenting and deployment
+permissions:
+  contents: read
+  pull-requests: write
+  deployments: write
+
+# Prevent concurrent deployments to same environment
+concurrency:
+  group: deploy-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'production' }}
+  cancel-in-progress: true
+
+jobs:
+  # CI tests - must pass before merge
+  ci:
+    name: CI Tests
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: TypeScript check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npx vitest run --config vitest.config.unit.ts
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests (local)
+        run: npm run test:e2e:chromium
+        env:
+          CI: true
+
+  # Security check: only collaborators can trigger preview deploys
+  check-permission:
+    name: Check Permission
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    outputs:
+      is-collaborator: ${{ steps.check.outputs.is-collaborator }}
+    steps:
+      - name: Check if PR author is collaborator
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Fork PRs from non-collaborators should not trigger deploys
+            const { data: permissionLevel } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.payload.pull_request.user.login
+            });
+
+            const hasAccess = ['admin', 'write', 'maintain'].includes(permissionLevel.permission);
+            console.log(`User ${context.payload.pull_request.user.login} has permission: ${permissionLevel.permission}`);
+            console.log(`Is collaborator: ${hasAccess}`);
+
+            core.setOutput('is-collaborator', hasAccess);
+
+            if (!hasAccess) {
+              core.notice('Preview deployments are only available for repository collaborators. External contributors can request a maintainer to deploy their PR for testing.');
+            }
+
+  # Deploy preview for PRs from collaborators (after CI passes)
+  deploy-preview:
+    name: Deploy Preview
+    needs: [ci, check-permission]
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action != 'closed' &&
+      needs.ci.result == 'success' &&
+      needs.check-permission.outputs.is-collaborator == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    environment:
+      name: preview
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Generate app spec
+        run: |
+          export PR_NUMBER="${{ github.event.pull_request.number }}"
+          export BRANCH_NAME="${{ github.head_ref }}"
+          envsubst < .do/app-preview.yaml > .do/app-preview-generated.yaml
+          echo "Generated spec:"
+          cat .do/app-preview-generated.yaml
+
+      - name: Deploy to App Platform
+        id: deploy
+        run: |
+          APP_NAME="villa-pr-${{ github.event.pull_request.number }}"
+
+          # Use Spec.Name (not Name) - doctl returns <nil> for Name
+          APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "${APP_NAME}$" | awk '{print $1}')
+
+          if [ -n "$APP_ID" ]; then
+            echo "Updating existing preview app: $APP_ID"
+            doctl apps update $APP_ID --spec .do/app-preview-generated.yaml
+          else
+            echo "Creating new preview app..."
+            doctl apps create --spec .do/app-preview-generated.yaml
+          fi
+
+          # Wait for URL
+          for i in {1..30}; do
+            APP_URL=$(doctl apps list --format DefaultIngress,Spec.Name --no-header | grep "${APP_NAME}$" | awk '{print $1}')
+            if [ -n "$APP_URL" ] && [ "$APP_URL" != "null" ] && [ "$APP_URL" != "<nil>" ]; then
+              echo "url=${APP_URL}" >> $GITHUB_OUTPUT
+              echo "✅ Preview URL: ${APP_URL}"
+              exit 0
+            fi
+            echo "Waiting for URL... ($i/30)"
+            sleep 10
+          done
+          echo "❌ Timeout waiting for app URL"
+          exit 1
+
+      - name: Comment PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `## 🚀 Preview Deployed
+
+            **URL:** ${{ steps.deploy.outputs.url }}
+
+            | Info | Value |
+            |------|-------|
+            | Branch | \`${{ github.head_ref }}\` |
+            | Commit | \`${{ github.sha }}\` |
+            | Build | Buildpacks (cached) |
+
+            Preview auto-deletes when PR closes.
+
+            ---
+            *Deployed at ${new Date().toISOString()}*`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(c => c.user.type === 'Bot' && c.body.includes('Preview Deployed'));
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body
+              });
+            }
+
+  # E2E tests against preview
+  e2e-preview:
+    name: E2E Tests (Preview)
+    needs: deploy-preview
+    if: needs.deploy-preview.outputs.url
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Wait for healthy deployment
+        run: |
+          URL="${{ needs.deploy-preview.outputs.url }}"
+          for i in {1..20}; do
+            if curl -sf "$URL/api/health" > /dev/null; then
+              echo "✅ Deployment healthy"
+              exit 0
+            fi
+            echo "Waiting... ($i/20)"
+            sleep 10
+          done
+          echo "❌ Health check failed"
+          exit 1
+
+      - name: Run E2E tests
+        run: npm run test:e2e:chromium
+        env:
+          BASE_URL: ${{ needs.deploy-preview.outputs.url }}
+          CI: true
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-pr-${{ github.event.pull_request.number }}
+          path: playwright-report/
+          retention-days: 7
+
+  # CI for production (main branch)
+  ci-production:
+    name: CI Tests (Production)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: TypeScript check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npx vitest run --config vitest.config.unit.ts
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests (local)
+        run: npm run test:e2e:chromium
+        env:
+          CI: true
+
+  # Deploy production (main branch only, after CI)
+  deploy-production:
+    name: Deploy Production
+    needs: ci-production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.ci-production.result == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Deploy to App Platform
+        id: deploy
+        run: |
+          # Use Spec.Name (not Name) - doctl returns <nil> for Name
+          APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "villa-production$" | awk '{print $1}')
+
+          if [ -z "$APP_ID" ]; then
+            echo "Creating production app..."
+            doctl apps create --spec .do/app-production.yaml
+          else
+            echo "Updating production app: $APP_ID"
+            doctl apps update $APP_ID --spec .do/app-production.yaml
+          fi
+
+          # Wait for deployment
+          APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "villa-production$" | awk '{print $1}')
+          for i in {1..30}; do
+            STATUS=$(doctl apps get $APP_ID --format ActiveDeployment.Phase --no-header 2>/dev/null || echo "PENDING")
+            if [ "$STATUS" = "ACTIVE" ]; then
+              APP_URL=$(doctl apps get $APP_ID --format DefaultIngress --no-header)
+              echo "url=https://${APP_URL}" >> $GITHUB_OUTPUT
+              echo "✅ Production deployed: https://${APP_URL}"
+              exit 0
+            fi
+            echo "Status: $STATUS ($i/30)"
+            sleep 10
+          done
+          echo "❌ Deployment timeout"
+          exit 1
+
+  # E2E tests against production
+  e2e-production:
+    name: E2E Tests (Production)
+    needs: deploy-production
+    if: needs.deploy-production.outputs.url
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Wait for healthy deployment
+        run: |
+          URL="${{ needs.deploy-production.outputs.url }}"
+          for i in {1..20}; do
+            if curl -sf "$URL/api/health" > /dev/null; then
+              echo "✅ Deployment healthy"
+              exit 0
+            fi
+            echo "Waiting... ($i/20)"
+            sleep 10
+          done
+          echo "❌ Health check failed"
+          exit 1
+
+      - name: Run E2E tests
+        run: npm run test:e2e:chromium
+        env:
+          BASE_URL: ${{ needs.deploy-production.outputs.url }}
+          CI: true
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-production
+          path: playwright-report/
+          retention-days: 7
+
+  # Cleanup preview on PR close
+  cleanup-preview:
+    name: Cleanup Preview
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Delete preview app
+        run: |
+          APP_NAME="villa-pr-${{ github.event.pull_request.number }}"
+          # Use Spec.Name (not Name) - doctl returns <nil> for Name
+          APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "${APP_NAME}$" | awk '{print $1}')
+
+          if [ -n "$APP_ID" ]; then
+            echo "🗑️ Deleting preview app: ${APP_NAME} ($APP_ID)"
+            doctl apps delete $APP_ID --force
+          else
+            echo "No preview app found for ${APP_NAME}"
+          fi

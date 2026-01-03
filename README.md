@@ -1,21 +1,49 @@
 # Villa
 
+[![CI](https://github.com/rockfridrich/villa/actions/workflows/ci.yml/badge.svg)](https://github.com/rockfridrich/villa/actions/workflows/ci.yml)
+[![Deploy](https://github.com/rockfridrich/villa/actions/workflows/deploy.yml/badge.svg)](https://github.com/rockfridrich/villa/actions/workflows/deploy.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Privacy-first passkey authentication for pop-up villages.
 
 ## What This Is
 
-Villa wraps [Porto SDK](https://porto.sh/sdk) with custom theming, giving village projects:
+Villa provides native WebAuthn passkey authentication, giving village projects:
 - **Passwordless auth** via Face ID, Touch ID, or fingerprint
+- **Native biometric prompts** — works with iCloud Keychain, Google Password Manager, 1Password
 - **Consistent identity** across village apps
-- **Privacy by default** — your data stays yours
+- **Privacy by default** — your data stays yours, passkeys never leave your device
 
 ## Quick Start
 
 ```bash
 npm install
-cp .env.example .env.local
 npm run dev
 ```
+
+Visit http://localhost:3000 to see the app.
+
+### Development Options
+
+| Method | Command | URL | Use Case |
+|--------|---------|-----|----------|
+| **Native** | `npm run dev` | http://localhost:3000 | Fast local dev |
+| **HTTPS** | `npm run dev:https` | https://localhost:3000 | Passkey testing |
+| **Docker** | `docker compose up` | https://localhost | Production-like |
+
+### Docker Setup (recommended for passkey testing)
+
+```bash
+# macOS with Colima
+brew install colima docker docker-compose
+colima start
+docker compose up
+
+# Or use the dev script
+./scripts/dev.sh --docker
+```
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for full setup and troubleshooting.
 
 ## Project Structure
 
@@ -31,10 +59,11 @@ villa/
 │   ├── vision.md             # Product vision
 │   └── STATUS.md             # Phase status
 ├── docs/
-│   ├── security.md           # Security model
-│   ├── privacy.md            # Privacy guarantees
-│   ├── contributing.md       # How to contribute
-│   └── integration.md        # SDK integration (coming)
+│   ├── security.md                # Security model
+│   ├── privacy.md                 # Privacy guarantees
+│   ├── contributing.md            # How to contribute
+│   ├── webauthn-implementation.md # WebAuthn details
+│   └── integration.md             # SDK integration (coming)
 ├── tests/
 │   ├── e2e/                  # Playwright tests
 │   └── security/             # Security tests
@@ -84,7 +113,8 @@ Every PR must pass the security checklist. No exceptions.
 
 ## Links
 
-- [Porto SDK](https://porto.sh/sdk) — Passkey infrastructure
+- [WebAuthn Guide](https://webauthn.guide/) — Passkey standard
+- [Passkeys.dev](https://passkeys.dev/) — Passkey resources
 - [Unforgettable](https://docs.unforgettable.app/sdk/) — Face recovery (Phase 2)
 - [Telegram](https://t.me/proofofretreat) — Community chat
 
