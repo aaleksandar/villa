@@ -55,17 +55,22 @@ The SDK Auth Flow is the entry point to the Villa Identity System. When a third-
 
 ## User Flows
 
-### Flow 1: Returning User (Sign In)
+### Flow 1: Returning User (Sign In — Same Device)
 
-**Entry Point:** App calls `villa.signIn()`
+**Entry Point:** App calls `villa.signIn()` on a device where user previously completed onboarding
 **Happy Path:**
 1. User sees fullscreen iframe with Villa branding
 2. User taps "Sign In" (primary button)
 3. System shows passkey selector with their account
 4. User authenticates with Face ID / Touch ID
-5. Iframe closes, app receives identity object
+5. System checks: nickname in localStorage + avatar in localStorage → Both exist!
+6. Iframe closes, app receives identity object → Redirect to /home
 
 **Flow Duration Target:** < 3 seconds
+
+**Key Behavior:**
+- No onboarding steps shown (nickname + avatar already in localStorage)
+- Immediate redirect to home after biometric
 
 ```
 ┌─────────────────────────────────────┐
@@ -197,6 +202,83 @@ Step 4: Complete
 | Nickname taken | (handled in nickname flow) | Pick different name |
 | Network error | "Connection lost. Your progress is saved." | "Try Again" button |
 | Browser unsupported | "Your browser doesn't support passkeys." | Browser suggestions |
+
+### Flow 2b: Returning User (New Device)
+
+**Entry Point:** User taps "Sign In" on a device where they haven't used Villa before
+**Happy Path:**
+1. User authenticates with Face ID / Touch ID
+2. System queries nickname from on-chain registry (VillaNicknameResolver)
+3. Nickname found → User sees "Welcome back, {nickname}!"
+4. Avatar not in localStorage → User goes to avatar selection only (skip nickname)
+5. User picks avatar (30s timer)
+6. Redirect to /home
+
+**Flow Duration Target:** < 30 seconds
+
+```
+Step 1: Biometric
+┌─────────────────────────────────────┐
+│          Villa Identity             │
+│                                     │
+│   [Face ID / Touch ID prompt]       │
+│                                     │
+└─────────────────────────────────────┘
+            │
+            ▼ (auth success, nickname found on-chain)
+
+Step 2: Welcome Back
+┌─────────────────────────────────────┐
+│      Welcome back, alice!           │
+│                                     │
+│   Let's set up your look on this    │
+│   device                            │
+│                                     │
+│      [Redirecting to avatar...]     │
+│                                     │
+└─────────────────────────────────────┘
+            │
+            ▼
+
+Step 3: Avatar Selection (nickname step SKIPPED)
+┌─────────────────────────────────────┐
+│          Pick your look             │
+│                                     │
+│      [Male] [Female] [Other]        │
+│                                     │
+│         ┌───────────┐               │
+│         │  (avatar) │               │
+│         └───────────┘               │
+│                                     │
+│        [Randomize]     0:25         │
+│                                     │
+│   ┌─────────────────────────────┐   │
+│   │        [Select]             │   │
+│   └─────────────────────────────┘   │
+│                                     │
+└─────────────────────────────────────┘
+            │
+            ▼
+
+Step 4: Home
+┌─────────────────────────────────────┐
+│   @alice                    [Edit]  │
+│                                     │
+│         ┌───────────┐               │
+│         │  (avatar) │               │
+│         └───────────┘               │
+│                                     │
+│   Connected                         │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Key Behavior:**
+- Nickname persists on-chain → survives device changes
+- Avatar persists in localStorage → must be re-selected on new device
+- Future: Avatar will sync via TinyCloud
+
+**See also:** [returning-user-flow.md](returning-user-flow.md) for detailed routing logic.
 
 ### Flow 3: Consent Request
 

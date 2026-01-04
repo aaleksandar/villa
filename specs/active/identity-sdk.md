@@ -128,12 +128,70 @@ interface Identity {
 }
 
 interface AvatarConfig {
-  style: 'anime-male' | 'anime-female' | 'vietnam' | 'neutral';
+  style: 'avataaars' | 'bottts';  // DiceBear style
+  selection: 'male' | 'female' | 'other';  // User-facing choice
   variant: number;
 }
 
 type Scope = 'nickname' | 'avatar' | 'wallet' | 'appData';
 ```
+
+---
+
+## Data Persistence
+
+### Where Identity Data Lives
+
+| Data | Primary Storage | Backup/Sync | Notes |
+|------|-----------------|-------------|-------|
+| **Passkey** | Device keychain | Porto SDK (iCloud/Google sync) | Automatic |
+| **Nickname** | VillaNicknameResolver (on-chain) | PostgreSQL (CCIP-Read) | Globally unique, ENS-compatible |
+| **Avatar** | localStorage (Zustand) | TinyCloud (Phase 2) | Deterministic regeneration |
+| **Address** | Derived from passkey | — | Never stored, always derived |
+
+### Why This Architecture
+
+**Nickname on-chain:**
+- Must be globally unique (ENS namespace)
+- Survives device changes
+- Resolvable by any ENS-compatible app
+- Query: `VillaNicknameResolver.nicknameFor(address)`
+
+**Avatar local-first:**
+- Fast renders (no network latency)
+- Deterministic: `wallet + style + variant` = same avatar forever
+- Cheap to regenerate on new device
+- Future: sync via TinyCloud for convenience
+
+### Returning User Detection
+
+When `villa.signIn()` completes:
+
+```typescript
+// 1. User authenticates → get address
+const { address } = await porto.connect()
+
+// 2. Check nickname (on-chain)
+const nickname = await villaResolver.nicknameFor(address)
+
+// 3. Check avatar (localStorage)
+const storedIdentity = getStoredIdentity()
+const hasAvatar = storedIdentity?.address === address && storedIdentity?.avatar
+
+// 4. Route based on state
+if (nickname && hasAvatar) {
+  // Returning user, same device → /home
+  return { ...identity, isNewUser: false }
+} else if (nickname && !hasAvatar) {
+  // Returning user, new device → avatar step only
+  showAvatarSelection()
+} else {
+  // New user → full onboarding
+  showNicknameSelection()
+}
+```
+
+**See:** [returning-user-flow.md](returning-user-flow.md) for detailed routing logic
 
 ## Security Note: Wallet Address Salting
 
