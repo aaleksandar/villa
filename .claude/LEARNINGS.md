@@ -216,6 +216,38 @@ await expect(page.locator('[data-testid="auth-content"]')).toBeVisible()
 
 **Why:** Navigation can legitimately end at different pages depending on state. Test the behavior (user sees correct content), not the exact path.
 
+### 16. Shipping Efficiency (57x Improvement)
+
+**The Problem:** Manual polling and sequential operations waste massive time.
+
+```
+❌ Session anti-pattern (38 min wasted):
+   sleep 60 && gh run view  # Repeat 6x
+   Tag without test verify  # 15 min retry
+   Wrong directory          # 5 min confusion
+
+✅ Optimal pattern (40 sec blocking):
+   1. Pre-flight: git status + tests + health (parallel)
+   2. Tag verified code
+   3. @ops "Monitor deploy" --background
+   4. Continue working (don't wait!)
+```
+
+**Mathematical rule:**
+```
+IF operation_time > 10s → spawn_background_agent()
+IF parallel_possible → parallel_execute()
+IF polling_needed → @ops --background
+```
+
+**Pre-release checklist:**
+```bash
+git diff HEAD -- apps/web/tests/  # Tests match implementation?
+pnpm --filter @villa/web test:e2e:chromium  # Local pass?
+```
+
+**See:** `.claude/agents/ship.md` for full pipeline.
+
 ---
 
 ## Platform Quirks
