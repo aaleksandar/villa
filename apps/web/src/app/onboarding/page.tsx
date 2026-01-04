@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Fingerprint, AlertCircle, ExternalLink, Copy, CheckCircle2 } from 'lucide-react'
 import { Button, Input, Spinner, SuccessCelebration } from '@/components/ui'
 import { AvatarSelection } from '@/components/sdk'
@@ -38,31 +38,45 @@ interface ErrorState {
 }
 
 export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<OnboardingLoading />}>
+      <OnboardingContent />
+    </Suspense>
+  )
+}
+
+function OnboardingLoading() {
+  return (
+    <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-cream-50">
+      <div className="w-full max-w-md text-center">
+        <Spinner size="lg" />
+      </div>
+    </main>
+  )
+}
+
+function OnboardingContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { identity, setIdentity } = useIdentityStore()
 
-  // Support direct navigation to steps via URL params (for testing)
-  const [step, setStep] = useState<Step>('welcome')
-  const [displayName, setDisplayName] = useState('')
+  // Read URL params immediately (SSR-compatible via useSearchParams)
+  const testStep = searchParams.get('step') as Step | null
+  const testAddress = searchParams.get('address')
+  const testDisplayName = searchParams.get('displayName')
+  const isTestMode = Boolean(testStep && testAddress)
+
+  // Initialize state from URL params for test mode
+  const [step, setStep] = useState<Step>(() => {
+    if (testStep && testAddress) {
+      return testStep
+    }
+    return 'welcome'
+  })
+  const [displayName, setDisplayName] = useState(() => testDisplayName || '')
   const [nameError, setNameError] = useState<string>()
   const [error, setError] = useState<ErrorState | null>(null)
-  const [address, setAddress] = useState<string | null>(null)
-
-  // Handle test mode URL params on mount (client-side only)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const testStep = params.get('step') as Step | null
-    const testAddress = params.get('address')
-    const testDisplayName = params.get('displayName')
-
-    if (testStep && testAddress) {
-      setStep(testStep)
-      setAddress(testAddress)
-      if (testDisplayName) {
-        setDisplayName(testDisplayName)
-      }
-    }
-  }, [])
+  const [address, setAddress] = useState<string | null>(() => testAddress)
   const [isSupported, setIsSupported] = useState(true)
   const [inAppBrowser, setInAppBrowser] = useState<InAppBrowserInfo | null>(null)
 
@@ -83,9 +97,7 @@ export default function OnboardingPage() {
 
   // Check for in-app browser and Porto support on mount
   useEffect(() => {
-    // Skip browser checks in test mode (URL has step and address params)
-    const params = new URLSearchParams(window.location.search)
-    const isTestMode = params.has('step') && params.has('address')
+    // Skip browser checks in test mode
     if (isTestMode) {
       return
     }
@@ -110,17 +122,14 @@ export default function OnboardingPage() {
       })
       setStep('error')
     }
-  }, [])
+  }, [isTestMode])
 
   // Redirect if already has identity (skip in test mode)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const isTestMode = params.has('step') && params.has('address')
-
     if (identity && !isTestMode) {
       router.replace('/home')
     }
-  }, [identity, router])
+  }, [identity, router, isTestMode])
 
   const handleCreateAccount = async () => {
     setStep('connecting')
