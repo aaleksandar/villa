@@ -304,6 +304,36 @@ pnpm --filter @villa/web test:e2e:chromium  # Local pass?
 
 ### DigitalOcean App Platform
 
+**STRICT RULE: No Manual Deployments**
+
+Deployments ONLY go to production/beta/dev via GitHub CI/CD:
+```
+✅ Push to main → triggers beta.villa.cash deploy
+✅ Tag v* → triggers villa.cash production deploy
+✅ PR → triggers dev-1/dev-2 preview deploy
+
+❌ doctl apps create-deployment (manual) — FORBIDDEN
+❌ doctl apps update --spec (manual) — FORBIDDEN
+```
+
+**Why:** Automation ensures:
+- Consistent builds (same env, same process)
+- Audit trail in GitHub
+- Human approval gates
+- No drift between code and deployed state
+
+**If human needs local deploy:** They will explicitly ask.
+
+**Environment Variable Scopes:**
+
+| Scope | Available At | Use For |
+|-------|--------------|---------|
+| `RUN_TIME` | Only at runtime | Secrets that shouldn't leak to build logs |
+| `BUILD_TIME` | Only during build | Build-specific vars (not available at runtime) |
+| `RUN_AND_BUILD_TIME` | Both | Most env vars (DATABASE_URL, API keys) |
+
+**Default to `RUN_AND_BUILD_TIME`** unless security requires `RUN_TIME` only.
+
 | Issue | Fix |
 |-------|-----|
 | `doctl --format Name` returns `<nil>` | Use `--format Spec.Name` |
@@ -631,6 +661,7 @@ Historical session notes in `.claude/archive/` and `.claude/reflections/`:
 - `reflections/2026-01-04-biometric-session.md` - Context recovery + git state drift patterns
 - `reflections/2026-01-05-celebration-animation.md` - CI timing race + dev server conflicts
 - `reflections/2026-01-05-mlp-sprint-1.md` - MLP Sprint 1 (SDK screens, API infra, contracts)
+- `reflections/2026-01-05-env-config-session.md` - Env config + NO manual deployments rule
 
 Full session logs preserved in git history for reference.
 
