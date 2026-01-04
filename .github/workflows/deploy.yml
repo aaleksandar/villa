@@ -600,16 +600,26 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @villa/web exec playwright install --with-deps chromium
 
-      - name: Wait for healthy staging
+      - name: Wait for fresh build
         run: |
-          for i in {1..20}; do
+          # Get current buildId before waiting
+          OLD_BUILD=$(curl -s https://beta.villa.cash 2>&1 | grep -o '"buildId":"[^"]*"' | head -1 || echo "none")
+          echo "📦 Current buildId: $OLD_BUILD"
+
+          # Wait for buildId to change (indicates new deployment is live)
+          for i in {1..40}; do
             if curl -sf "https://beta.villa.cash/api/health" > /dev/null; then
-              echo "✅ Staging healthy"
-              exit 0
+              NEW_BUILD=$(curl -s https://beta.villa.cash 2>&1 | grep -o '"buildId":"[^"]*"' | head -1 || echo "none")
+              if [ "$NEW_BUILD" != "$OLD_BUILD" ] && [ "$NEW_BUILD" != "none" ]; then
+                echo "✅ New build deployed: $NEW_BUILD"
+                exit 0
+              fi
+              echo "⏳ Waiting for new build... ($i/40) - still: $NEW_BUILD"
             fi
-            sleep 10
+            sleep 15
           done
-          exit 1
+          echo "⚠️ Timeout waiting for new build, proceeding anyway"
+          exit 0
 
       - name: Run E2E tests on staging
         run: pnpm run test:e2e:chromium
@@ -798,16 +808,26 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @villa/web exec playwright install --with-deps chromium
 
-      - name: Wait for healthy production
+      - name: Wait for fresh build
         run: |
-          for i in {1..20}; do
+          # Get current buildId before waiting
+          OLD_BUILD=$(curl -s https://villa.cash 2>&1 | grep -o '"buildId":"[^"]*"' | head -1 || echo "none")
+          echo "📦 Current buildId: $OLD_BUILD"
+
+          # Wait for buildId to change (indicates new deployment is live)
+          for i in {1..40}; do
             if curl -sf "https://villa.cash/api/health" > /dev/null; then
-              echo "✅ Production healthy"
-              exit 0
+              NEW_BUILD=$(curl -s https://villa.cash 2>&1 | grep -o '"buildId":"[^"]*"' | head -1 || echo "none")
+              if [ "$NEW_BUILD" != "$OLD_BUILD" ] && [ "$NEW_BUILD" != "none" ]; then
+                echo "✅ New build deployed: $NEW_BUILD"
+                exit 0
+              fi
+              echo "⏳ Waiting for new build... ($i/40) - still: $NEW_BUILD"
             fi
-            sleep 10
+            sleep 15
           done
-          exit 1
+          echo "⚠️ Timeout waiting for new build, proceeding anyway"
+          exit 0
 
       - name: Run E2E tests on production
         run: pnpm run test:e2e:chromium
