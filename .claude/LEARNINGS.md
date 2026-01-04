@@ -68,6 +68,63 @@ useEffect(() => () => {
 }, [])
 ```
 
+### 6. btoa() Unicode Encoding
+
+```typescript
+// ❌ Bad: btoa() fails on Unicode (emojis, non-ASCII)
+const encoded = btoa(unicodeString) // DOMException
+
+// ✅ Good: UTF-8 encode first
+const encoded = btoa(unescape(encodeURIComponent(unicodeString)))
+
+// ✅ Better: Use Buffer in Node.js
+const encoded = Buffer.from(unicodeString, 'utf-8').toString('base64')
+```
+
+**Why:** `btoa()` only handles Latin1 (0-255). Multi-byte UTF-8 characters (emoji, accented chars) throw exceptions. Always UTF-8 encode before base64.
+
+### 7. Knowledge Base Pattern
+
+```
+.claude/knowledge/{domain}.md  → Domain-specific learnings
+.claude/LEARNINGS.md           → Cross-cutting patterns
+docs/reflections/{date}-{topic}.md → Session reflections
+```
+
+**When to use:**
+- CloudFlare, DigitalOcean, Porto SDK → `knowledge/{domain}.md`
+- React patterns, TypeScript patterns → `LEARNINGS.md`
+- Multi-session insights → `docs/reflections/`
+
+### 8. Orchestrator Delegation Pattern
+
+```
+❌ Bad: Main agent does everything
+- Read 50 files
+- Implement all changes
+- Run tests
+- Write reflection
+
+✅ Good: Orchestrator delegates
+Main agent:
+  ├── @build "Implement avatar system" (sonnet)
+  ├── @test "Run E2E tests" (haiku, parallel)
+  ├── @review "Review PR" (sonnet, parallel)
+  └── Synthesize results
+```
+
+**When main agent should delegate:**
+- Implementation → @build (sonnet)
+- Tests → @test (haiku)
+- Code review → @review (sonnet)
+- Git operations → @ops (haiku)
+
+**When main agent works directly:**
+- Orchestration decisions
+- Synthesizing results from agents
+- Quick clarifications with human
+- Reading specs/docs to plan
+
 ---
 
 ## Platform Quirks
