@@ -80,6 +80,17 @@ const commands: Record<
         await cloudflare.dns.setProxy(name, mode === 'on');
         console.log(`✓ Proxy ${mode} for ${name}`);
       },
+      upsert: async () => {
+        const [name, target, ...flags] = process.argv.slice(5);
+        if (!name || !target) {
+          console.error('Usage: ... dns upsert <name> <target> [--no-proxy]');
+          process.exit(1);
+        }
+        const proxied = !flags.includes('--no-proxy');
+        console.log(`Upserting ${name} → ${target} (proxy: ${proxied})...`);
+        const result = await cloudflare.dns.upsert(name, target, { proxied });
+        console.log(`✓ DNS record upserted: ${result.name}`);
+      },
     },
     ssl: {
       status: async () => {
@@ -168,6 +179,7 @@ CloudFlare Commands:
   zone dev-mode-off            Disable dev mode
   dns list                     List all DNS records
   dns set-proxy <name> <on|off> Set proxy mode
+  dns upsert <name> <target> [--no-proxy] Create/update DNS record
   ssl status                   Get SSL mode
   ssl set-mode <mode>          Set SSL mode
 

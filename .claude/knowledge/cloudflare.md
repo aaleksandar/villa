@@ -56,8 +56,9 @@ Villa App
 | `villa.cash` | `villa-production-xxx.ondigitalocean.app` | Proxied |
 | `www.villa.cash` | `villa.cash` | Proxied |
 | `beta.villa.cash` | `villa-staging-xxx.ondigitalocean.app` | Proxied |
-| `dev-1.villa.cash` | `villa-dev-1-xxx.ondigitalocean.app` | Proxied |
-| `dev-2.villa.cash` | `villa-dev-2-xxx.ondigitalocean.app` | Proxied |
+| `dev-1.villa.cash` | `villa-dev-1-lx5qd.ondigitalocean.app` | Proxied |
+| `dev-2.villa.cash` | `villa-dev-2-57vev.ondigitalocean.app` | Proxied |
+| `dev-3.villa.cash` | ngrok tunnel (see ngrok setup) | DNS Only |
 
 ## Patterns
 
