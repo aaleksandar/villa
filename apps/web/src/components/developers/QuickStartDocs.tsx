@@ -50,12 +50,12 @@ export function QuickStartDocs() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  const installCode = 'npm install @villa/identity-sdk'
+  const installCode = 'npm install @villa/sdk'
 
-  const reactCode = `import { VillaIdentity } from '@villa/identity-sdk'
+  const reactCode = `import { Villa } from '@villa/sdk'
 
 function App() {
-  const villa = new VillaIdentity({
+  const villa = new Villa({
     appId: 'your-app-id',
     appSignature: '0x...',
     appWallet: '0x...'
@@ -76,9 +76,9 @@ function App() {
   return <button onClick={handleSignIn}>Sign In with Villa</button>
 }`
 
-  const vanillaCode = `import { VillaIdentity } from '@villa/identity-sdk'
+  const vanillaCode = `import { Villa } from '@villa/sdk'
 
-const villa = new VillaIdentity({
+const villa = new Villa({
   appId: 'your-app-id',
   appSignature: '0x...',
   appWallet: '0x...'
@@ -158,11 +158,14 @@ document.getElementById('signin-btn').addEventListener('click', async () => {
           <pre className="text-sm text-cream-50 font-mono">{installCode}</pre>
           <button
             onClick={() => handleCopy('install', installCode)}
-            className="absolute top-4 right-4 p-2 hover:bg-ink-light rounded transition-colors duration-150"
+            className="absolute top-4 right-4 p-2 hover:bg-ink-light rounded transition-colors duration-150 flex items-center gap-2"
             aria-label="Copy code"
           >
             {copiedId === 'install' ? (
-              <Check className="w-5 h-5 text-accent-yellow" />
+              <>
+                <Check className="w-5 h-5 text-accent-yellow" />
+                <span className="text-sm text-accent-yellow">Copied</span>
+              </>
             ) : (
               <Copy className="w-5 h-5 text-cream-50" />
             )}
@@ -175,8 +178,10 @@ document.getElementById('signin-btn').addEventListener('click', async () => {
         <h2 className="text-xl font-serif text-ink mb-4">Usage</h2>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-4 border-b border-neutral-100">
+        <div className="flex gap-2 mb-4 border-b border-neutral-100" role="tablist">
           <button
+            role="tab"
+            aria-selected={activeTab === 'react'}
             onClick={() => setActiveTab('react')}
             className={`px-4 py-2 text-base font-medium transition-colors duration-150 border-b-2 ${
               activeTab === 'react'
@@ -187,6 +192,8 @@ document.getElementById('signin-btn').addEventListener('click', async () => {
             React
           </button>
           <button
+            role="tab"
+            aria-selected={activeTab === 'vanilla'}
             onClick={() => setActiveTab('vanilla')}
             className={`px-4 py-2 text-base font-medium transition-colors duration-150 border-b-2 ${
               activeTab === 'vanilla'
@@ -210,11 +217,14 @@ document.getElementById('signin-btn').addEventListener('click', async () => {
                 activeTab === 'react' ? reactCode : vanillaCode
               )
             }
-            className="absolute top-4 right-4 p-2 hover:bg-ink-light rounded transition-colors duration-150"
+            className="absolute top-4 right-4 p-2 hover:bg-ink-light rounded transition-colors duration-150 flex items-center gap-2"
             aria-label="Copy code"
           >
             {copiedId === activeTab ? (
-              <Check className="w-5 h-5 text-accent-yellow" />
+              <>
+                <Check className="w-5 h-5 text-accent-yellow" />
+                <span className="text-sm text-accent-yellow">Copied</span>
+              </>
             ) : (
               <Copy className="w-5 h-5 text-cream-50" />
             )}

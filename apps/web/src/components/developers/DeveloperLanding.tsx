@@ -112,6 +112,7 @@ export function DeveloperLanding({ onConnect, isConnected }: DeveloperLandingPro
             <motion.div
               key={feature.title}
               variants={itemVariants}
+              data-testid="feature-card"
               className="bg-cream-100 rounded-lg p-6 border border-neutral-100"
             >
               <div className="flex items-start gap-4">
