@@ -4,7 +4,14 @@
  */
 
 import { createAvatar } from '@dicebear/core'
-import { lorelei, notionistsNeutral } from '@dicebear/collection'
+import {
+  adventurer,
+  avataaars,
+  bottts,
+  lorelei,
+  notionistsNeutral,
+  thumbs
+} from '@dicebear/collection'
 import type { AvatarStyleSelection, AvatarConfig } from '@/types'
 import { AVATAR_STYLE_MAP } from '@/types'
 import { avatarStyleSelectionSchema } from '@/lib/validation'
@@ -32,8 +39,8 @@ function validateWalletAddress(address: string): string {
 function validateSelection(selection: AvatarStyleSelection): AvatarStyleSelection {
   const result = avatarStyleSelectionSchema.safeParse(selection)
   if (!result.success) {
-    console.warn(`Invalid avatar selection: ${selection}, using fallback 'other'`)
-    return 'other'
+    console.warn(`Invalid avatar selection: ${selection}, using fallback 'lorelei'`)
+    return 'lorelei'
   }
   return result.data
 }
@@ -55,7 +62,7 @@ function validateVariant(variant: number): number {
 
 /**
  * Generate a deterministic seed from wallet address, selection, and variant
- * Including selection ensures male/female/other generate different avatars
+ * Including selection ensures different styles generate different avatars
  */
 function generateSeed(
   walletAddress: string,
@@ -66,25 +73,36 @@ function generateSeed(
 }
 
 /**
- * Generate avatar SVG string using lorelei style
- * Same wallet + variant = identical avatar forever (deterministic)
+ * Generate avatar SVG string using the specified style
+ * Same wallet + style + variant = identical avatar forever (deterministic)
  */
-function generateLoreleiAvatar(seed: string): string {
-  const avatar = createAvatar(lorelei, {
-    seed,
-    size: 128,
-  })
-  return avatar.toString()
-}
+function generateAvatarByStyle(selection: AvatarStyleSelection, seed: string): string {
+  let avatar
 
-/**
- * Generate avatar SVG string using notionists-neutral style
- */
-function generateNotionistsAvatar(seed: string): string {
-  const avatar = createAvatar(notionistsNeutral, {
-    seed,
-    size: 128,
-  })
+  switch (selection) {
+    case 'adventurer':
+      avatar = createAvatar(adventurer, { seed, size: 128 })
+      break
+    case 'avataaars':
+      avatar = createAvatar(avataaars, { seed, size: 128 })
+      break
+    case 'bottts':
+      avatar = createAvatar(bottts, { seed, size: 128 })
+      break
+    case 'lorelei':
+      avatar = createAvatar(lorelei, { seed, size: 128 })
+      break
+    case 'notionists':
+      avatar = createAvatar(notionistsNeutral, { seed, size: 128 })
+      break
+    case 'thumbs':
+      avatar = createAvatar(thumbs, { seed, size: 128 })
+      break
+    default:
+      // Fallback to lorelei
+      avatar = createAvatar(lorelei, { seed, size: 128 })
+  }
+
   return avatar.toString()
 }
 
@@ -105,11 +123,7 @@ export function generateAvatarFromSelection(
 
   const seed = generateSeed(validAddress, validSelection, validVariant)
 
-  // Use notionists-neutral for "other", lorelei for male/female
-  if (validSelection === 'other') {
-    return generateNotionistsAvatar(seed)
-  }
-  return generateLoreleiAvatar(seed)
+  return generateAvatarByStyle(validSelection, seed)
 }
 
 /**

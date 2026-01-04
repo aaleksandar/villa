@@ -4,10 +4,10 @@
  */
 
 /** Avatar style options */
-export type AvatarStyle = 'lorelei' | 'lorelei-neutral' | 'notionists-neutral'
+export type AvatarStyle = 'adventurer' | 'avataaars' | 'bottts' | 'lorelei' | 'notionists-neutral' | 'thumbs'
 
 /** User-facing style selection */
-export type AvatarStyleSelection = 'male' | 'female' | 'other'
+export type AvatarStyleSelection = 'adventurer' | 'avataaars' | 'bottts' | 'lorelei' | 'notionists' | 'thumbs'
 
 /** Avatar configuration stored in profile */
 export interface AvatarConfig {
@@ -68,14 +68,17 @@ export type DataScope = 'nickname' | 'avatar' | 'wallet' | 'appData'
 
 /** Style mapping from user selection to DiceBear style */
 export const AVATAR_STYLE_MAP: Record<AvatarStyleSelection, AvatarStyle> = {
-  male: 'lorelei',
-  female: 'lorelei',
-  other: 'notionists-neutral',
+  adventurer: 'adventurer',
+  avataaars: 'avataaars',
+  bottts: 'bottts',
+  lorelei: 'lorelei',
+  notionists: 'notionists-neutral',
+  thumbs: 'thumbs',
 } as const
 
 /** Default avatar configuration */
 export const DEFAULT_AVATAR: AvatarConfig = {
   style: 'lorelei',
-  selection: 'other',
+  selection: 'lorelei',
   variant: 0,
 }

@@ -131,13 +131,13 @@ test.describe('State Persistence Integration', () => {
 
     // Navigate to home
     await page.goto('/home')
-    await expect(page.getByText('Persistence Test User')).toBeVisible()
+    await expect(page.getByText('@Persistence Test User')).toBeVisible()
 
     // Reload page
     await page.reload()
 
     // Identity should still be displayed
-    await expect(page.getByText('Persistence Test User')).toBeVisible()
+    await expect(page.getByText('@Persistence Test User')).toBeVisible()
     await expect(page.getByText('0x1234...7890')).toBeVisible()
   })
 
@@ -159,7 +159,7 @@ test.describe('State Persistence Integration', () => {
     })
 
     await page.goto('/home')
-    await expect(page.getByText('Test User')).toBeVisible()
+    await expect(page.getByText('@Test User')).toBeVisible()
 
     // Clear localStorage
     await page.evaluate(() => localStorage.clear())
@@ -218,8 +218,8 @@ test.describe('Home Screen Integration', () => {
   })
 
   test('displays identity information correctly', async ({ page }) => {
-    // Verify display name
-    await expect(page.getByText('Integration Test User')).toBeVisible()
+    // Verify display name with @ prefix
+    await expect(page.getByText('@Integration Test User')).toBeVisible()
 
     // Verify truncated address
     await expect(page.getByText('0xABCD...EF12')).toBeVisible()
@@ -254,7 +254,7 @@ test.describe('Home Screen Integration', () => {
 
   test('switch account button clears state and redirects', async ({ page }) => {
     // Verify we're on home page with identity
-    await expect(page.getByText('Integration Test User')).toBeVisible()
+    await expect(page.getByText('@Integration Test User')).toBeVisible()
 
     // Click Switch Account button
     await page.getByRole('button', { name: /Switch Account/i }).click()
@@ -552,14 +552,14 @@ test.describe('Cross-Page Integration', () => {
 
     // Go to home
     await page.goto('/home')
-    await expect(page.getByText('Navigation Test')).toBeVisible()
+    await expect(page.getByText('@Navigation Test')).toBeVisible()
 
     // Navigate to root
     await page.goto('/')
 
     // Should redirect back to home
     await expect(page).toHaveURL(/\/home/)
-    await expect(page.getByText('Navigation Test')).toBeVisible()
+    await expect(page.getByText('@Navigation Test')).toBeVisible()
   })
 
   test('direct navigation to home without identity redirects', async ({ page }) => {
@@ -594,6 +594,6 @@ test.describe('Cross-Page Integration', () => {
 
     // Should redirect to home
     await expect(page).toHaveURL(/\/home/, { timeout: 5000 })
-    await expect(page.getByText('Redirect Test')).toBeVisible()
+    await expect(page.getByText('@Redirect Test')).toBeVisible()
   })
 })

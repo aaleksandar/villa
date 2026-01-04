@@ -7,9 +7,70 @@
 set -e
 
 # ═══════════════════════════════════════════════════════════════
+# Input Validation (Security)
+# ═══════════════════════════════════════════════════════════════
+
+# Validate port number (1-65535)
+validate_port() {
+  local port="$1"
+  if [[ ! "$port" =~ ^[0-9]+$ ]]; then
+    return 1
+  fi
+  if [[ "$port" -lt 1 || "$port" -gt 65535 ]]; then
+    return 1
+  fi
+  return 0
+}
+
+# Validate domain name
+validate_domain() {
+  local domain="$1"
+  if [[ -z "$domain" ]]; then
+    return 0  # Empty is OK (optional)
+  fi
+  # Domain: alphanumeric, dash, dot only; max 253 chars
+  if [[ ! "$domain" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ ]]; then
+    return 1
+  fi
+  if [[ ${#domain} -gt 253 ]]; then
+    return 1
+  fi
+  return 0
+}
+
+# Validate URL format
+validate_url() {
+  local url="$1"
+  if [[ -z "$url" ]]; then
+    return 1
+  fi
+  # Must start with http:// or https://, followed by valid domain/path
+  if [[ ! "$url" =~ ^https?://[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9](/[a-zA-Z0-9._~:/?#\[\]@!\$\&\'()*+,;=-]*)?$ ]]; then
+    return 1
+  fi
+  if [[ ${#url} -gt 2000 ]]; then
+    return 1
+  fi
+  return 0
+}
+
+# Sanitize string for display (remove control characters)
+sanitize_output() {
+  local input="$1"
+  printf '%s' "$input" | tr -d '\000-\010\013-\037\177' | head -c 500
+}
+
+# ═══════════════════════════════════════════════════════════════
 # Configuration
 # ═══════════════════════════════════════════════════════════════
 PORT=${PORT:-3000}
+
+# Validate PORT
+if ! validate_port "$PORT"; then
+  echo "Error: Invalid PORT value. Must be 1-65535." >&2
+  exit 1
+fi
+
 HEALTH_ENDPOINT="http://localhost:$PORT/api/health"
 MAX_RETRIES=3
 RETRY_DELAY=2
@@ -53,8 +114,17 @@ wait_for_health() {
 }
 
 get_ngrok_url() {
-  curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | \
-    python3 -c "import sys,json; d=json.load(sys.stdin); print(d['tunnels'][0]['public_url'] if d.get('tunnels') else '')" 2>/dev/null || echo ""
+  local raw_url
+  # Use jq instead of Python for safer JSON parsing
+  raw_url=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | \
+    jq -r '.tunnels[0].public_url // empty' 2>/dev/null || echo "")
+
+  # Validate URL before returning
+  if [ -n "$raw_url" ] && validate_url "$raw_url"; then
+    echo "$raw_url"
+  else
+    echo ""
+  fi
 }
 
 # ═══════════════════════════════════════════════════════════════

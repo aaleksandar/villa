@@ -17,9 +17,12 @@ interface AvatarSelectionProps {
 }
 
 const STYLE_OPTIONS: { value: AvatarStyleSelection; label: string }[] = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'other', label: 'Other' },
+  { value: 'adventurer', label: 'Adventurer' },
+  { value: 'avataaars', label: 'Avataaars' },
+  { value: 'bottts', label: 'Bottts' },
+  { value: 'lorelei', label: 'Lorelei' },
+  { value: 'notionists', label: 'Notionists' },
+  { value: 'thumbs', label: 'Thumbs' },
 ]
 
 /**
@@ -31,7 +34,7 @@ export function AvatarSelection({
   onSelect,
   timerDuration = 30,
 }: AvatarSelectionProps) {
-  const [selection, setSelection] = useState<AvatarStyleSelection>('other')
+  const [selection, setSelection] = useState<AvatarStyleSelection>('lorelei')
   const [variant, setVariant] = useState(0)
   const [timer, setTimer] = useState(timerDuration)
   const [isSelecting, setIsSelecting] = useState(false)
@@ -110,23 +113,33 @@ export function AvatarSelection({
         </p>
       </div>
 
-      {/* Style selector */}
-      <div className="flex justify-center gap-2">
+      {/* Style selector - 3x2 grid */}
+      <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
         {STYLE_OPTIONS.map((option) => (
           <button
             key={option.value}
             onClick={() => handleStyleChange(option.value)}
             disabled={isSelecting}
             className={`
-              px-4 py-2 rounded-lg text-sm font-medium transition-all
+              flex flex-col items-center gap-2 p-3 rounded-lg transition-all
               ${selection === option.value
-                ? 'bg-accent-yellow text-accent-brown'
-                : 'bg-cream-100 text-ink-muted hover:bg-cream-200'
+                ? 'bg-accent-yellow border-2 border-accent-brown'
+                : 'bg-cream-100 border-2 border-transparent hover:border-cream-300'
               }
               disabled:opacity-50 disabled:cursor-not-allowed
             `}
           >
-            {option.label}
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-cream-200">
+              <AvatarPreview
+                walletAddress={walletAddress}
+                selection={option.value}
+                variant={0}
+                size={48}
+              />
+            </div>
+            <span className="text-xs font-medium text-ink">
+              {option.label}
+            </span>
           </button>
         ))}
       </div>

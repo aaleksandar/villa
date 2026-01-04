@@ -142,19 +142,30 @@ async function svgToPng(
 ### AvatarStyleSelection
 
 ```typescript
-type AvatarStyleSelection = 'male' | 'female' | 'other'
+type AvatarStyleSelection = 'adventurer' | 'avataaars' | 'bottts' | 'lorelei' | 'notionists' | 'thumbs'
 ```
 
-**Purpose:** User-facing style choice
+**Purpose:** User-facing style choice (6 diverse styles)
 
-**Validation:** `z.enum(['male', 'female', 'other'])`
+**Validation:** `z.enum(['adventurer', 'avataaars', 'bottts', 'lorelei', 'notionists', 'thumbs'])`
+
+**Style Gallery:**
+
+| Style | Description | Vibe |
+|-------|-------------|------|
+| `adventurer` | Pixel art characters | Playful, retro |
+| `avataaars` | Cartoon humans | Fun, expressive |
+| `bottts` | Cute robots | Tech, friendly |
+| `lorelei` | Elegant portraits | Artistic, human |
+| `notionists` | Abstract figures | Minimal, modern |
+| `thumbs` | Hand-drawn doodles | Casual, sketchy |
 
 ---
 
 ### AvatarStyle
 
 ```typescript
-type AvatarStyle = 'lorelei' | 'lorelei-neutral' | 'notionists-neutral'
+type AvatarStyle = 'adventurer' | 'avataaars' | 'bottts' | 'lorelei' | 'notionists-neutral' | 'thumbs'
 ```
 
 **Purpose:** DiceBear style identifier (internal)
@@ -162,15 +173,19 @@ type AvatarStyle = 'lorelei' | 'lorelei-neutral' | 'notionists-neutral'
 **Mapping:**
 ```typescript
 const AVATAR_STYLE_MAP: Record<AvatarStyleSelection, AvatarStyle> = {
-  male: 'lorelei',
-  female: 'lorelei',
-  other: 'notionists-neutral',
+  adventurer: 'adventurer',
+  avataaars: 'avataaars',
+  bottts: 'bottts',
+  lorelei: 'lorelei',
+  notionists: 'notionists-neutral',
+  thumbs: 'thumbs',
 }
 ```
 
 **Rationale:**
-- `lorelei`: Human-presenting avatars (male/female)
-- `notionists-neutral`: Gender-neutral abstract avatars (other)
+- 6 diverse styles give users real choice
+- Mix of human, abstract, and fun options
+- All deterministic from wallet + variant
 
 ---
 

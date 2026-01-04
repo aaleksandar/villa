@@ -226,19 +226,25 @@ The Nickname Registry lets users claim a unique, memorable name that becomes the
 
 | Element | Text | Notes |
 |---------|------|-------|
-| Headline | "Choose your nickname" | Clear instruction |
-| Placeholder | "yourname" | Hint, not instruction |
-| Helper (default) | "This is how others will see you" | Purpose |
+| Headline | "Choose your @handle" | Clear instruction |
+| Placeholder | "@yourname" | Shows @ prefix |
+| Helper (default) | "This is how others will find you" | Purpose |
 | Helper (checking) | "Checking..." | Loading state |
-| Helper (available) | "alice.proofofretreat.eth" | Shows full ENS name |
-| Helper (taken) | "This nickname is already taken" | Error |
+| Helper (available) | "@alice is available!" | Confirms handle format |
+| Helper (taken) | "@alice is already taken" | Error with handle |
 | Helper (invalid) | "Only letters and numbers, 3-30 characters" | Validation rules |
-| Helper (reserved) | "This nickname is reserved" | Reserved names |
-| Helper (too short) | "Nickname must be at least 3 characters" | Length |
-| Helper (too long) | "Nickname must be 30 characters or less" | Length |
+| Helper (reserved) | "This handle is reserved" | Reserved names |
+| Helper (too short) | "Handle must be at least 3 characters" | Length |
+| Helper (too long) | "Handle must be 30 characters or less" | Length |
 | CTA (disabled) | "Continue" | Before valid input |
-| CTA (enabled) | "Claim {nickname}" | Dynamic with nickname |
+| CTA (enabled) | "Claim @{nickname}" | Dynamic with @ prefix |
 | CTA (loading) | "Claiming..." | During save |
+
+**Display Format:**
+- Input always shows `@` prefix (non-editable)
+- Display throughout app: `@alice`
+- ENS resolution (hidden): `alice.proofofretreat.eth`
+- User never sees ENS technical name
 
 **States:**
 

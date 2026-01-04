@@ -482,28 +482,34 @@ function ProfileStep({
   return (
     <div className="space-y-8">
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-serif text-ink">Set Up Profile</h2>
+        <h2 className="text-2xl font-serif text-ink">Choose your @handle</h2>
         <p className="text-ink-muted">
-          What should we call you?
+          This is how others will find you
         </p>
       </div>
       <div className="space-y-4">
-        <Input
-          type="text"
-          placeholder="Your name"
-          value={displayName}
-          onChange={(e) => onDisplayNameChange(e.target.value)}
-          error={error}
-          autoFocus
-          maxLength={50}
-        />
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <span className="text-ink text-base">@</span>
+          </div>
+          <Input
+            type="text"
+            placeholder="yourname"
+            value={displayName}
+            onChange={(e) => onDisplayNameChange(e.target.value)}
+            error={error}
+            autoFocus
+            maxLength={30}
+            className="pl-8"
+          />
+        </div>
         <Button
           size="lg"
           className="w-full"
           onClick={onSubmit}
           disabled={!displayName.trim() || isPending}
         >
-          {isPending ? <Spinner size="sm" /> : 'Continue'}
+          {isPending ? <Spinner size="sm" /> : `Claim @${displayName || 'handle'}`}
         </Button>
       </div>
     </div>

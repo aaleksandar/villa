@@ -75,7 +75,7 @@ test.describe('Home Screen', () => {
   test('displays user profile', async ({ page }) => {
     await page.goto('/home')
 
-    await expect(page.getByText('Test User')).toBeVisible()
+    await expect(page.getByText('@Test User')).toBeVisible()
     await expect(page.getByText('0x1234...7890')).toBeVisible()
   })
 
@@ -125,6 +125,6 @@ test.describe('Mobile Responsiveness', () => {
     })
 
     await page.goto('/home')
-    await expect(page.getByText('Test User')).toBeVisible()
+    await expect(page.getByText('@Test User')).toBeVisible()
   })
 })

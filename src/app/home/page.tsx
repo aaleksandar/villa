@@ -90,7 +90,7 @@ export default function HomePage() {
               size="lg"
             />
             <div className="text-center space-y-1">
-              <h2 className="text-xl font-serif text-ink">{identity.displayName}</h2>
+              <h2 className="text-xl font-serif text-ink">@{identity.displayName}</h2>
               <button
                 onClick={handleCopyAddress}
                 className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink transition-colors"
