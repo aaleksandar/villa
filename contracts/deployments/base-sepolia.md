@@ -8,7 +8,8 @@
 
 ## Funding
 
-Get testnet ETH from these faucets:
+Get testnet ETH from these faucets (in order of preference):
+- **https://console.optimism.io/faucet** (Best - Superchain ecosystem, works for Base Sepolia)
 - https://www.alchemy.com/faucets/base-sepolia
 - https://faucet.quicknode.com/base/sepolia
 - https://www.coinbase.com/faucets/base-ethereum-sepolia-faucet
