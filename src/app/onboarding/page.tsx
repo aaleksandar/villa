@@ -40,35 +40,27 @@ export default function OnboardingPage() {
   const { identity, setIdentity } = useIdentityStore()
 
   // Support direct navigation to steps via URL params (for testing)
-  const [step, setStep] = useState<Step>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const testStep = params.get('step') as Step | null
-      const testAddress = params.get('address')
-      if (testStep && testAddress) {
-        // For test mode, initialize address state
-        return testStep
-      }
-    }
-    return 'welcome'
-  })
-
-  const [displayName, setDisplayName] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      return params.get('displayName') || ''
-    }
-    return ''
-  })
+  const [step, setStep] = useState<Step>('welcome')
+  const [displayName, setDisplayName] = useState('')
   const [nameError, setNameError] = useState<string>()
   const [error, setError] = useState<ErrorState | null>(null)
-  const [address, setAddress] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      return params.get('address')
+  const [address, setAddress] = useState<string | null>(null)
+
+  // Handle test mode URL params on mount (client-side only)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const testStep = params.get('step') as Step | null
+    const testAddress = params.get('address')
+    const testDisplayName = params.get('displayName')
+
+    if (testStep && testAddress) {
+      setStep(testStep)
+      setAddress(testAddress)
+      if (testDisplayName) {
+        setDisplayName(testDisplayName)
+      }
     }
-    return null
-  })
+  }, [])
   const [isSupported, setIsSupported] = useState(true)
   const [inAppBrowser, setInAppBrowser] = useState<InAppBrowserInfo | null>(null)
 
@@ -89,6 +81,13 @@ export default function OnboardingPage() {
 
   // Check for in-app browser and Porto support on mount
   useEffect(() => {
+    // Skip browser checks in test mode (URL has step and address params)
+    const params = new URLSearchParams(window.location.search)
+    const isTestMode = params.has('step') && params.has('address')
+    if (isTestMode) {
+      return
+    }
+
     // First check for in-app browser
     const browserInfo = detectInAppBrowser()
     if (browserInfo.isInApp) {
