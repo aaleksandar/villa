@@ -14,6 +14,17 @@ export { Villa } from './client'
 export { resolveEns, reverseEns } from './ens'
 export { getAvatarUrl, createAvatarConfig } from './avatar'
 
+// Auth utilities
+export { signIn, signOut, isAuthenticated, getIdentity } from './auth'
+export type { AuthOptions } from './auth'
+
+// Session utilities
+export { saveSession, loadSession, clearSession } from './session'
+
+// Iframe utilities (advanced usage)
+export { createAuthIframe, destroyAuthIframe } from './iframe'
+export type { IframeConfig, AuthMessage } from './iframe'
+
 // Types - all shared types for the ecosystem
 export type {
   Identity,

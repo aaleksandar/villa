@@ -4,9 +4,16 @@
  * Main SDK class providing identity, ENS, and avatar functionality.
  */
 
-import type { AvatarConfig, VillaConfig } from './types'
+import type { AvatarConfig, VillaConfig, Identity } from './types'
 import { resolveEns as resolveEnsName, reverseEns as reverseEnsAddress } from './ens'
 import { getAvatarUrl as generateAvatarUrl } from './avatar'
+import {
+  signIn as authSignIn,
+  signOut as authSignOut,
+  isAuthenticated as checkAuth,
+  getIdentity as getCurrentIdentity,
+  type AuthOptions,
+} from './auth'
 
 /**
  * Villa SDK Client
@@ -79,5 +86,64 @@ export class Villa {
    */
   getApiUrl(): string {
     return this.config.apiUrl || 'https://api.villa.cash'
+  }
+
+  /**
+   * Signs in a user via Porto passkey flow
+   *
+   * Creates fullscreen iframe, waits for auth completion.
+   *
+   * @param options - Auth flow callbacks
+   * @returns Promise resolving to user identity
+   *
+   * @example
+   * const identity = await villa.signIn({
+   *   onSuccess: (identity) => console.log('Signed in:', identity),
+   *   onError: (error) => console.error('Sign in failed:', error)
+   * })
+   */
+  async signIn(options?: AuthOptions): Promise<Identity> {
+    return authSignIn(options)
+  }
+
+  /**
+   * Signs out the current user
+   *
+   * Clears session from localStorage and memory.
+   *
+   * @example
+   * await villa.signOut()
+   */
+  async signOut(): Promise<void> {
+    return authSignOut()
+  }
+
+  /**
+   * Checks if user is currently authenticated
+   *
+   * @returns true if user has valid session
+   *
+   * @example
+   * if (villa.isAuthenticated()) {
+   *   console.log('User is signed in')
+   * }
+   */
+  isAuthenticated(): boolean {
+    return checkAuth()
+  }
+
+  /**
+   * Gets the current user's identity
+   *
+   * @returns Identity if authenticated, null otherwise
+   *
+   * @example
+   * const identity = villa.getIdentity()
+   * if (identity) {
+   *   console.log('Current user:', identity.nickname)
+   * }
+   */
+  getIdentity(): Identity | null {
+    return getCurrentIdentity()
   }
 }
