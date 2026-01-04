@@ -44,4 +44,4 @@ certificates/
 .docker/
 
 # Coordination state (runtime, per-machine)
-.claude/coordination/state.json
+.claude/coordination/state.json.ngrok.yml
