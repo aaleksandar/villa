@@ -60,25 +60,33 @@ function OnboardingContent() {
   const searchParams = useSearchParams()
   const { identity, setIdentity } = useIdentityStore()
 
-  // Read URL params immediately (SSR-compatible via useSearchParams)
+  // Read URL params (available after hydration)
   const testStep = searchParams.get('step') as Step | null
   const testAddress = searchParams.get('address')
   const testDisplayName = searchParams.get('displayName')
   const isTestMode = Boolean(testStep && testAddress)
 
-  // Initialize state from URL params for test mode
-  const [step, setStep] = useState<Step>(() => {
-    if (testStep && testAddress) {
-      return testStep
-    }
-    return 'welcome'
-  })
-  const [displayName, setDisplayName] = useState(() => testDisplayName || '')
+  // State - initialized to defaults, synced from URL params after hydration
+  const [step, setStep] = useState<Step>('welcome')
+  const [displayName, setDisplayName] = useState('')
   const [nameError, setNameError] = useState<string>()
   const [error, setError] = useState<ErrorState | null>(null)
-  const [address, setAddress] = useState<string | null>(() => testAddress)
+  const [address, setAddress] = useState<string | null>(null)
   const [isSupported, setIsSupported] = useState(true)
   const [inAppBrowser, setInAppBrowser] = useState<InAppBrowserInfo | null>(null)
+  const [paramsLoaded, setParamsLoaded] = useState(false)
+
+  // Sync state from URL params after hydration (searchParams is empty during SSR)
+  useEffect(() => {
+    if (testStep && testAddress) {
+      setStep(testStep)
+      setAddress(testAddress)
+      if (testDisplayName) {
+        setDisplayName(testDisplayName)
+      }
+    }
+    setParamsLoaded(true)
+  }, [testStep, testAddress, testDisplayName])
 
   // Ref for inline Porto container
   const portoContainerRef = useRef<HTMLDivElement | null>(null)
@@ -286,6 +294,18 @@ function OnboardingContent() {
       <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-cream-50">
         <div className="w-full max-w-sm">
           {error && <ErrorStep message={error.message} onRetry={error.retry} />}
+        </div>
+      </main>
+    )
+  }
+
+  // Show loading until params are loaded
+  // This prevents the welcome screen from flashing before test mode state is synced
+  if (!paramsLoaded) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-cream-50">
+        <div className="w-full max-w-md text-center">
+          <Spinner size="lg" />
         </div>
       </main>
     )

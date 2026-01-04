@@ -216,7 +216,36 @@ await expect(page.locator('[data-testid="auth-content"]')).toBeVisible()
 
 **Why:** Navigation can legitimately end at different pages depending on state. Test the behavior (user sees correct content), not the exact path.
 
-### 16. Shipping Efficiency (57x Improvement)
+### 15. Kill Dev Server Before Verify
+
+```bash
+# ❌ Bad: Running tests while dev server is active
+npm run dev &  # Port 3000 occupied
+npm run verify # Tests fight for port, flaky failures
+
+# ✅ Good: Clean slate
+pkill -f "next dev" 2>/dev/null
+sleep 2
+npm run verify
+```
+
+**Why:** Dev server and Playwright tests both try to use port 3000. Resource contention causes intermittent failures that waste debugging time.
+
+### 16. Animation Timing for CI
+
+```typescript
+// ❌ Bad: 800ms celebration - too brief for CI
+setTimeout(() => onSelect(config), 800)  // CI misses assertion
+
+// ✅ Good: 1200ms+ for reliable CI assertions
+setTimeout(() => onSelect(config), 1200)
+// Or use explicit wait in test:
+await expect(heading).toBeVisible({ timeout: 2000 })
+```
+
+**Why:** Network latency in CI means brief UI states (<1000ms) are often missed by assertions. 1200-1500ms is the sweet spot for visibility + good UX.
+
+### 17. Shipping Efficiency (57x Improvement)
 
 **The Problem:** Manual polling and sequential operations waste massive time.
 
@@ -489,6 +518,7 @@ Historical session notes in `.claude/archive/` and `.claude/reflections/`:
 - `archive/REFLECTION-SESSION-2026-01-04.md` - CI/CD optimization session
 - `reflections/2026-01-04-avatar-session.md` - Agent delegation failure analysis
 - `reflections/2026-01-04-biometric-session.md` - Context recovery + git state drift patterns
+- `reflections/2026-01-05-celebration-animation.md` - CI timing race + dev server conflicts
 
 Full session logs preserved in git history for reference.
 
