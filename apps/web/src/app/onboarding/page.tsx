@@ -20,12 +20,14 @@ import {
   getCurrentUrl,
   type InAppBrowserInfo,
 } from '@/lib/browser'
+import { getNicknameByAddress } from '@/lib/nickname'
 
 type Step =
   | 'inapp-browser'
   | 'welcome'
   | 'connecting'
   | 'success'
+  | 'welcome-back'  // Returning user on new device (has nickname, needs avatar)
   | 'profile'
   | 'avatar'
   | 'error'
@@ -173,14 +175,34 @@ export default function OnboardingPage() {
       // Store the Porto wallet address
       setAddress(result.address)
 
-      // Check if we have a stored identity with this address
-      if (identity && identity.address === result.address) {
-        // Already have identity, go home
+      // Check if we have a stored identity with this address (same device)
+      if (identity && identity.address === result.address && identity.avatar) {
+        // Already have complete identity, go home
         router.replace('/home')
         return
       }
 
-      // New sign-in (different device?), need profile setup
+      // === RETURNING USER DETECTION ===
+      // Check if this address has a nickname registered (on API/chain)
+      const nicknameResult = await getNicknameByAddress(result.address)
+
+      if (nicknameResult) {
+        // Returning user! They have a nickname registered
+        setDisplayName(nicknameResult.nickname)
+
+        // Check if we have avatar locally
+        if (identity && identity.address === result.address && identity.avatar) {
+          // Have both nickname (API) and avatar (local) → go home
+          router.replace('/home')
+          return
+        }
+
+        // Have nickname but no avatar (new device) → show welcome-back then avatar
+        setStep('welcome-back')
+        return
+      }
+
+      // New user - no nickname found, need full onboarding
       setStep('success')
       timeoutRef.current = setTimeout(() => setStep('profile'), 1500)
     } catch (err) {
@@ -279,6 +301,13 @@ export default function OnboardingPage() {
         )}
 
         {step === 'success' && <SuccessStep />}
+
+        {step === 'welcome-back' && displayName && (
+          <WelcomeBackStep
+            nickname={displayName}
+            onContinue={() => setStep('avatar')}
+          />
+        )}
 
         {step === 'profile' && (
           <ProfileStep
@@ -459,6 +488,36 @@ function SuccessStep() {
         <h2 className="text-2xl font-serif text-ink">Connected!</h2>
         <p className="text-ink-muted">
           Your secure identity is ready
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function WelcomeBackStep({
+  nickname,
+  onContinue,
+}: {
+  nickname: string
+  onContinue: () => void
+}) {
+  // Auto-advance after 2 seconds
+  useEffect(() => {
+    const timer = setTimeout(onContinue, 2000)
+    return () => clearTimeout(timer)
+  }, [onContinue])
+
+  return (
+    <div className="text-center space-y-6">
+      <div className="flex justify-center">
+        <SuccessCelebration size="lg" />
+      </div>
+      <div className="space-y-2">
+        <h2 className="text-2xl font-serif text-ink">
+          Welcome back, @{nickname}!
+        </h2>
+        <p className="text-ink-muted">
+          Let&apos;s set up your look on this device
         </p>
       </div>
     </div>
