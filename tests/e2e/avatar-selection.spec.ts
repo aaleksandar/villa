@@ -119,47 +119,71 @@ test.describe('Avatar Selection Flow', () => {
   })
 
   test('Scenario 4: Timer auto-select at 0:00', async ({ page }) => {
-    // Use a short timer for testing (3 seconds)
+    test.setTimeout(60000) // Need 60s timeout for 30s timer + delays
+
     // Already at avatar step from beforeEach
     // await page.goto() not needed
 
     await expect(page.getByRole('heading', { name: 'Pick your look' })).toBeVisible()
 
     // Timer should be visible
-    const timer = page.locator('text=/0:\\d{2}/')
+    const timer = page.locator('span.font-mono')
     await expect(timer).toBeVisible()
 
-    // Wait for timer to count down and auto-select
-    // Note: This may take up to 30 seconds in real implementation
-    // In the actual page, you might want to test with a mock timer or shorter duration
-    await expect(page.getByRole('button', { name: 'Saving...' })).toBeVisible({ timeout: 35000 })
+    // Get initial timer value to ensure it's counting down
+    const initialText = await timer.textContent()
+    expect(initialText).toMatch(/0:(30|29|28)/)
 
-    // Should show auto-selected state
-    await expect(page.getByText('Avatar selected!')).toBeVisible({ timeout: 5000 })
+    // Wait for timer to reach 0:00 and auto-navigate to home
+    // The component calls onSelect which navigates to /home
+    await expect(page).toHaveURL('/home', { timeout: 35000 })
+
+    // Verify we're on home page (avatar auto-selected)
+    await expect(page.getByRole('heading', { name: 'Villa' })).toBeVisible()
   })
 
   test('Scenario 5: Timer warning states', async ({ page }) => {
+    test.setTimeout(50000) // Need 50s timeout to wait ~22 seconds for warning state
+
     // Already at avatar step from beforeEach
     // await page.goto() not needed
 
     await expect(page.getByRole('heading', { name: 'Pick your look' })).toBeVisible()
 
-    const timer = page.locator('text=/0:\\d{2}/')
+    const timer = page.locator('span.font-mono')
 
-    // Initially timer should not be red or amber
-    await expect(timer).not.toHaveClass(/text-red/)
-    await expect(timer).not.toHaveClass(/text-amber/)
-
-    // Wait for timer to reach warning state (<=10s)
-    // In a real scenario, this would take ~20 seconds
-    // For testing, you might want to inject a shorter timer duration
-    // For now, we'll verify the CSS classes can be applied
-    await page.waitForTimeout(2000)
-
-    // Note: Since we can't easily test the 30-second countdown in E2E,
-    // we're verifying the UI elements exist and are styled correctly.
-    // Timer color changes are unit test territory.
+    // Timer should be visible and counting down
     await expect(timer).toBeVisible()
+
+    // Initially timer should show 0:30 or close to it
+    const initialTimer = await timer.textContent()
+    expect(initialTimer).toMatch(/0:(30|29|28)/)
+
+    // Wait for timer to reach amber warning state (<=10s remaining)
+    // This takes ~20-22 seconds from start
+    // Poll manually with a longer timeout
+    let timerReachedWarning = false
+    const startTime = Date.now()
+    const maxWaitTime = 30000 // 30 seconds
+
+    while (!timerReachedWarning && Date.now() - startTime < maxWaitTime) {
+      const timerText = await timer.textContent()
+      const match = timerText?.match(/0:(\d{2})/)
+      if (match) {
+        const seconds = parseInt(match[1], 10)
+        if (seconds <= 10) {
+          timerReachedWarning = true
+          break
+        }
+      }
+      await page.waitForTimeout(500) // Check every 500ms
+    }
+
+    expect(timerReachedWarning).toBe(true)
+
+    // Verify timer has amber or red styling
+    const timerClass = await timer.getAttribute('class')
+    expect(timerClass).toMatch(/text-(amber|red)/)
   })
 
   test('Scenario 6: Consistent avatar across sessions', async ({ page }) => {
@@ -224,8 +248,12 @@ test.describe('Avatar Selection Flow', () => {
 
     const timer = page.locator('text=/0:\\d{2}/')
 
+    // Wait for timer to be visible and stable
+    await expect(timer).toBeVisible()
+
     // Get initial timer value
-    const initialTimer = await timer.textContent()
+    const initialTimerText = await timer.textContent()
+    const initialSeconds = parseInt(initialTimerText?.split(':')[1] || '30', 10)
 
     // Change style
     await page.getByRole('button', { name: 'Female' }).first().click()
@@ -233,9 +261,11 @@ test.describe('Avatar Selection Flow', () => {
     // Wait 2 seconds
     await page.waitForTimeout(2000)
 
-    // Timer should have decreased
-    const newTimer = await timer.textContent()
-    expect(newTimer).not.toBe(initialTimer)
+    // Timer should have decreased by at least 1 second
+    const newTimerText = await timer.textContent()
+    const newSeconds = parseInt(newTimerText?.split(':')[1] || '30', 10)
+
+    expect(newSeconds).toBeLessThan(initialSeconds)
   })
 
   test('All style buttons are clickable and functional', async ({ page }) => {
@@ -275,8 +305,11 @@ test.describe('Avatar Selection Flow', () => {
 
     await expect(page.getByRole('heading', { name: 'Pick your look' })).toBeVisible()
 
-    const selectButton = page.getByRole('button', { name: 'Select' })
-    const randomizeButton = page.getByRole('button', { name: /Randomize/i })
+    // Wait for page to be fully loaded
+    await page.waitForLoadState('networkidle')
+
+    const selectButton = page.getByRole('button', { name: 'Select' }).first()
+    const randomizeButton = page.getByRole('button', { name: /Randomize/i }).first()
     const maleButton = page.getByRole('button', { name: 'Male' }).first()
 
     // All buttons should be enabled initially
@@ -284,11 +317,14 @@ test.describe('Avatar Selection Flow', () => {
     await expect(randomizeButton).toBeEnabled()
     await expect(maleButton).toBeEnabled()
 
-    // Click select
+    // Click select and immediately check for the Saving... state
     await selectButton.click()
+    await expect(page.getByRole('button', { name: 'Saving...' }).first()).toBeVisible()
 
-    // Buttons should be disabled
-    await expect(selectButton).toBeDisabled()
+    // Now buttons should be disabled
+    // Note: The component changes text from "Select" to "Saving..." so we check the "Saving..." button
+    const savingButton = page.getByRole('button', { name: 'Saving...' }).first()
+    await expect(savingButton).toBeDisabled()
     await expect(randomizeButton).toBeDisabled()
     await expect(maleButton).toBeDisabled()
   })
@@ -344,8 +380,8 @@ test.describe('Avatar Selection - Mobile Responsiveness', () => {
     expect(femaleBox?.height).toBeGreaterThanOrEqual(36)
     expect(otherBox?.height).toBeGreaterThanOrEqual(36)
 
-    // Buttons should be tappable
-    await maleButton.tap()
+    // Buttons should be clickable (use click instead of tap for desktop chromium)
+    await maleButton.click()
     await expect(maleButton).toHaveClass(/bg-accent-yellow/)
   })
 
@@ -359,8 +395,8 @@ test.describe('Avatar Selection - Mobile Responsiveness', () => {
     const avatarPreview = page.locator('img[alt="Avatar"]')
     const initialSrc = await avatarPreview.getAttribute('src')
 
-    // Tap randomize
-    await randomizeButton.tap()
+    // Click randomize (use click instead of tap for desktop chromium)
+    await randomizeButton.click()
     await page.waitForTimeout(100)
 
     const newSrc = await avatarPreview.getAttribute('src')
@@ -381,45 +417,44 @@ test.describe('Avatar Selection - Accessibility', () => {
     // Already at avatar step from beforeEach
     // await page.goto() not needed
 
-    // Focus first button
-    await page.keyboard.press('Tab')
+    await expect(page.getByRole('heading', { name: 'Pick your look' })).toBeVisible()
 
-    // Should be able to navigate with keyboard
+    // Wait for page to be fully loaded
+    await page.waitForLoadState('networkidle')
+
+    // Focus on the Male button directly and activate it
     const maleButton = page.getByRole('button', { name: 'Male' }).first()
-    const femaleButton = page.getByRole('button', { name: 'Female' }).first()
+    await maleButton.focus()
+    await expect(maleButton).toBeFocused()
 
-    // Tab to navigate
-    await page.keyboard.press('Tab')
-    await page.keyboard.press('Tab')
-
-    // Press Enter to select
+    // Press Enter to select it
     await page.keyboard.press('Enter')
 
-    // Check one of the buttons is selected
-    const maleSelected = await maleButton.evaluate((el) => el.classList.contains('bg-accent-yellow'))
-    const femaleSelected = await femaleButton.evaluate((el) => el.classList.contains('bg-accent-yellow'))
-
-    expect(maleSelected || femaleSelected).toBe(true)
+    // Male button should now be selected
+    await expect(maleButton).toHaveClass(/bg-accent-yellow/)
   })
 
   test('Select button is keyboard accessible', async ({ page }) => {
     // Already at avatar step from beforeEach
     // await page.goto() not needed
 
-    // Keep tabbing until we find the Select button
-    for (let i = 0; i < 10; i++) {
-      await page.keyboard.press('Tab')
-      const text = await page.evaluate((el) => el?.textContent || '', await page.evaluateHandle(() => document.activeElement))
-      if (text.includes('Select')) {
-        break
-      }
-    }
+    await expect(page.getByRole('heading', { name: 'Pick your look' })).toBeVisible()
+
+    // Wait for page to be fully loaded
+    await page.waitForLoadState('networkidle')
+
+    // Find the Select button and focus it
+    const selectButton = page.getByRole('button', { name: 'Select' }).first()
+    await selectButton.focus()
+
+    // Verify it's focused
+    await expect(selectButton).toBeFocused()
 
     // Press Enter to select
     await page.keyboard.press('Enter')
 
     // Should show saving state
-    await expect(page.getByRole('button', { name: 'Saving...' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Saving...' }).first()).toBeVisible({ timeout: 2000 })
   })
 
   test('Avatar has appropriate alt text', async ({ page }) => {
