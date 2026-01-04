@@ -1,0 +1,14 @@
+{
+  "name": "@villa/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Villa Solidity contracts for Base network",
+  "scripts": {
+    "build": "source ~/.zshenv && forge build",
+    "test": "source ~/.zshenv && forge test",
+    "test:coverage": "source ~/.zshenv && forge coverage",
+    "typecheck": "echo 'Solidity contracts - no TypeScript'",
+    "clean": "source ~/.zshenv && forge clean"
+  },
+  "keywords": ["solidity", "ethereum", "base", "biometric-recovery"]
+}
