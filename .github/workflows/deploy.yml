@@ -47,25 +47,30 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Cache Next.js build
         uses: actions/cache@v4
         with:
-          path: .next/cache
-          key: nextjs-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.ts', '**/*.tsx') }}
+          path: apps/web/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.ts', '**/*.tsx') }}
           restore-keys: |
-            nextjs-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-
+            nextjs-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-
             nextjs-${{ runner.os }}-
 
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npx vitest run --config vitest.config.unit.ts
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm run lint
+      - run: pnpm --filter @villa/web exec vitest run --config vitest.config.unit.ts
 
       - name: Assign dev slot (1 or 2)
         id: slot
@@ -106,21 +111,24 @@ jobs:
         shard: [1, 2]
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
       - uses: actions/cache@v4
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @villa/web exec playwright install --with-deps chromium
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-      - run: npx playwright install-deps chromium
+      - run: pnpm --filter @villa/web exec playwright install-deps chromium
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-      - run: npx playwright test --project=chromium --shard=${{ matrix.shard }}/2
+      - run: pnpm --filter @villa/web exec playwright test --project=chromium --shard=${{ matrix.shard }}/2
         env:
           CI: true
       - uses: actions/upload-artifact@v4
@@ -313,12 +321,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @villa/web exec playwright install --with-deps chromium
 
       - name: Wait for healthy deployment
         run: |
@@ -334,7 +345,7 @@ jobs:
 
       - name: Run E2E tests
         id: e2e
-        run: npm run test:e2e:chromium 2>&1 | tee e2e-output.txt
+        run: pnpm run test:e2e:chromium 2>&1 | tee e2e-output.txt
         env:
           BASE_URL: ${{ needs.deploy-preview.outputs.url }}
           CI: true
@@ -423,23 +434,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
       - uses: actions/cache@v4
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
-      - run: npm ci
-      - run: npm run typecheck & npm run lint & wait
-      - run: npx vitest run --config vitest.config.unit.ts
-      - run: npx playwright install --with-deps chromium
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck & pnpm run lint & wait
+      - run: pnpm --filter @villa/web exec vitest run --config vitest.config.unit.ts
+      - run: pnpm --filter @villa/web exec playwright install --with-deps chromium
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-      - run: npx playwright install-deps chromium
+      - run: pnpm --filter @villa/web exec playwright install-deps chromium
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-      - run: npx playwright test --project=chromium
+      - run: pnpm --filter @villa/web exec playwright test --project=chromium
         env:
           CI: true
 
@@ -522,7 +536,7 @@ jobs:
         run: |
           if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ZONE_ID" ]; then
             echo "🗑️ Purging CloudFlare cache for beta.villa.cash..."
-            npm run infra:cache:purge || echo "Cache purge failed (non-blocking)"
+            pnpm run infra:cache:purge || echo "Cache purge failed (non-blocking)"
           else
             echo "⚠️ CloudFlare secrets not configured, skipping cache purge"
           fi
@@ -582,12 +596,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @villa/web exec playwright install --with-deps chromium
 
       - name: Wait for healthy staging
         run: |
@@ -601,7 +618,7 @@ jobs:
           exit 1
 
       - name: Run E2E tests on staging
-        run: npm run test:e2e:chromium
+        run: pnpm run test:e2e:chromium
         env:
           BASE_URL: https://beta.villa.cash
           CI: true
@@ -622,23 +639,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
       - uses: actions/cache@v4
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
-      - run: npm ci
-      - run: npm run typecheck & npm run lint & wait
-      - run: npx vitest run --config vitest.config.unit.ts
-      - run: npx playwright install --with-deps chromium
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck & pnpm run lint & wait
+      - run: pnpm --filter @villa/web exec vitest run --config vitest.config.unit.ts
+      - run: pnpm --filter @villa/web exec playwright install --with-deps chromium
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-      - run: npx playwright install-deps chromium
+      - run: pnpm --filter @villa/web exec playwright install-deps chromium
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-      - run: npx playwright test --project=chromium
+      - run: pnpm --filter @villa/web exec playwright test --project=chromium
         env:
           CI: true
 
@@ -722,7 +742,7 @@ jobs:
         run: |
           if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ZONE_ID" ]; then
             echo "🗑️ Purging CloudFlare cache for villa.cash..."
-            npm run infra:cache:purge || echo "Cache purge failed (non-blocking)"
+            pnpm run infra:cache:purge || echo "Cache purge failed (non-blocking)"
           else
             echo "⚠️ CloudFlare secrets not configured, skipping cache purge"
           fi
@@ -774,12 +794,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @villa/web exec playwright install --with-deps chromium
 
       - name: Wait for healthy production
         run: |
@@ -793,7 +816,7 @@ jobs:
           exit 1
 
       - name: Run E2E tests on production
-        run: npm run test:e2e:chromium
+        run: pnpm run test:e2e:chromium
         env:
           BASE_URL: https://villa.cash
           CI: true
