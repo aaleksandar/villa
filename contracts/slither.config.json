@@ -1,0 +1,17 @@
+{
+  "detectors_to_exclude": [
+    "solc-version",
+    "pragma",
+    "naming-convention"
+  ],
+  "exclude_informational": true,
+  "exclude_low": false,
+  "exclude_medium": false,
+  "exclude_high": false,
+  "filter_paths": [
+    "lib/",
+    "test/",
+    "script/"
+  ],
+  "compile_force_framework": "foundry"
+}

@@ -77,7 +77,7 @@ contract VillaNicknameResolverTest is Test {
         bytes memory name = abi.encode("alice.villa.eth");
         bytes memory data = abi.encodeWithSignature("addr(bytes32)", bytes32(0));
 
-        vm.expectRevert(); // We expect a revert, specific type checked below
+        // We expect a revert with OffchainLookup, verify using try/catch
         try resolver.resolve(name, data) {
             fail("Should have reverted with OffchainLookup");
         } catch (bytes memory reason) {

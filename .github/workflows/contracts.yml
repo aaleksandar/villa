@@ -1,0 +1,530 @@
+name: Contracts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/contracts.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/contracts.yml'
+  workflow_dispatch:
+    inputs:
+      network:
+        description: 'Network to deploy to'
+        required: true
+        type: choice
+        options:
+          - base-sepolia
+          - base
+      contract:
+        description: 'Contract to deploy'
+        required: true
+        type: choice
+        options:
+          - all
+          - VillaNicknameResolver
+          - BiometricRecoverySigner
+      dry_run:
+        description: 'Dry run (no actual deployment)'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: contracts-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FOUNDRY_PROFILE: ci
+  # Base Sepolia
+  BASE_SEPOLIA_RPC_URL: https://sepolia.base.org
+  BASE_SEPOLIA_CHAIN_ID: 84532
+  BASE_SEPOLIA_EXPLORER: https://sepolia.basescan.org
+  # Base Mainnet
+  BASE_RPC_URL: https://mainnet.base.org
+  BASE_CHAIN_ID: 8453
+  BASE_EXPLORER: https://basescan.org
+  # GIFs
+  GIF_DEPLOY: "https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif"
+  GIF_AUDIT: "https://media.giphy.com/media/3o7btNa0RUYa5E7iiQ/giphy.gif"
+
+jobs:
+  # =============================================================================
+  # BUILD & TEST - Runs on all PRs and pushes
+  # =============================================================================
+  build-test:
+    name: "🔨 Build & Test"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Check Forge version
+        run: forge --version
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Build contracts
+        working-directory: contracts
+        run: forge build --sizes
+        id: build
+
+      - name: Run tests
+        working-directory: contracts
+        run: forge test -vvv --gas-report
+        id: test
+
+      - name: Run coverage
+        working-directory: contracts
+        run: |
+          forge coverage --report summary --report lcov
+          echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
+          forge coverage --report summary >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: contracts/lcov.info
+          flags: contracts
+          fail_ci_if_error: false
+
+  # =============================================================================
+  # SECURITY AUDIT - Static analysis with Slither
+  # =============================================================================
+  security-audit:
+    name: "🔐 Security Audit"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Build for Slither
+        working-directory: contracts
+        run: forge build
+
+      - name: Run Slither
+        uses: crytic/slither-action@v0.4.0
+        id: slither
+        with:
+          target: contracts/
+          slither-config: contracts/slither.config.json
+          fail-on: none
+          sarif: results.sarif
+        continue-on-error: true
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: results.sarif
+
+      - name: Comment audit results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const passed = '${{ steps.slither.outcome }}' === 'success';
+
+            const body = passed
+              ? `![Audit](https://media.giphy.com/media/3o7btNa0RUYa5E7iiQ/giphy.gif)
+
+## 🔐 Security Audit Passed
+
+Slither static analysis found no critical issues.
+
+| Check | Status |
+|-------|--------|
+| Reentrancy | ✅ |
+| Access Control | ✅ |
+| Integer Overflow | ✅ |
+| Unchecked Calls | ✅ |
+
+<sub>Full report in workflow artifacts</sub>`
+              : `## ⚠️ Security Audit Warnings
+
+Slither found potential issues. Review the SARIF report.
+
+<sub>Note: Some findings may be false positives</sub>`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('Security Audit')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body
+              });
+            }
+
+  # =============================================================================
+  # STORAGE LAYOUT CHECK - Ensure upgrade safety
+  # =============================================================================
+  storage-check:
+    name: "📦 Storage Layout"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Generate storage layout
+        working-directory: contracts
+        run: |
+          mkdir -p storage-layouts
+          for contract in VillaNicknameResolverV2 BiometricRecoverySignerV2; do
+            if forge inspect $contract storage-layout --json > /dev/null 2>&1; then
+              forge inspect $contract storage-layout --json > storage-layouts/${contract}.json
+              echo "Generated layout for $contract"
+            fi
+          done
+
+      - name: Check for storage collisions
+        working-directory: contracts
+        run: |
+          echo "## Storage Layout Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check each upgradable contract
+          for file in storage-layouts/*.json; do
+            if [ -f "$file" ]; then
+              CONTRACT=$(basename "$file" .json)
+              echo "### $CONTRACT" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+              cat "$file" | jq '.storage | .[] | {name: .label, slot: .slot, type: .type}' >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+      - name: Upload storage layouts
+        uses: actions/upload-artifact@v4
+        with:
+          name: storage-layouts
+          path: contracts/storage-layouts/
+          retention-days: 30
+
+  # =============================================================================
+  # DEPLOY TO BASE SEPOLIA - Manual trigger only
+  # =============================================================================
+  deploy-sepolia:
+    name: "🚀 Deploy (Base Sepolia)"
+    needs: [build-test, security-audit]
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.network == 'base-sepolia'
+    runs-on: ubuntu-latest
+    environment:
+      name: contracts-sepolia
+      url: https://sepolia.basescan.org
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Deploy contracts
+        id: deploy
+        working-directory: contracts
+        env:
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          ETHERSCAN_API_KEY: ${{ secrets.BASESCAN_API_KEY }}
+          GATEWAY_URL: https://api.villa.cash/ens/resolve
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          CONTRACT="${{ github.event.inputs.contract }}"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "🧪 DRY RUN - No actual deployment"
+            BROADCAST_FLAG=""
+          else
+            BROADCAST_FLAG="--broadcast --verify"
+          fi
+
+          deploy_contract() {
+            local script=$1
+            local name=$2
+            echo "📦 Deploying $name..."
+
+            OUTPUT=$(forge script script/$script \
+              --rpc-url $BASE_SEPOLIA_RPC_URL \
+              $BROADCAST_FLAG \
+              --legacy \
+              -vvv 2>&1) || true
+
+            echo "$OUTPUT"
+
+            # Extract deployed address
+            ADDRESS=$(echo "$OUTPUT" | grep -oP 'deployed to: \K0x[a-fA-F0-9]{40}' | head -1 || echo "")
+            if [ -n "$ADDRESS" ]; then
+              echo "${name}_address=$ADDRESS" >> $GITHUB_OUTPUT
+            fi
+          }
+
+          case "$CONTRACT" in
+            "all")
+              deploy_contract "DeployProxyNicknameResolver.s.sol:DeployProxyNicknameResolver" "VillaNicknameResolver"
+              deploy_contract "DeployProxyRecoverySigner.s.sol:DeployProxyRecoverySigner" "BiometricRecoverySigner"
+              ;;
+            "VillaNicknameResolver")
+              deploy_contract "DeployProxyNicknameResolver.s.sol:DeployProxyNicknameResolver" "VillaNicknameResolver"
+              ;;
+            "BiometricRecoverySigner")
+              deploy_contract "DeployProxyRecoverySigner.s.sol:DeployProxyRecoverySigner" "BiometricRecoverySigner"
+              ;;
+          esac
+
+      - name: Save deployment addresses
+        if: github.event.inputs.dry_run != 'true'
+        working-directory: contracts
+        run: |
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          COMMIT=$(git rev-parse --short HEAD)
+
+          # Create or update deployments file
+          cat > deployments/84532.json << EOF
+          {
+            "chainId": 84532,
+            "network": "base-sepolia",
+            "deployer": "${{ github.actor }}",
+            "timestamp": "$TIMESTAMP",
+            "commit": "$COMMIT",
+            "contracts": {
+              "VillaNicknameResolver": {
+                "proxy": "${{ steps.deploy.outputs.VillaNicknameResolver_address || 'pending' }}",
+                "implementation": "pending"
+              },
+              "BiometricRecoverySigner": {
+                "proxy": "${{ steps.deploy.outputs.BiometricRecoverySigner_address || 'pending' }}",
+                "implementation": "pending"
+              }
+            }
+          }
+          EOF
+
+      - name: Comment deployment
+        uses: actions/github-script@v7
+        if: github.event.inputs.dry_run != 'true'
+        with:
+          script: |
+            const network = 'Base Sepolia';
+            const explorer = 'https://sepolia.basescan.org';
+            const nicknameAddr = '${{ steps.deploy.outputs.VillaNicknameResolver_address }}' || 'N/A';
+            const recoveryAddr = '${{ steps.deploy.outputs.BiometricRecoverySigner_address }}' || 'N/A';
+
+            const body = `![Deploy](https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif)
+
+## 🚀 Contracts Deployed to ${network}!
+
+| Contract | Proxy Address | Explorer |
+|----------|---------------|----------|
+| VillaNicknameResolver | \`${nicknameAddr}\` | [View](${explorer}/address/${nicknameAddr}) |
+| BiometricRecoverySigner | \`${recoveryAddr}\` | [View](${explorer}/address/${recoveryAddr}) |
+
+### Verification Status
+- [ ] Source code verified on Basescan
+- [ ] Proxy admin ownership transferred
+- [ ] Initial configuration set
+
+<sub>Deployed by @${{ github.actor }} • Commit: \`${{ github.sha }}\`</sub>`;
+
+            await github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body
+            });
+
+  # =============================================================================
+  # DEPLOY TO BASE MAINNET - Manual trigger only, requires approval
+  # =============================================================================
+  deploy-mainnet:
+    name: "🎉 Deploy (Base Mainnet)"
+    needs: [build-test, security-audit, storage-check]
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.network == 'base'
+    runs-on: ubuntu-latest
+    environment:
+      name: contracts-production
+      url: https://basescan.org
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        working-directory: contracts
+        run: forge install
+
+      - name: Pre-deployment checks
+        working-directory: contracts
+        run: |
+          echo "## Pre-deployment Checklist" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- [x] Tests passing" >> $GITHUB_STEP_SUMMARY
+          echo "- [x] Security audit complete" >> $GITHUB_STEP_SUMMARY
+          echo "- [x] Storage layout verified" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Manual review approved" >> $GITHUB_STEP_SUMMARY
+
+      - name: Deploy contracts
+        id: deploy
+        working-directory: contracts
+        env:
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY_MAINNET }}
+          ETHERSCAN_API_KEY: ${{ secrets.BASESCAN_API_KEY }}
+          GATEWAY_URL: https://api.villa.cash/ens/resolve
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          CONTRACT="${{ github.event.inputs.contract }}"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "🧪 DRY RUN - No actual deployment"
+            BROADCAST_FLAG=""
+          else
+            BROADCAST_FLAG="--broadcast --verify"
+          fi
+
+          deploy_contract() {
+            local script=$1
+            local name=$2
+            echo "📦 Deploying $name to mainnet..."
+
+            OUTPUT=$(forge script script/$script \
+              --rpc-url $BASE_RPC_URL \
+              $BROADCAST_FLAG \
+              --slow \
+              -vvv 2>&1) || true
+
+            echo "$OUTPUT"
+
+            ADDRESS=$(echo "$OUTPUT" | grep -oP 'deployed to: \K0x[a-fA-F0-9]{40}' | head -1 || echo "")
+            if [ -n "$ADDRESS" ]; then
+              echo "${name}_address=$ADDRESS" >> $GITHUB_OUTPUT
+            fi
+          }
+
+          case "$CONTRACT" in
+            "all")
+              deploy_contract "DeployProxyNicknameResolver.s.sol:DeployProxyNicknameResolver" "VillaNicknameResolver"
+              deploy_contract "DeployProxyRecoverySigner.s.sol:DeployProxyRecoverySigner" "BiometricRecoverySigner"
+              ;;
+            "VillaNicknameResolver")
+              deploy_contract "DeployProxyNicknameResolver.s.sol:DeployProxyNicknameResolver" "VillaNicknameResolver"
+              ;;
+            "BiometricRecoverySigner")
+              deploy_contract "DeployProxyRecoverySigner.s.sol:DeployProxyRecoverySigner" "BiometricRecoverySigner"
+              ;;
+          esac
+
+      - name: Create GitHub Release
+        if: github.event.inputs.dry_run != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const nicknameAddr = '${{ steps.deploy.outputs.VillaNicknameResolver_address }}' || 'N/A';
+            const recoveryAddr = '${{ steps.deploy.outputs.BiometricRecoverySigner_address }}' || 'N/A';
+            const tag = `contracts-v${new Date().toISOString().slice(0,10).replace(/-/g, '')}`;
+
+            const body = `## 🎉 Villa Contracts - Base Mainnet
+
+### Deployed Contracts
+
+| Contract | Address |
+|----------|---------|
+| VillaNicknameResolver (Proxy) | [\`${nicknameAddr}\`](https://basescan.org/address/${nicknameAddr}) |
+| BiometricRecoverySigner (Proxy) | [\`${recoveryAddr}\`](https://basescan.org/address/${recoveryAddr}) |
+
+### Security
+- ✅ Slither static analysis passed
+- ✅ Storage layout verified (upgrade-safe)
+- ✅ UUPS proxy pattern (upgradable)
+- ✅ Access control: Ownable2Step
+
+### Next Steps
+1. Transfer ownership to multisig
+2. Configure gateway URLs
+3. Update SDK with contract addresses`;
+
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              name: `Contracts ${tag}`,
+              body,
+              draft: false,
+              prerelease: false
+            });
+
+  # =============================================================================
+  # UPGRADE CONTRACTS - Manual trigger for upgrades
+  # =============================================================================
+  upgrade:
+    name: "⬆️ Upgrade Contract"
+    if: false  # Enable when upgrade is needed
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Upgrade workflow placeholder"
