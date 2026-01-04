@@ -26,6 +26,8 @@
     "test:unit": "vitest run --config vitest.config.unit.ts",
     "test:integration": "vitest run --config vitest.config.integration.ts",
     "test:security": "vitest run --config vitest.config.security.ts",
+    "test:scripts": "bats tests/security/scripts/",
+    "test:scripts:coordinate": "bats tests/security/scripts/coordinate.spec.bats",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
