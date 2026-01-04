@@ -1,30 +1,42 @@
 # syntax=docker/dockerfile:1.4
-# Production Dockerfile for Villa - Optimized for speed and size
+# Production Dockerfile for Villa Monorepo - Optimized for Turborepo
 
-# Stage 1: Dependencies with cache mount
+# Stage 1: Dependencies with pnpm
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-# Cache npm packages across builds (BuildKit feature)
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --ignore-scripts
+# Copy package files for all workspaces
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/sdk/package.json ./packages/sdk/
+COPY packages/ui/package.json ./packages/ui/
+COPY packages/config/package.json ./packages/config/
 
-# Stage 2: Build with cache
+# Install dependencies
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
+
+# Stage 2: Build with Turborepo
 FROM node:20-alpine AS builder
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
 
 # Copy deps
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY --from=deps /app/packages/sdk/node_modules ./packages/sdk/node_modules 2>/dev/null || true
+COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules 2>/dev/null || true
+COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules 2>/dev/null || true
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Cache Next.js build cache across builds
-RUN --mount=type=cache,target=/app/.next/cache \
-    npm run build
+# Build with Turborepo (builds all dependencies first)
+RUN --mount=type=cache,target=/app/apps/web/.next/cache \
+    pnpm --filter @villa/web build
 
 # Stage 3: Production-optimized runner
 FROM node:20-alpine AS runner
@@ -40,9 +52,9 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Copy only what's needed (standalone includes server + deps)
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
 
 USER nextjs
 EXPOSE 3000
