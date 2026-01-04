@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Dices } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { Button } from '@/components/ui'
+import { Button, SuccessCelebration } from '@/components/ui'
 import { AvatarPreview } from './AvatarPreview'
 import { createAvatarConfig } from '@/lib/avatar'
 import type { AvatarStyleSelection, AvatarConfig } from '@/types'
@@ -36,6 +36,7 @@ export function AvatarSelection({
   const [variant, setVariant] = useState(0)
   const [timer, setTimer] = useState(timerDuration)
   const [isSelecting, setIsSelecting] = useState(false)
+  const [isCelebrating, setIsCelebrating] = useState(false)
   const [rollCount, setRollCount] = useState(0)
   const [isRolling, setIsRolling] = useState(false)
 
@@ -86,14 +87,18 @@ export function AvatarSelection({
   const handleSelect = useCallback(() => {
     if (isSelecting) return
     setIsSelecting(true)
+    setIsCelebrating(true)
 
     // Stop timer
     if (timerRef.current) {
       clearInterval(timerRef.current)
     }
 
-    const config = createAvatarConfig(selection, variant)
-    onSelect(config)
+    // Show celebration, then complete after animation
+    setTimeout(() => {
+      const config = createAvatarConfig(selection, variant)
+      onSelect(config)
+    }, 800)
   }, [selection, variant, onSelect, isSelecting])
 
   const handleRandomize = () => {
@@ -114,6 +119,23 @@ export function AvatarSelection({
   // Timer styling based on remaining time
   const timerColor = timer <= 5 ? 'text-red-500' : timer <= 10 ? 'text-amber-500' : 'text-ink-muted'
   const timerPulse = timer <= 5 ? 'animate-pulse' : ''
+
+  // Show celebration overlay when selecting
+  if (isCelebrating) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center space-y-6 py-8">
+          <div className="flex justify-center">
+            <SuccessCelebration size="lg" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-serif text-ink">Perfect!</h2>
+            <p className="text-ink-muted">Your avatar is set</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
