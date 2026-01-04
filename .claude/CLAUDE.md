@@ -1,18 +1,21 @@
 # Villa
 
-Privacy-first passkey authentication. Porto SDK + Villa theming.
+Privacy-first passkey authentication on **Base** network. Porto SDK + Villa theming.
 
 **Repo:** https://github.com/rockfridrich/villa
+**Network:** Base (Chain ID: 8453), Base Sepolia (84532)
 
 ---
 
 ## Quick Reference
 
 ```bash
-npm run dev          # Local dev
-npm run dev:https    # Passkey testing (requires mkcert)
-npm run verify       # ALWAYS run before pushing
-npm run qa           # Mobile QA via ngrok
+pnpm dev             # Local dev (apps/web)
+pnpm dev:https       # Passkey testing (requires mkcert)
+pnpm verify          # ALWAYS run before pushing
+pnpm qa              # Mobile QA via ngrok
+pnpm build           # Build all packages
+pnpm typecheck       # Type check all packages
 ```
 
 | Agent | Model | Use For |
@@ -32,7 +35,7 @@ npm run qa           # Mobile QA via ngrok
 
 ```
 1. Is there an approved spec? → No? Write spec first.
-2. Run `npm run verify` before EVERY push.
+2. Run `pnpm verify` before EVERY push.
 3. Uncertain about approach? → ASK, don't guess.
 4. One feature per PR. One commit per logical change.
 ```
@@ -59,18 +62,27 @@ npm run qa           # Mobile QA via ngrok
 
 ---
 
-## Project Structure
+## Project Structure (Monorepo)
 
 ```
-apps/web/src/      # Main Next.js app
-├── app/           # Pages
-├── components/    # UI + SDK components
-├── animations/    # Lottie JSON files
-└── lib/           # Utilities (porto.ts, store.ts)
+apps/
+└── web/           # Next.js app (@villa/web)
+    └── src/
+        ├── app/           # Pages
+        ├── components/    # UI + SDK components
+        ├── animations/    # Lottie JSON files
+        └── lib/           # Utilities (porto.ts, store.ts)
 
-packages/          # Shared packages
+packages/
+├── ui/            # Design system (@villa/ui)
+├── sdk/           # Identity SDK types (@villa/sdk)
+└── config/        # Shared configs
+
+contracts/         # Solidity contracts (@villa/contracts)
 specs/             # active/, reference/
 ```
+
+**Workspace:** `pnpm --filter @villa/web dev`
 
 ---
 
@@ -106,10 +118,10 @@ specs/             # active/, reference/
 
 | Problem | Fix |
 |---------|-----|
-| Blank page | `npm run dev:clean` |
+| Blank page | `pnpm dev:clean` |
 | Port in use | `pkill -f "next dev"` |
-| Passkeys fail | Use `npm run dev:https` |
-| Tests fail | Run locally first! |
+| Passkeys fail | Use `pnpm dev:https` |
+| Tests fail | Run `pnpm verify` locally first! |
 
 ---
 

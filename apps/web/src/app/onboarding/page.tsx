@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Fingerprint, Check, AlertCircle, ExternalLink, Copy, CheckCircle2 } from 'lucide-react'
-import { Button, Input, Spinner } from '@/components/ui'
+import { Fingerprint, AlertCircle, ExternalLink, Copy, CheckCircle2 } from 'lucide-react'
+import { Button, Input, Spinner, SuccessCelebration } from '@/components/ui'
 import { AvatarSelection } from '@/components/sdk'
 import { useIdentityStore } from '@/lib/store'
 import { displayNameSchema } from '@/lib/validation'
@@ -452,8 +452,8 @@ function ConnectingStep({
 function SuccessStep() {
   return (
     <div className="text-center space-y-6">
-      <div className="w-20 h-20 mx-auto bg-accent-green rounded-full flex items-center justify-center animate-bounce">
-        <Check className="w-10 h-10 text-white" />
+      <div className="flex justify-center">
+        <SuccessCelebration size="lg" />
       </div>
       <div className="space-y-2">
         <h2 className="text-2xl font-serif text-ink">Connected!</h2>
