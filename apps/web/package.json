@@ -41,6 +41,7 @@
     "nanoid": "^5.1.6",
     "next": "14.2.0",
     "porto": "^0.2.37",
+    "postgres": "^3.4.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "tailwind-merge": "^2.3.0",
