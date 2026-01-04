@@ -95,10 +95,11 @@ export function AvatarSelection({
     }
 
     // Show celebration, then complete after animation
+    // 1200ms for reliable CI assertion timing (see LEARNINGS.md #16)
     setTimeout(() => {
       const config = createAvatarConfig(selection, variant)
       onSelect(config)
-    }, 800)
+    }, 1200)
   }, [selection, variant, onSelect, isSelecting])
 
   const handleRandomize = () => {
