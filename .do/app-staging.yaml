@@ -1,18 +1,18 @@
-# DigitalOcean App Platform - Dev Slot Environment
-# Two slots (dev-1, dev-2) shared by PRs based on PR number odd/even
+# DigitalOcean App Platform - Staging Environment
+# Auto-deploys on merge to main
 
-name: villa-dev-${DEV_SLOT}
+name: villa-staging
 
 services:
   - name: web
     github:
       repo: rockfridrich/villa
-      branch: ${BRANCH_NAME}
+      branch: main
       deploy_on_push: true
     dockerfile_path: Dockerfile
     http_port: 3000
     instance_count: 1
-    instance_size_slug: basic-xxs
+    instance_size_slug: basic-xs
     routes:
       - path: /
     health_check:
@@ -21,14 +21,14 @@ services:
       period_seconds: 10
     envs:
       - key: NODE_ENV
-        value: preview
+        value: staging
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
       - key: NEXT_PUBLIC_ENV
-        value: preview
+        value: staging
 
 domains:
-  - domain: dev-${DEV_SLOT}.villa.cash
+  - domain: beta.villa.cash
     type: PRIMARY
 
 region: nyc
