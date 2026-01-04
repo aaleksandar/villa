@@ -205,8 +205,12 @@ jobs:
           export DEV_SLOT="${{ needs.quick-ci.outputs.dev-slot }}"
           export PR_NUMBER="${{ github.event.pull_request.number }}"
           export BRANCH_NAME="${{ github.head_ref }}"
+          export DATABASE_URL
           envsubst < .do/app-preview.yaml > .do/app-preview-generated.yaml
-          echo "📝 Generated preview spec with DATABASE_URL injected"
+          echo "📝 Generated preview spec"
+          if [ -n "$DATABASE_URL" ]; then
+            echo "✅ DATABASE_URL included"
+          fi
 
       - name: Deploy to dev-${{ needs.quick-ci.outputs.dev-slot }}.villa.cash
         id: deploy
@@ -488,8 +492,23 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          envsubst < .do/app-staging.yaml > .do/app-staging-generated.yaml
-          echo "📝 Generated staging spec with DATABASE_URL injected"
+          # Debug: Check if env var is set (without revealing value)
+          if [ -n "$DATABASE_URL" ]; then
+            echo "✅ DATABASE_URL is set (length: ${#DATABASE_URL})"
+          else
+            echo "❌ DATABASE_URL is NOT set"
+          fi
+          # Generate spec with explicit variable substitution
+          export DATABASE_URL
+          envsubst '${DATABASE_URL}' < .do/app-staging.yaml > .do/app-staging-generated.yaml
+          echo "📝 Generated staging spec"
+          # Verify substitution happened (check if placeholder remains)
+          if grep -q '\${DATABASE_URL}' .do/app-staging-generated.yaml; then
+            echo "❌ ERROR: DATABASE_URL was not substituted!"
+            exit 1
+          else
+            echo "✅ DATABASE_URL substituted successfully"
+          fi
 
       - name: Deploy to beta.villa.cash
         id: deploy
@@ -711,8 +730,20 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          envsubst < .do/app-production.yaml > .do/app-production-generated.yaml
-          echo "📝 Generated production spec with DATABASE_URL injected"
+          if [ -n "$DATABASE_URL" ]; then
+            echo "✅ DATABASE_URL is set (length: ${#DATABASE_URL})"
+          else
+            echo "❌ DATABASE_URL is NOT set"
+          fi
+          export DATABASE_URL
+          envsubst '${DATABASE_URL}' < .do/app-production.yaml > .do/app-production-generated.yaml
+          echo "📝 Generated production spec"
+          if grep -q '\${DATABASE_URL}' .do/app-production-generated.yaml; then
+            echo "❌ ERROR: DATABASE_URL was not substituted!"
+            exit 1
+          else
+            echo "✅ DATABASE_URL substituted successfully"
+          fi
 
       - name: Deploy to villa.cash
         id: deploy
