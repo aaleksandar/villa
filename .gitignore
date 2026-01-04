@@ -44,5 +44,11 @@ certificates/
 .docker/
 
 # Coordination state (runtime, per-machine)
-.claude/coordination/state.json.ngrok.yml
 .claude/coordination/
+
+# ngrok config (per-machine)
+.ngrok.yml
+
+# Local dev session files
+.villa-share.pid
+.logs/

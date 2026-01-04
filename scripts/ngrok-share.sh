@@ -128,23 +128,69 @@ get_ngrok_url() {
 }
 
 # ═══════════════════════════════════════════════════════════════
+# PID Tracking (project-specific, avoids killing unrelated processes)
+# ═══════════════════════════════════════════════════════════════
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+PID_FILE="$PROJECT_ROOT/.villa-share.pid"
+
+# Kill a specific PID if it belongs to expected process
+safe_kill_pid() {
+  local pid="$1"
+  local expected_pattern="$2"
+
+  if [[ ! "$pid" =~ ^[0-9]+$ ]]; then
+    return 0
+  fi
+
+  # Verify PID is numeric and process exists
+  if kill -0 "$pid" 2>/dev/null; then
+    # Check if process command matches expected pattern
+    local cmd
+    cmd=$(ps -p "$pid" -o command= 2>/dev/null || echo "")
+    if [[ "$cmd" == *"$expected_pattern"* ]]; then
+      kill "$pid" 2>/dev/null || true
+    fi
+  fi
+}
+
+# Save PIDs to file for cleanup
+save_pids() {
+  printf '%s\n%s\n' "${DEV_PID:-}" "${NGROK_PID:-}" > "$PID_FILE"
+}
+
+# Load and kill previous PIDs if they exist
+kill_previous_session() {
+  if [ -f "$PID_FILE" ]; then
+    local old_dev_pid old_ngrok_pid
+    { read -r old_dev_pid; read -r old_ngrok_pid; } < "$PID_FILE" 2>/dev/null || true
+
+    # Only kill if PID is valid and matches expected process
+    [ -n "$old_dev_pid" ] && safe_kill_pid "$old_dev_pid" "next"
+    [ -n "$old_ngrok_pid" ] && safe_kill_pid "$old_ngrok_pid" "ngrok"
+
+    rm -f "$PID_FILE"
+  fi
+}
+
+# ═══════════════════════════════════════════════════════════════
 # Cleanup
 # ═══════════════════════════════════════════════════════════════
 cleanup() {
   echo ""
   echo -e "${Y}■${N} Shutting down..."
-  [ -n "$DEV_PID" ] && kill $DEV_PID 2>/dev/null || true
-  [ -n "$NGROK_PID" ] && kill $NGROK_PID 2>/dev/null || true
-  pkill -f "ngrok http" 2>/dev/null || true
+  # Only kill our specific PIDs, not all matching processes
+  [ -n "$DEV_PID" ] && safe_kill_pid "$DEV_PID" "next"
+  [ -n "$NGROK_PID" ] && safe_kill_pid "$NGROK_PID" "ngrok"
+  rm -f "$PID_FILE"
   echo -e "${G}■${N} Done"
 }
 trap cleanup EXIT
 
 # ═══════════════════════════════════════════════════════════════
-# Kill existing processes
+# Kill previous session (project-specific only)
 # ═══════════════════════════════════════════════════════════════
-pkill -f "next dev" 2>/dev/null || true
-pkill -f "ngrok http" 2>/dev/null || true
+kill_previous_session
 sleep 1
 
 # ═══════════════════════════════════════════════════════════════
@@ -159,11 +205,19 @@ echo -e "${D}──────────────────────�
 echo ""
 
 # ═══════════════════════════════════════════════════════════════
+# Log Files (project-specific, not world-writable /tmp)
+# ═══════════════════════════════════════════════════════════════
+LOG_DIR="$PROJECT_ROOT/.logs"
+mkdir -p "$LOG_DIR"
+DEV_LOG="$LOG_DIR/villa-dev.log"
+NGROK_LOG="$LOG_DIR/villa-ngrok.log"
+
+# ═══════════════════════════════════════════════════════════════
 # Start Dev Server
 # ═══════════════════════════════════════════════════════════════
 echo -e "${Y}■${N} Starting dev server..."
-cd "$(dirname "$0")/.."
-npm run dev > /tmp/villa-dev.log 2>&1 &
+cd "$PROJECT_ROOT"
+npm run dev > "$DEV_LOG" 2>&1 &
 DEV_PID=$!
 
 echo -ne "${D}   Waiting for health check"
@@ -175,7 +229,7 @@ else
   echo -e "${R}■${N} Dev server failed to start"
   echo ""
   echo -e "${W}Troubleshooting:${N}"
-  echo -e "  ${D}1.${N} Check logs: ${W}tail -50 /tmp/villa-dev.log${N}"
+  echo -e "  ${D}1.${N} Check logs: ${W}tail -50 $DEV_LOG${N}"
   echo -e "  ${D}2.${N} Run diagnostics: ${W}./scripts/ngrok-debug.sh${N}"
   echo -e "  ${D}3.${N} Clear cache: ${W}npm run dev:clean${N}"
   echo ""
@@ -187,19 +241,29 @@ fi
 # ═══════════════════════════════════════════════════════════════
 echo -e "${Y}■${N} Starting ngrok tunnel..."
 
-# Check if custom domain is configured (paid ngrok feature)
+# Validate and use custom domain if configured (paid ngrok feature)
 NGROK_DOMAIN="${NGROK_DOMAIN:-}"
+NGROK_ARGS=("http" "$PORT" "--log=stdout")
+
 if [ -n "$NGROK_DOMAIN" ]; then
-  NGROK_CMD="ngrok http $PORT --domain=$NGROK_DOMAIN --log=stdout"
-  echo -e "${D}Using custom domain: ${NGROK_DOMAIN}${N}"
+  if validate_domain "$NGROK_DOMAIN"; then
+    NGROK_ARGS+=("--domain=$NGROK_DOMAIN")
+    echo -e "${D}Using custom domain: $(sanitize_output "$NGROK_DOMAIN")${N}"
+  else
+    echo -e "${R}■${N} Invalid NGROK_DOMAIN format, ignoring"
+    echo -e "${D}Using random ngrok URL instead${N}"
+  fi
 else
-  NGROK_CMD="ngrok http $PORT --log=stdout"
   echo -e "${D}Using random ngrok URL (set NGROK_DOMAIN=dev-3.villa.cash for custom)${N}"
 fi
 
 for ((i=1; i<=MAX_RETRIES; i++)); do
-  $NGROK_CMD > /tmp/villa-ngrok.log 2>&1 &
+  # Use array expansion for safe command execution
+  ngrok "${NGROK_ARGS[@]}" > "$NGROK_LOG" 2>&1 &
   NGROK_PID=$!
+
+  # Save PIDs for cleanup on restart
+  save_pids
 
   sleep 4
 
@@ -211,14 +275,14 @@ for ((i=1; i<=MAX_RETRIES; i++)); do
 
   if [ $i -lt $MAX_RETRIES ]; then
     echo -e "${Y}■${N} Retry $i/$MAX_RETRIES..."
-    kill $NGROK_PID 2>/dev/null || true
+    safe_kill_pid "$NGROK_PID" "ngrok"
     sleep $RETRY_DELAY
   else
     echo -e "${R}■${N} ngrok failed after $MAX_RETRIES attempts"
     echo ""
     echo -e "${W}Troubleshooting:${N}"
     echo -e "  ${D}1.${N} Check ngrok auth: ${W}ngrok config check${N}"
-    echo -e "  ${D}2.${N} Check logs: ${W}tail -20 /tmp/villa-ngrok.log${N}"
+    echo -e "  ${D}2.${N} Check logs: ${W}tail -20 $NGROK_LOG${N}"
     echo -e "  ${D}3.${N} Run diagnostics: ${W}./scripts/ngrok-debug.sh${N}"
     echo -e "  ${D}4.${N} Get auth token: ${W}https://dashboard.ngrok.com/get-started/your-authtoken${N}"
     echo ""
