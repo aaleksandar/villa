@@ -37,7 +37,11 @@
     "prepare": "husky install",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run check && npm run build && npm run test:e2e:chromium"
+    "verify": "npm run check && npm run build && npm run test:e2e:chromium",
+    "infra": "npx tsx src/lib/infra/cli.ts",
+    "infra:cache:purge": "npx tsx src/lib/infra/cli.ts cloudflare cache purge-all",
+    "infra:dns:list": "npx tsx src/lib/infra/cli.ts cloudflare dns list",
+    "infra:status": "npx tsx src/lib/infra/cli.ts cloudflare zone status"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.0",
@@ -68,6 +72,7 @@
     "@typescript-eslint/parser": "^7.0.0",
     "@vitest/coverage-v8": "^2.0.0",
     "autoprefixer": "^10.4.19",
+    "cloudflare": "^5.2.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.0",
     "eslint-plugin-security": "^3.0.0",

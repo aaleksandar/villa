@@ -1,6 +1,41 @@
-# CloudFlare DNS Setup for villa.cash
+# CloudFlare CDN & DNS Setup for villa.cash
 
-Complete guide for setting up CloudFlare DNS for all Villa environments.
+Complete guide for setting up CloudFlare with full CDN, caching, SSL, and security features.
+
+## Quick Start (SDK-based)
+
+```bash
+# 1. Set environment variables
+export CLOUDFLARE_API_TOKEN='your-token-here'
+export CLOUDFLARE_ZONE_ID='your-zone-id'
+
+# 2. Check status
+npm run infra:status
+
+# 3. List DNS records
+npm run infra:dns:list
+
+# 4. Purge cache (after deploy)
+npm run infra:cache:purge
+```
+
+**Note:** Use TypeScript SDK (`src/lib/infra/cloudflare.ts`) instead of raw curl/bash.
+See `.claude/MANIFESTO.md` for AI-Human collaboration principles.
+
+## API Token Setup
+
+Create a token at: https://dash.cloudflare.com/profile/api-tokens
+
+Required permissions:
+| Permission | Access |
+|------------|--------|
+| Zone → Zone | Read |
+| Zone → DNS | Edit |
+| Zone → SSL and Certificates | Edit |
+| Zone → Caching | Purge |
+| Zone → Zone Settings | Edit |
+
+Zone Resources: Include → Specific zone → `villa.cash`
 
 ## Domain Architecture
 
@@ -40,14 +75,15 @@ Add these records in CloudFlare DNS settings:
 
 | Type | Name | Target | Proxy | TTL |
 |------|------|--------|-------|-----|
-| CNAME | `@` | `villa-production-xxxxx.ondigitalocean.app` | DNS only (grey) | Auto |
-| CNAME | `www` | `villa.cash` | DNS only (grey) | Auto |
-| CNAME | `beta` | `villa-staging-xxxxx.ondigitalocean.app` | DNS only (grey) | Auto |
-| CNAME | `dev-1` | `villa-dev-1-xxxxx.ondigitalocean.app` | DNS only (grey) | Auto |
-| CNAME | `dev-2` | `villa-dev-2-xxxxx.ondigitalocean.app` | DNS only (grey) | Auto |
+| CNAME | `@` | `villa-production-xxxxx.ondigitalocean.app` | Proxied (orange) | Auto |
+| CNAME | `www` | `villa.cash` | Proxied (orange) | Auto |
+| CNAME | `beta` | `villa-staging-xxxxx.ondigitalocean.app` | Proxied (orange) | Auto |
+| CNAME | `dev-1` | `villa-dev-1-xxxxx.ondigitalocean.app` | Proxied (orange) | Auto |
+| CNAME | `dev-2` | `villa-dev-2-xxxxx.ondigitalocean.app` | Proxied (orange) | Auto |
 | CNAME | `dev-3` | `[your-ngrok-tunnel].ngrok.io` | DNS only (grey) | Auto |
 
-**Important:** Set proxy status to **DNS only (grey cloud)** to let DigitalOcean handle SSL.
+**Important:** Set proxy status to **Proxied (orange cloud)** for CDN, caching, and SSL.
+Only use **DNS only (grey)** for dev-3 since ngrok handles its own SSL.
 
 ### Step 3: Configure dev-3 for ngrok
 
@@ -64,11 +100,13 @@ For `dev-3.villa.cash` (local development):
 
 | Setting | Value | Reason |
 |---------|-------|--------|
-| Encryption mode | **Full** | DigitalOcean provides SSL |
+| Encryption mode | **Full** | DigitalOcean provides valid SSL |
 | Always Use HTTPS | **On** | Required for passkeys |
 | Minimum TLS | **TLS 1.2** | Security |
+| TLS 1.3 | **On** | Modern encryption |
+| Automatic HTTPS Rewrites | **On** | Fix mixed content |
 
-**Note:** Use "Full" not "Full (strict)" since DO uses Let's Encrypt.
+**Note:** "Full" mode validates DigitalOcean's Let's Encrypt cert.
 
 ### Security (Recommended)
 
@@ -224,11 +262,34 @@ Domain configuration is also in `domains.json` for programmatic access.
 
 ## Security Considerations
 
-1. **Never proxy through CloudFlare** for DigitalOcean apps (grey cloud only)
+1. **Always proxy through CloudFlare** for DigitalOcean apps (orange cloud)
 2. **Keep SSL on Full** mode for proper certificate chain
 3. **Rate limiting** - Consider enabling for `/api/*` endpoints
 4. **WAF rules** - Enable for production if under attack
 5. **Access control** - Use CloudFlare Access for staging if needed
+6. **DDoS protection** - Automatic with proxied mode
+
+## Cache Management
+
+```bash
+# Purge all cache after deploy
+npm run infra:cache:purge
+
+# Enable dev mode (bypass cache for debugging)
+npm run infra cloudflare zone dev-mode-on
+
+# Check status
+npm run infra:status
+```
+
+For programmatic use:
+```typescript
+import { cloudflare } from '@/lib/infra/cloudflare';
+
+await cloudflare.cache.purgeAll();
+await cloudflare.cache.purgeUrls(['https://villa.cash/']);
+await cloudflare.zone.enableDevMode();
+```
 
 ## Cost Optimization
 
