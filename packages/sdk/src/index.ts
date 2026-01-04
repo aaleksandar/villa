@@ -25,6 +25,24 @@ export { saveSession, loadSession, clearSession } from './session'
 export { createAuthIframe, destroyAuthIframe } from './iframe'
 export type { IframeConfig, AuthMessage } from './iframe'
 
+// Wallet utilities (secure key generation & backup)
+export {
+  generateWallet,
+  importWallet,
+  encryptPrivateKey,
+  decryptPrivateKey,
+  exportBackup,
+  importBackup,
+  isValidPrivateKey,
+  createLocalStorage,
+} from './wallet'
+export type {
+  EncryptedWallet,
+  WalletResult,
+  EncryptionOptions,
+  WalletStorage,
+} from './wallet'
+
 // Types - all shared types for the ecosystem
 export type {
   Identity,
