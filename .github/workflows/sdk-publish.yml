@@ -1,0 +1,89 @@
+name: Publish SDK
+
+on:
+  push:
+    tags:
+      - 'sdk-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  id-token: write    # Required for npm OIDC trusted publishing
+  contents: write    # Required for git operations
+
+jobs:
+  publish:
+    name: Build and Publish SDK
+    runs-on: ubuntu-latest
+    environment: npm  # Optional: adds deployment protection rules
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build SDK
+        run: pnpm --filter @villa/sdk build
+
+      - name: Verify build output
+        run: |
+          cd packages/sdk
+          ls -la dist/
+          test -f dist/index.js || exit 1
+          test -f dist/index.mjs || exit 1
+          test -f dist/index.d.ts || exit 1
+
+      - name: Bump version (manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          cd packages/sdk
+          npm version ${{ inputs.version }} --no-git-tag-version
+          echo "NEW_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+
+      - name: Get version from tag
+        if: startsWith(github.ref, 'refs/tags/sdk-v')
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/sdk-v}
+          echo "NEW_VERSION=$VERSION" >> $GITHUB_ENV
+
+      # Trusted Publishing - no NPM_TOKEN needed!
+      # Uses OIDC to authenticate with npm registry
+      - name: Publish to npm (Trusted Publishing)
+        run: |
+          cd packages/sdk
+          npm publish --access public
+        # No NODE_AUTH_TOKEN needed - OIDC handles auth
+
+      - name: Create GitHub Release
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          cd packages/sdk
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git commit -m "chore(sdk): bump version to ${{ env.NEW_VERSION }}"
+          git tag "sdk-v${{ env.NEW_VERSION }}"
+          git push origin main --tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

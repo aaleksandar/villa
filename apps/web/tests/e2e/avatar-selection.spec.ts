@@ -108,14 +108,14 @@ test.describe('Avatar Selection Flow', () => {
     await expect(page.getByRole('heading', { name: 'Pick your look' })).toBeVisible()
 
     const avatarPreview = page.locator('img[alt="Avatar"].shadow-lg')
-    const rollButton = page.getByRole('button', { name: /Roll the dice/i })
+    const rollButton = page.getByTestId('roll-button')
 
     // Get initial avatar
     const initialSrc = await avatarPreview.getAttribute('src')
 
-    // Click roll button
+    // Click roll button - animation takes ~700ms (6 cycles * 100ms + buffer)
     await rollButton.click()
-    await page.waitForTimeout(100) // Brief wait for regeneration
+    await page.waitForTimeout(800)
     const variant1Src = await avatarPreview.getAttribute('src')
     expect(variant1Src).not.toBe(initialSrc)
 
@@ -124,7 +124,7 @@ test.describe('Avatar Selection Flow', () => {
 
     // Click roll again
     await rollButton.click()
-    await page.waitForTimeout(100)
+    await page.waitForTimeout(800)
     const variant2Src = await avatarPreview.getAttribute('src')
     expect(variant2Src).not.toBe(variant1Src)
 
@@ -133,7 +133,7 @@ test.describe('Avatar Selection Flow', () => {
 
     // Click roll a third time
     await rollButton.click()
-    await page.waitForTimeout(100)
+    await page.waitForTimeout(800)
     const variant3Src = await avatarPreview.getAttribute('src')
     expect(variant3Src).not.toBe(variant2Src)
 
@@ -209,11 +209,11 @@ test.describe('Avatar Selection Flow', () => {
     // Select Male
     await getStyleButton(page, 'Male').click()
 
-    // Roll to variant 5
-    const rollButton = page.getByRole('button', { name: /Roll the dice/i })
+    // Roll to variant 5 (animation takes ~700ms per roll)
+    const rollButton = page.getByTestId('roll-button')
     for (let i = 0; i < 5; i++) {
       await rollButton.click()
-      await page.waitForTimeout(100)
+      await page.waitForTimeout(800)
     }
 
     // Get the avatar src at variant 5
@@ -387,15 +387,15 @@ test.describe('Avatar Selection - Mobile Responsiveness', () => {
   })
 
   test('Roll button is tappable on mobile', async ({ page }) => {
-    const rollButton = page.getByRole('button', { name: /Roll the dice/i })
+    const rollButton = page.getByTestId('roll-button')
     await expect(rollButton).toBeVisible()
 
     const avatarPreview = page.locator('img[alt="Avatar"].shadow-lg')
     const initialSrc = await avatarPreview.getAttribute('src')
 
-    // Click roll
+    // Click roll (animation takes ~700ms)
     await rollButton.click()
-    await page.waitForTimeout(100)
+    await page.waitForTimeout(800)
 
     const newSrc = await avatarPreview.getAttribute('src')
     expect(newSrc).not.toBe(initialSrc)

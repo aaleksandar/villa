@@ -360,6 +360,8 @@ export function AvatarSelection({
           <motion.button
             onClick={handleRandomize}
             disabled={isSelecting}
+            data-testid="roll-button"
+            aria-label="Roll for new avatar"
             whileHover={!isSelecting && !shouldReduceMotion ? { scale: 1.05 } : {}}
             whileTap={!isSelecting && !shouldReduceMotion ? { scale: 0.95 } : {}}
             transition={{ type: 'spring', stiffness: 400, damping: 17 }}

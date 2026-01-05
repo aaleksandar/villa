@@ -1,15 +1,15 @@
 {
-  "name": "@anthropic-villa/sdk",
+  "name": "@villa/sdk",
   "version": "0.1.0",
   "description": "Villa Identity SDK - Privacy-first passkey authentication for Base network",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
     }
   },
   "files": [
@@ -31,7 +31,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/anthropics/villa.git",
+    "url": "https://github.com/rockfridrich/villa.git",
     "directory": "packages/sdk"
   },
   "homepage": "https://developers.villa.cash",
