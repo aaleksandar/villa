@@ -44,7 +44,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build SDK
-        run: pnpm --filter @villa/sdk build
+        run: pnpm --filter @rockfridrich/villa-sdk build
 
       - name: Verify build output
         run: |

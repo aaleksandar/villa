@@ -1,5 +1,5 @@
 {
-  "name": "@villa/sdk",
+  "name": "@rockfridrich/villa-sdk",
   "version": "0.1.0",
   "description": "Villa Identity SDK - Privacy-first passkey authentication for Base network",
   "main": "./dist/index.js",
@@ -39,14 +39,31 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
+    "test": "echo 'SDK types only - tests in apps/web'",
     "prepublishOnly": "pnpm build"
   },
-  "dependencies": {
+  "peerDependencies": {
     "viem": "^2.0.0",
     "zod": "^3.22.0"
   },
+  "peerDependenciesMeta": {
+    "viem": {
+      "optional": false
+    },
+    "zod": {
+      "optional": false
+    }
+  },
   "devDependencies": {
     "tsup": "^8.5.1",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "viem": "^2.0.0",
+    "zod": "^3.22.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

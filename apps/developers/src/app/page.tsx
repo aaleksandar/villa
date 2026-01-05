@@ -91,8 +91,8 @@ export default function DevelopersPage() {
           {/* Install command */}
           <div className="inline-flex items-center gap-3 bg-ink text-cream-50 rounded-lg px-4 py-3 font-mono text-sm">
             <span className="text-accent-yellow">$</span>
-            <span>pnpm add @villa/sdk</span>
-            <CopyButton text="pnpm add @villa/sdk" />
+            <span>npm install @rockfridrich/villa-sdk</span>
+            <CopyButton text="npm install @rockfridrich/villa-sdk viem zod" />
           </div>
 
           <div className="flex items-center justify-center gap-4">
@@ -160,7 +160,7 @@ export default function DevelopersPage() {
               </span>
               <h3 className="font-medium">Install</h3>
             </div>
-            <CodeBlock code="pnpm add @villa/sdk" language="bash" />
+            <CodeBlock code="npm install @rockfridrich/villa-sdk viem zod" language="bash" />
           </div>
 
           {/* Step 2 */}
@@ -172,7 +172,7 @@ export default function DevelopersPage() {
               <h3 className="font-medium">Import</h3>
             </div>
             <CodeBlock
-              code={`import { VillaAuth } from '@villa/sdk/react'`}
+              code={`import { VillaAuth } from '@rockfridrich/villa-sdk-react'`}
               language="tsx"
             />
           </div>
@@ -289,7 +289,7 @@ export default function DevelopersPage() {
               Complete auth flow in one component. Handles welcome, passkey, nickname, and avatar selection.
             </p>
             <CodeBlock
-              code={`import { VillaAuth } from '@villa/sdk/react'
+              code={`import { VillaAuth } from '@rockfridrich/villa-sdk-react'
 
 function LoginPage() {
   return (
@@ -330,7 +330,7 @@ function LoginPage() {
               Display a user&apos;s avatar from their configuration.
             </p>
             <CodeBlock
-              code={`import { AvatarPreview } from '@villa/sdk/react'
+              code={`import { AvatarPreview } from '@rockfridrich/villa-sdk-react'
 
 <AvatarPreview
   walletAddress={user.address}
@@ -381,7 +381,7 @@ function LoginPage() {
             </p>
             <CodeBlock
               code={`# After installing, copy to your project:
-cp node_modules/@anthropic-villa/sdk/CLAUDE.txt .claude/villa.md
+cp node_modules/@rockfridrich/villa-sdk/CLAUDE.txt .claude/villa.md
 
 # Or download directly:
 curl -o .claude/villa.md https://developers.villa.cash/CLAUDE.txt`}
@@ -414,7 +414,7 @@ curl -o .claude/villa.md https://developers.villa.cash/CLAUDE.txt`}
               When an AI integrates Villa, it generates:
             </p>
             <CodeBlock
-              code={`import { VillaProvider, VillaAuth } from '@anthropic-villa/sdk-react'
+              code={`import { VillaProvider, VillaAuth } from '@rockfridrich/villa-sdk-react'
 import { useState } from 'react'
 
 function App() {
@@ -469,7 +469,7 @@ function App() {
             code={`'use client'
 
 import { useState } from 'react'
-import { VillaAuth, AvatarPreview, type VillaAuthResponse } from '@villa/sdk/react'
+import { VillaAuth, AvatarPreview, type VillaAuthResponse } from '@rockfridrich/villa-sdk-react'
 
 export default function App() {
   const [user, setUser] = useState<VillaAuthResponse | null>(null)
