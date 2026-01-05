@@ -58,9 +58,9 @@ export function EmptyState({
       ) : (
         /* Default placeholder if no illustration provided */
         <div className="w-24 h-24 flex items-center justify-center">
-          <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-full bg-cream-100 flex items-center justify-center">
             <svg
-              className="w-8 h-8 text-slate-400"
+              className="w-8 h-8 text-ink-muted"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -80,10 +80,10 @@ export function EmptyState({
 
       {/* Text content */}
       <div className="flex flex-col gap-2 max-w-prose">
-        <h3 className="text-lg font-semibold text-slate-900">
+        <h3 className="text-lg font-semibold text-ink">
           {title}
         </h3>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-ink-muted">
           {description}
         </p>
       </div>
