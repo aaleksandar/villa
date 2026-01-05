@@ -43,8 +43,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build SDK
-        run: pnpm --filter @rockfridrich/villa-sdk build
+      - name: Build SDK packages
+        run: |
+          pnpm --filter @rockfridrich/villa-sdk build
+          pnpm --filter @rockfridrich/villa-sdk-react build
 
       - name: Verify build output
         run: |
@@ -53,6 +55,9 @@ jobs:
           test -f dist/index.js || exit 1
           test -f dist/index.mjs || exit 1
           test -f dist/index.d.ts || exit 1
+          cd ../sdk-react
+          ls -la dist/
+          test -f dist/index.js || exit 1
 
       - name: Bump version (manual trigger)
         if: github.event_name == 'workflow_dispatch'
@@ -69,11 +74,15 @@ jobs:
 
       # Trusted Publishing - no NPM_TOKEN needed!
       # Uses OIDC to authenticate with npm registry
-      - name: Publish to npm (Trusted Publishing)
+      - name: Publish SDK to npm
         run: |
           cd packages/sdk
           npm publish --access public
-        # No NODE_AUTH_TOKEN needed - OIDC handles auth
+
+      - name: Publish SDK React to npm
+        run: |
+          cd packages/sdk-react
+          npm publish --access public
 
       - name: Create GitHub Release
         if: github.event_name == 'workflow_dispatch'
