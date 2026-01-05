@@ -22,6 +22,7 @@ interface LogEntry {
 export default function IframeTestPage() {
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [isAuthOpen, setIsAuthOpen] = useState(false)
+  const [, setIsIframeLoading] = useState(true)
   const [result, setResult] = useState<{ success: boolean; data?: unknown; error?: string } | null>(null)
   const logIdRef = useRef(0)
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
@@ -100,6 +101,7 @@ export default function IframeTestPage() {
 
   // Handle iframe load
   const handleIframeLoad = useCallback(() => {
+    setIsIframeLoading(false)
     addLog('info', 'Iframe loaded successfully')
   }, [addLog])
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useRef, Suspense } from 'react'
+import { useCallback, useEffect, useRef, useMemo, Suspense } from 'react'
 import { VillaAuth, type VillaAuthResponse } from '@/components/sdk'
 
 /**
@@ -13,7 +13,20 @@ import { VillaAuth, type VillaAuthResponse } from '@/components/sdk'
  * Query params:
  * - scopes: comma-separated list of requested scopes (e.g., "profile,wallet")
  * - appId: the integrating app's ID
+ * - origin: (optional) parent origin for secure postMessage targeting
  */
+
+// Trusted origins that can embed this page and receive postMessages
+const TRUSTED_ORIGINS = [
+  'https://villa.cash',
+  'https://www.villa.cash',
+  'https://beta.villa.cash',
+  'https://dev-1.villa.cash',
+  'https://dev-2.villa.cash',
+  'https://developers.villa.cash',
+  'https://localhost:3000',
+  'https://localhost:3001',
+] as const
 
 function isInIframe(): boolean {
   try {
@@ -23,24 +36,66 @@ function isInIframe(): boolean {
   }
 }
 
+/**
+ * Get validated parent origin for secure postMessage
+ * Returns the origin if trusted, null otherwise
+ */
+function getValidatedParentOrigin(queryOrigin: string | null): string | null {
+  // 1. Try query param origin (SDK passes this)
+  if (queryOrigin && TRUSTED_ORIGINS.includes(queryOrigin as typeof TRUSTED_ORIGINS[number])) {
+    return queryOrigin
+  }
+
+  // 2. Try document.referrer
+  if (typeof document !== 'undefined' && document.referrer) {
+    try {
+      const referrerUrl = new URL(document.referrer)
+      const referrerOrigin = referrerUrl.origin
+      if (TRUSTED_ORIGINS.includes(referrerOrigin as typeof TRUSTED_ORIGINS[number])) {
+        return referrerOrigin
+      }
+    } catch {
+      // Invalid referrer URL
+    }
+  }
+
+  // 3. In development, allow localhost
+  if (typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return '*' // Allow wildcard only in local development
+  }
+
+  return null
+}
+
 function AuthPageContent() {
   const searchParams = useSearchParams()
   const hasNotifiedReady = useRef(false)
 
   // Parse query params
   const appId = searchParams.get('appId') || 'Villa'
+  const queryOrigin = searchParams.get('origin')
 
-  // Post message to parent window
+  // Get validated parent origin once
+  const targetOrigin = useMemo(() => {
+    return getValidatedParentOrigin(queryOrigin)
+  }, [queryOrigin])
+
+  // Post message to parent window with validated origin
   const postToParent = useCallback((message: Record<string, unknown>) => {
     if (!isInIframe()) {
       console.log('[Villa Auth] Not in iframe, message:', message)
       return
     }
 
-    // Post to parent with wildcard origin (SDK validates on receive)
-    // This is safe because we only send non-sensitive auth results
-    window.parent.postMessage(message, '*')
-  }, [])
+    if (!targetOrigin) {
+      console.warn('[Villa Auth] No trusted origin found, message not sent:', message)
+      return
+    }
+
+    // Post to validated parent origin only
+    window.parent.postMessage(message, targetOrigin)
+  }, [targetOrigin])
 
   // Notify parent that auth is ready
   useEffect(() => {

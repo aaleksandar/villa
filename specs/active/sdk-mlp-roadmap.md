@@ -36,7 +36,36 @@
 
 ---
 
-### Sprint 2 - Iframe Integration (Next)
+### Sprint 2 ✅ COMPLETE (2026-01-05)
+
+**npm Packages Published**
+- [x] `@rockfridrich/villa-sdk@0.1.0` - Core SDK (types, ENS, avatars, contracts)
+- [x] `@rockfridrich/villa-sdk-react@0.1.0` - React components & hooks
+- [x] npm Trusted Publishing configured (OIDC, no tokens needed)
+- [x] Peer dependencies (viem, zod, react)
+
+**Developer Portal**
+- [x] `developers.villa.cash` - Live landing page
+- [x] Quickstart guide (4 steps)
+- [x] API reference (types, components)
+- [x] AI integration section (CLAUDE.txt, llms.txt)
+- [x] One Dark Pro syntax highlighting
+- [x] Copy buttons with 44px touch targets
+
+**SDK Package**
+- [x] Villa class with appId config
+- [x] `getAvatarUrl()` method
+- [x] `getContracts(chainId)` helper
+- [x] ENS resolution helpers
+- [x] Session management (save/load/clear)
+
+**Tests**
+- [x] 96 E2E tests passing
+- [x] SDK import verification tests
+
+---
+
+### Sprint 3 - Iframe Integration (Current)
 
 **Iframe Container**
 - [ ] Create fullscreen iframe component
@@ -50,32 +79,19 @@
 - [ ] Wire ConsentRequest to TinyCloud permissions
 - [ ] Navigation flow between screens
 
-**SDK Package**
-- [ ] `@villa/sdk` npm package structure
-- [ ] `villa.signIn()` method implementation
-- [ ] `villa.getData(scopes)` with consent
-- [ ] Session management
-
-**Tests**
-- [ ] Iframe E2E tests
-- [ ] postMessage security tests
-- [ ] Cross-origin isolation tests
+**Near Terminal Integration**
+- [ ] Test SDK integration with Near Terminal codebase
+- [ ] Provide integration example
+- [ ] Support for ProfileSettings component
 
 ---
 
-### Sprint 3 - Developer Portal
+### Sprint 4 - Advanced Features (Backlog)
 
 **App Registration**
-- [ ] Developer portal UI at `/developers`
 - [ ] Wallet connection for registration
 - [ ] App ID claiming with signature
 - [ ] Credentials display
-
-**Documentation**
-- [ ] OpenAPI spec
-- [ ] Quick start guide (5min integration)
-- [ ] React/vanilla JS examples
-- [ ] TypeScript definitions
 
 **Rate Limiting**
 - [ ] Per-app rate limits (100/min)

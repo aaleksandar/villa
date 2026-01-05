@@ -1,8 +1,9 @@
 # Near Terminal Integration Spec
 
-**Status:** Draft
+**Status:** Active
 **Author:** Claude + Human
-**Date:** 2025-01-05
+**Date:** 2026-01-05
+**Updated:** 2026-01-05 - SDK published to npm
 
 ## Why
 
@@ -11,17 +12,35 @@ Near Terminal needs to ship identity features fast. Villa provides passkey auth,
 2. User ability to edit profile post-onboarding
 3. Future: custom avatar uploads to TinyCloud
 
+## SDK Packages (Published)
+
+```bash
+# Install from npm
+npm install @rockfridrich/villa-sdk @rockfridrich/villa-sdk-react viem zod
+```
+
 ## Current SDK Surface
 
 ```tsx
-// What's available today
+// Core SDK - types, helpers, contracts
 import {
+  Villa,               // Main SDK class
+  getAvatarUrl,        // Generate avatar URL
+  getContracts,        // Get contract addresses by chainId
+  resolveEns,          // Resolve nickname to address
+  reverseEns,          // Reverse lookup address to nickname
+} from '@rockfridrich/villa-sdk'
+
+// React SDK - components and hooks
+import {
+  VillaProvider,       // Context provider
   VillaAuth,           // Full auth orchestrator
-  AvatarSelection,     // Standalone avatar picker
-  NicknameSelection,   // Standalone nickname claim
-  AvatarPreview,       // Render avatar from config
-  SignInWelcome,       // Sign in / Create buttons
-} from '@villa/web/components/sdk'
+  Avatar,              // Display user avatar
+  AvatarPreview,       // Preview avatar from config
+  useIdentity,         // Get current identity
+  useAuth,             // Auth state and methods
+  useVillaConfig,      // SDK configuration
+} from '@rockfridrich/villa-sdk-react'
 ```
 
 ### VillaAuth Response
@@ -42,22 +61,23 @@ type VillaAuthResponse = {
 
 ---
 
-## Phase 1: Quick Integration (Now)
+## Phase 1: Quick Integration (Now) ✅ READY
 
 ### 1.1 Embed VillaAuth
 
 ```tsx
 // Near Terminal integration
-import { VillaAuth } from '@villa/sdk'
+import { VillaAuth } from '@rockfridrich/villa-sdk-react'
+import { getAvatarUrl } from '@rockfridrich/villa-sdk'
 
 function LoginPage() {
-  const handleComplete = (result: VillaAuthResponse) => {
+  const handleComplete = (result) => {
     if (result.success) {
       // Store identity in Near Terminal's system
       await nearTerminal.setUser({
         address: result.identity.address,
         nickname: result.identity.nickname,
-        avatarSvg: generateAvatarSvg(result.identity.avatar),
+        avatarUrl: getAvatarUrl(result.identity.address, result.identity.avatar),
       })
       router.push('/dashboard')
     }
@@ -70,22 +90,23 @@ function LoginPage() {
 ### 1.2 Avatar Rendering
 
 ```tsx
-import { AvatarPreview } from '@villa/sdk'
+import { Avatar, AvatarPreview } from '@rockfridrich/villa-sdk-react'
 
-// Render anywhere
-<AvatarPreview
-  address={user.address}
-  config={user.avatar}
-  size={48}
-/>
+// From identity (logged in user)
+<Avatar identity={user} size={48} />
+
+// From config (preview)
+<AvatarPreview config={avatarConfig} address={address} size={48} />
 ```
 
 ### 1.3 Fetch Existing User
 
 ```tsx
+import { reverseEns } from '@rockfridrich/villa-sdk'
+
 // Check if returning user
-const { data } = await fetch(`/api/nicknames/reverse/${address}`)
-if (data.nickname) {
+const nickname = await reverseEns(address)
+if (nickname) {
   // User already onboarded, skip to dashboard
 }
 ```
