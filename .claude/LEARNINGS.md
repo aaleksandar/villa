@@ -580,6 +580,26 @@ export function getNicknameResolverAddress(chainId: number): Address | null
 - Easy chain switching (testnet vs mainnet)
 - SDK consumers can import addresses directly
 
+### 21. Secret Handling in Documentation (CRITICAL)
+
+**Incident:** Real API token committed to public docs (2026-01-05)
+
+```bash
+# ❌ NEVER: Copy commands from shell history to docs
+CLOUDFLARE_API_TOKEN="kpFQ..." npx cmd  # Real token leaked!
+
+# ✅ ALWAYS: Use env var references in docs
+CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" npx cmd
+```
+
+**Pre-commit mental checklist:**
+- Does this file contain any 20+ char alphanumeric strings?
+- Did I copy-paste from a terminal with secrets loaded?
+- Would I be comfortable if this appeared on Hacker News?
+
+**Even if CI catches it:** The token is already in git history. Git never forgets.
+Rotation is ALWAYS required after exposure, even if "fixed" in subsequent commit.
+
 ### 20. SDK Auth Screen Pattern
 
 SDK screens should follow this structure:
