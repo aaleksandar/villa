@@ -19,17 +19,13 @@ const nextConfig = {
 
   // Security + caching headers
   async headers() {
-    // Trusted origins that can embed /auth in an iframe
-    const trustedFrameAncestors = [
-      "'self'",
-      'https://villa.cash',
-      'https://www.villa.cash',
-      'https://beta.villa.cash',
-      'https://dev-1.villa.cash',
-      'https://dev-2.villa.cash',
-      'https://localhost:3000',
-      'https://localhost:3001',
-    ].join(' ')
+    // For /auth route: Allow embedding from any HTTPS origin (SDK iframe)
+    // This is safe because:
+    // - User explicitly completes auth flow (consents)
+    // - Only user's own identity is returned
+    // - No secrets sent to external origin
+    // - Similar to OAuth redirect_uri model
+    const authFrameAncestors = "'self' https: http://localhost:* http://127.0.0.1:*"
 
     return [
       // Static assets - long cache (hashed filenames)
@@ -89,7 +85,7 @@ const nextConfig = {
               "font-src 'self' data:",
               "connect-src 'self' https://rpc.porto.sh https://*.porto.sh wss://*.porto.sh",
               "frame-src 'self' https://id.porto.sh",
-              `frame-ancestors ${trustedFrameAncestors}`,
+              `frame-ancestors ${authFrameAncestors}`,
             ].join('; '),
           },
         ],

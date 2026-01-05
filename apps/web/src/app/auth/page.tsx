@@ -16,8 +16,8 @@ import { VillaAuth, type VillaAuthResponse } from '@/components/sdk'
  * - origin: (optional) parent origin for secure postMessage targeting
  */
 
-// Trusted origins that can embed this page and receive postMessages
-const TRUSTED_ORIGINS = [
+// Villa-owned origins (always trusted, no query param needed)
+const VILLA_ORIGINS = [
   'https://villa.cash',
   'https://www.villa.cash',
   'https://beta.villa.cash',
@@ -37,21 +37,34 @@ function isInIframe(): boolean {
 }
 
 /**
+ * Validate origin is a proper HTTPS URL (security check)
+ */
+function isValidHttpsOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin)
+    // Allow HTTPS or localhost for development
+    return url.protocol === 'https:' || url.hostname === 'localhost' || url.hostname === '127.0.0.1'
+  } catch {
+    return false
+  }
+}
+
+/**
  * Get validated parent origin for secure postMessage
- * Returns the origin if trusted, null otherwise
+ *
+ * Security model:
+ * - Villa origins are always trusted
+ * - External app origins are accepted if passed via query param AND valid HTTPS
+ * - This is similar to OAuth redirect_uri - the SDK specifies where to send results
+ * - User explicitly consented by completing auth flow
  */
 function getValidatedParentOrigin(queryOrigin: string | null): string | null {
-  // 1. Try query param origin (SDK passes this)
-  if (queryOrigin && TRUSTED_ORIGINS.includes(queryOrigin as typeof TRUSTED_ORIGINS[number])) {
-    return queryOrigin
-  }
-
-  // 2. Try document.referrer
+  // 1. Check Villa-owned origins first (from referrer)
   if (typeof document !== 'undefined' && document.referrer) {
     try {
       const referrerUrl = new URL(document.referrer)
       const referrerOrigin = referrerUrl.origin
-      if (TRUSTED_ORIGINS.includes(referrerOrigin as typeof TRUSTED_ORIGINS[number])) {
+      if (VILLA_ORIGINS.includes(referrerOrigin as typeof VILLA_ORIGINS[number])) {
         return referrerOrigin
       }
     } catch {
@@ -59,10 +72,15 @@ function getValidatedParentOrigin(queryOrigin: string | null): string | null {
     }
   }
 
-  // 3. In development, allow localhost
+  // 2. Accept query param origin if valid HTTPS (for external apps like Lovable)
+  if (queryOrigin && isValidHttpsOrigin(queryOrigin)) {
+    return queryOrigin
+  }
+
+  // 3. In development, allow localhost wildcard
   if (typeof window !== 'undefined' &&
       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    return '*' // Allow wildcard only in local development
+    return '*'
   }
 
   return null
