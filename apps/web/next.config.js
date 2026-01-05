@@ -94,9 +94,9 @@ const nextConfig = {
           },
         ],
       },
-      // All other routes - strict security headers
+      // HTML pages (excluding /auth) - strict security headers
       {
-        source: '/:path((?!auth).*)',
+        source: '/:path((?!api|_next|auth).*)',
         headers: [
           {
             key: 'X-Frame-Options',
