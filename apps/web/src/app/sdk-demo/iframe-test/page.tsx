@@ -25,11 +25,13 @@ export default function IframeTestPage() {
   const [result, setResult] = useState<{ success: boolean; data?: unknown; error?: string } | null>(null)
   const logIdRef = useRef(0)
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
-  const logsEndRef = useRef<HTMLDivElement>(null)
+  const logsContainerRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll logs
+  // Auto-scroll logs within container only (not whole page)
   useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (logsContainerRef.current) {
+      logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight
+    }
   }, [logs])
 
   const addLog = useCallback((type: LogEntry['type'], message: string, data?: unknown) => {
@@ -43,6 +45,20 @@ export default function IframeTestPage() {
     setLogs(prev => [...prev, entry])
     return entry.id
   }, [])
+
+  const closeAuth = useCallback(() => {
+    setIsAuthOpen(false)
+    addLog('info', 'Closing auth iframe')
+  }, [addLog])
+
+  const openAuth = useCallback(() => {
+    setIsAuthOpen(true)
+    setResult(null)
+    addLog('info', 'Opening auth iframe...')
+    addLog('send', 'Creating iframe with src', {
+      url: '/auth?appId=sdk-test&scopes=profile,wallet',
+    })
+  }, [addLog])
 
   // Listen for postMessage from iframe
   useEffect(() => {
@@ -74,21 +90,7 @@ export default function IframeTestPage() {
 
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [addLog])
-
-  const openAuth = useCallback(() => {
-    setIsAuthOpen(true)
-    setResult(null)
-    addLog('info', 'Opening auth iframe...')
-    addLog('send', 'Creating iframe with src', {
-      url: '/auth?appId=sdk-test&scopes=profile,wallet',
-    })
-  }, [addLog])
-
-  const closeAuth = useCallback(() => {
-    setIsAuthOpen(false)
-    addLog('info', 'Closing auth iframe')
-  }, [addLog])
+  }, [addLog, closeAuth])
 
   const clearLogs = useCallback(() => {
     setLogs([])
@@ -265,7 +267,7 @@ if (result.success) {
               </div>
             </CardHeader>
             <CardContent className="flex-1 overflow-hidden">
-              <div className="h-full overflow-y-auto space-y-2 pr-2 font-mono text-xs">
+              <div ref={logsContainerRef} className="h-full overflow-y-auto space-y-2 pr-2 font-mono text-xs">
                 {logs.length === 0 ? (
                   <div className="text-center py-12 text-ink-muted">
                     <Terminal className="w-12 h-12 mx-auto mb-2 opacity-50" />
@@ -306,7 +308,6 @@ if (result.success) {
                     </div>
                   ))
                 )}
-                <div ref={logsEndRef} />
               </div>
             </CardContent>
           </Card>
