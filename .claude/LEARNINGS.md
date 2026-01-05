@@ -722,6 +722,56 @@ Full session logs preserved in git history for reference.
 - Avoiding version conflicts
 - Smaller bundle (deduplication)
 
+### 24. Package Naming Verification (CRITICAL)
+
+Before publishing ANY npm package:
+
+```bash
+# 1. Check if scope exists
+npm view @scope/any-package 2>&1 | grep -q "404" && echo "Scope unavailable"
+
+# 2. Check specific package name
+npm view @scope/package-name
+
+# 3. Your username is always available as scope
+npm whoami  # Returns: rockfridrich
+# @rockfridrich/* is always valid
+```
+
+**Session 2026-01-05 lost ~15min** cycling through `@anthropic-villa/sdk` → `@villa/sdk` → `@rockfridrich/villa-sdk` because scope ownership wasn't verified upfront.
+
+### 25. Session Continuity Pattern
+
+When resuming from summarized context:
+
+```bash
+# ALWAYS run first (before ANY file operations)
+git status
+git branch
+ls -la key/directories/
+
+# If summary mentions files that don't exist:
+git stash list          # May be stashed
+git log --oneline -10   # May be on different branch
+```
+
+**Why:** Summarization preserves knowledge but not file state. Always verify disk before acting.
+
+### 26. Syntax Highlighting for Developer Docs
+
+Use react-syntax-highlighter with One Dark Pro theme for code blocks:
+
+```tsx
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism'
+
+<SyntaxHighlighter language="tsx" style={oneDark}>
+  {code}
+</SyntaxHighlighter>
+```
+
+**Touch targets:** Copy buttons need 44x44px minimum for mobile.
+
 ---
 
 *Auto-update: Extract patterns here, archive sessions after 2 weeks*
