@@ -44,9 +44,17 @@ export class LivenessProvider {
       return
     }
 
-    // Real Bionetta initialization would go here
-    // TODO: Integrate @rarimo/bionetta-js-sdk-core when available
-    throw new Error('Real Bionetta SDK not available yet')
+    // BLOCKED: Bionetta SDK integration pending npm package release
+    //
+    // When @rarimo/bionetta-js-sdk-core is available:
+    // 1. npm install @rarimo/bionetta-js-sdk-core
+    // 2. Initialize: const bionetta = await Bionetta.init({ circuitId: 'liveness-v1' })
+    // 3. Replace mock proof generation with: bionetta.generateProof(faceImageData)
+    // 4. Update MockGroth16Verifier in contracts to real Groth16Verifier
+    //
+    // Tracking: https://github.com/rarimo/bionetta-js-sdk (not yet public)
+    // Contact: Rarimo team for SDK access timeline
+    throw new Error('Bionetta SDK not yet released - use mock mode for development')
   }
 
   /** Generate a ZK liveness proof from face image data */

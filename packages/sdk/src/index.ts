@@ -32,6 +32,24 @@ export { saveSession, loadSession, clearSession } from './session'
 export { createAuthIframe, destroyAuthIframe } from './iframe'
 export type { IframeConfig, AuthMessage } from './iframe'
 
+// Iframe bridge (new API)
+export { VillaBridge } from './iframe/bridge'
+export type {
+  BridgeConfig,
+  BridgeState,
+  BridgeEventName,
+  BridgeEventMap,
+  VillaMessage,
+  ParentMessage,
+  VillaErrorCode,
+} from './iframe/types'
+export {
+  validateOrigin,
+  parseVillaMessage,
+  parseParentMessage,
+  ALLOWED_ORIGINS,
+} from './iframe/validation'
+
 // Wallet utilities (secure key generation & backup)
 export {
   generateWallet,

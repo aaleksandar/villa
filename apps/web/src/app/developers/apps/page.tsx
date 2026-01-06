@@ -55,8 +55,8 @@ export default function DeveloperAppsPage() {
   }
 
   const handleAppClick = (appId: string) => {
-    // TODO: Navigate to app detail page
-    console.log('Navigate to app:', appId)
+    // Navigate to app detail page (route will 404 until implemented)
+    router.push(`/developers/apps/${appId}`)
   }
 
   if (isLoading) {

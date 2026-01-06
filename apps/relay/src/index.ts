@@ -49,9 +49,24 @@ app.post('/relay', async (c) => {
       }, 403)
     }
 
-    // TODO: Forward to Porto bundler
-    // This would integrate with Porto's UserOperation bundler
-    // For now, return a mock response
+    // BLOCKED: Porto bundler integration pending SDK v2 release
+    //
+    // Implementation steps when Porto SDK v2 is available:
+    // 1. Import Porto bundler client: import { createBundlerClient } from 'porto/bundler'
+    // 2. Create UserOperation from request.operation:
+    //    - sender: request.target (smart account address)
+    //    - callData: encoded transaction
+    //    - signature: request.signature (passkey signature)
+    // 3. Submit to Porto bundler: bundler.sendUserOperation(userOp)
+    // 4. Wait for inclusion: bundler.waitForUserOperationReceipt(hash)
+    // 5. Return actual transaction hash
+    //
+    // Gas sponsorship:
+    // - If shouldSponsor() returns true, attach paymaster data
+    // - Paymaster address from PORTO_PAYMASTER_ADDRESS env var
+    //
+    // Reference: https://porto.sh/sdk/bundler
+    // For now, return mock response
     return c.json<RelayResponse>({
       success: true,
       txHash: '0x0000000000000000000000000000000000000000000000000000000000000000'

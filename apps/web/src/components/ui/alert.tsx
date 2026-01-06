@@ -4,7 +4,7 @@ import { forwardRef, type HTMLAttributes } from 'react'
 import { clsx } from 'clsx'
 
 interface AlertProps extends HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'destructive' | 'success'
+  variant?: 'default' | 'destructive' | 'success' | 'warning'
 }
 
 export const Alert = forwardRef<HTMLDivElement, AlertProps>(
@@ -22,6 +22,8 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(
             'bg-[#fef0f0] text-[#dc2626] border-[#fecaca]': variant === 'destructive',
             // Success: light green background
             'bg-[#f0f9f0] text-accent-green border-[#d4e8d4]': variant === 'success',
+            // Warning: yellow accent background
+            'bg-[#fffbeb] text-accent-brown border-accent-yellow': variant === 'warning',
           },
           className
         )}

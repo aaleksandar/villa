@@ -86,13 +86,21 @@ ens.get('/resolve', async (c) => {
       )
     }
 
-    // TODO: Full CCIP-Read implementation
-    // For now, return empty data (indicates no resolution)
-    // A full implementation would:
-    // 1. Decode the resolver call from `data` (e.g., addr(node), name(node), text(node, key))
-    // 2. Convert node to ENS name using reverse lookup or passed context
-    // 3. Query database for the corresponding value
-    // 4. ABI-encode the response
+    // BLOCKED: Full CCIP-Read implementation requires ENS resolver contract deployment
+    //
+    // Implementation steps when ready:
+    // 1. Deploy ENS offchain resolver contract to Base (see contracts/src/ENSOffchainResolver.sol)
+    // 2. Decode the resolver call from `data`:
+    //    - addr(bytes32 node) -> returns address
+    //    - name(bytes32 node) -> returns string (reverse resolution)
+    //    - text(bytes32 node, string key) -> returns string (text records)
+    // 3. Convert namehash to nickname via reverse lookup table or query param
+    // 4. Query profiles table for address/avatar/text records
+    // 5. ABI-encode response using viem's encodeAbiParameters()
+    // 6. Sign response with gateway private key for EIP-3668 verification
+    //
+    // Reference: EIP-3668 (https://eips.ethereum.org/EIPS/eip-3668)
+    // See also: apps/api/src/routes/ens.ts for simplified /addr/:name endpoint
 
     return c.json({
       data: '0x',

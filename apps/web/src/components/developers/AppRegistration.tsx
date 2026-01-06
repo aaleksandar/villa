@@ -82,8 +82,17 @@ export function AppRegistration({ developerAddress: _developerAddress, onSuccess
     setIsSubmitting(true)
 
     try {
-      // TODO: Call API to register app with wallet signature
-      // For now, mock the registration
+      // App registration flow:
+      // 1. Sign message with wallet to prove ownership
+      // 2. POST to /api/developers/apps with signed payload
+      // 3. API validates signature and creates app record
+      // 4. Return API key (shown once, user must save it)
+      //
+      // API endpoint: POST /api/developers/apps
+      // Body: { appId, appName, origins, description, signature, address }
+      // Response: { id, apiKey } (apiKey only returned on creation)
+      //
+      // For now, mock the registration for development
       const mockApiKey = `vk_live_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`
       const mockAppId = `app_${Math.random().toString(36).slice(2, 10)}`
 

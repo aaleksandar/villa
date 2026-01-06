@@ -5,8 +5,34 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Spinner } from '@/components/ui/spinner'
 
 /**
+ * Trusted origins for postMessage validation
+ * Keep in sync with @rockfridrich/villa-sdk/iframe/validation.ts
+ */
+const TRUSTED_ORIGINS = [
+  'https://villa.cash',
+  'https://www.villa.cash',
+  'https://beta.villa.cash',
+  'https://dev-1.villa.cash',
+  'https://dev-2.villa.cash',
+  // Dev origins
+  'https://localhost:3000',
+  'https://localhost:3001',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
+] as const
+
+/**
+ * Validate origin against trusted list
+ */
+function validateOrigin(origin: string): boolean {
+  return TRUSTED_ORIGINS.includes(origin as typeof TRUSTED_ORIGINS[number])
+}
+
+/**
  * Auth message types for iframe communication
- * Mirrors types from @villa/sdk but defined locally for build independence
+ * Uses SDK types for consistency
  */
 export type AuthMessage =
   | { type: 'VILLA_AUTH_READY' }
@@ -15,7 +41,7 @@ export type AuthMessage =
   | { type: 'VILLA_AUTH_CANCEL' }
   | { type: 'VILLA_CONSENT_GRANTED'; appId: string }
   | { type: 'VILLA_CONSENT_DENIED'; appId: string }
-  // Legacy support
+  // Legacy support (deprecated - will be removed in v1.0)
   | { type: 'AUTH_SUCCESS'; identity: { address: string; nickname: string; avatar: unknown } }
   | { type: 'AUTH_ERROR'; error: string }
   | { type: 'AUTH_CLOSE' }
@@ -76,19 +102,8 @@ export function AuthIframe({
    */
   const handleMessage = useCallback(
     (event: MessageEvent) => {
-      // Validate origin (basic check - iframe.ts does full validation)
-      const trustedOrigins = [
-        'https://villa.cash',
-        'https://www.villa.cash',
-        'https://beta.villa.cash',
-        'https://dev-1.villa.cash',
-        'https://dev-2.villa.cash',
-        'http://localhost:3000',
-        'http://localhost:3001',
-        'https://localhost:3000',
-      ]
-
-      if (!trustedOrigins.includes(event.origin)) {
+      // Validate origin using SDK's allowlist
+      if (!validateOrigin(event.origin)) {
         return
       }
 

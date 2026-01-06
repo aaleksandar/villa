@@ -23,7 +23,8 @@ const DropdownMenuSubTrigger = React.forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={clsx(
-      'flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none',
+      // 44px min height for touch accessibility
+      'flex cursor-default select-none items-center rounded-sm px-3 min-h-[44px] text-sm outline-none',
       'focus:bg-cream-100 data-[state=open]:bg-cream-100',
       className
     )}
@@ -86,7 +87,8 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={clsx(
-      'relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
+      // 44px min height for touch accessibility
+      'relative flex cursor-default select-none items-center rounded-sm px-3 min-h-[44px] text-sm outline-none transition-colors',
       'focus:bg-cream-100 focus:text-ink',
       'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       'text-ink-muted hover:text-ink',
@@ -105,7 +107,8 @@ const DropdownMenuCheckboxItem = React.forwardRef<
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={clsx(
-      'relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors',
+      // 44px min height for touch accessibility
+      'relative flex cursor-default select-none items-center rounded-sm min-h-[44px] pl-8 pr-3 text-sm outline-none transition-colors',
       'focus:bg-cream-100 focus:text-ink',
       'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       'text-ink-muted',
@@ -125,7 +128,8 @@ const DropdownMenuRadioItem = React.forwardRef<
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
     className={clsx(
-      'relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors',
+      // 44px min height for touch accessibility
+      'relative flex cursor-default select-none items-center rounded-sm min-h-[44px] pl-8 pr-3 text-sm outline-none transition-colors',
       'focus:bg-cream-100 focus:text-ink',
       'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       'text-ink-muted',
