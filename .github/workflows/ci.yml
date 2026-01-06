@@ -7,9 +7,34 @@ on:
     branches: [main]
 
 jobs:
+  # Fast check that runs before everything else
+  lockfile-check:
+    name: "🔒 Lockfile Sync"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Verify lockfile is in sync
+        run: |
+          # This catches the #1 contributor error: editing package.json without pnpm install
+          if ! pnpm install --frozen-lockfile --ignore-scripts > /dev/null 2>&1; then
+            echo "❌ pnpm-lock.yaml is out of sync!"
+            echo ""
+            echo "Fix: Run 'pnpm install' locally and commit pnpm-lock.yaml"
+            echo ""
+            echo "Details:"
+            pnpm install --frozen-lockfile 2>&1 || true
+            exit 1
+          fi
+          echo "✅ Lockfile is in sync"
+
   validate-context:
     name: Validate Agent Context
     runs-on: ubuntu-latest
+    needs: [lockfile-check]
     steps:
       - uses: actions/checkout@v4
 
@@ -34,6 +59,7 @@ jobs:
   validate-specs:
     name: Validate Specifications
     runs-on: ubuntu-latest
+    needs: [lockfile-check]
     steps:
       - uses: actions/checkout@v4
 
@@ -53,6 +79,7 @@ jobs:
   security-scan:
     name: Security Scanning
     runs-on: ubuntu-latest
+    needs: [lockfile-check]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,6 +98,7 @@ jobs:
   lint:
     name: Lint and Type Check
     runs-on: ubuntu-latest
+    needs: [lockfile-check]
     steps:
       - uses: actions/checkout@v4
 
