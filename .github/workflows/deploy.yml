@@ -875,20 +875,22 @@ jobs:
               }
             }
 
-            const body = `## 🎉 Villa ${tag}
-
-**Live at [villa.cash](https://villa.cash)**
-
-### What's Changed
-${changelog}
-${contributorStats}
-### Deployment Info
-- **Commit:** \`${sha}\`
-- **Deploy time:** ${duration}
-- **Deployed by:** @${actor}
-
----
-[Full changelog](https://github.com/${owner}/${repo}/compare/${previousTag || 'main'}...${tag}) | [Contributors](https://developers.villa.cash/contributors)`;
+            const body = [
+              `## 🎉 Villa ${tag}`,
+              '',
+              `Live at **[villa.cash](https://villa.cash)**`,
+              '',
+              '### What\'s Changed',
+              changelog,
+              contributorStats,
+              '### Deployment Info',
+              `- Commit: \`${sha}\``,
+              `- Deploy time: ${duration}`,
+              `- Deployed by: @${actor}`,
+              '',
+              '---',
+              `[Full changelog](https://github.com/${owner}/${repo}/compare/${previousTag || 'main'}...${tag}) | [Contributors](https://developers.villa.cash/contributors)`
+            ].join('\n');
 
             // Create GitHub Release
             await github.rest.repos.createRelease({
