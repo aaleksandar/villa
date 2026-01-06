@@ -36,6 +36,9 @@ export function getDb() {
 /**
  * Ensure tables exist (auto-migration on first request)
  * Safe to call multiple times - only runs once per process
+ *
+ * Migrations run on app startup within DigitalOcean VPC.
+ * CI/CD cannot access the private database network.
  */
 export async function ensureTables() {
   if (migrationRun) return
@@ -51,6 +54,8 @@ export async function ensureTables() {
       avatar_style VARCHAR(20),
       avatar_selection VARCHAR(10),
       avatar_variant INTEGER,
+      nickname_change_count INTEGER DEFAULT 0,
+      last_nickname_change TIMESTAMP WITH TIME ZONE,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     )
@@ -61,6 +66,26 @@ export async function ensureTables() {
     CREATE INDEX IF NOT EXISTS idx_profiles_nickname
     ON profiles(nickname_normalized)
   `
+
+  // Migration: Add nickname change tracking columns if they don't exist
+  // Uses DO $$ block which is idempotent - safe to run multiple times
+  await db.unsafe(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'profiles' AND column_name = 'nickname_change_count'
+      ) THEN
+        ALTER TABLE profiles ADD COLUMN nickname_change_count INTEGER DEFAULT 0;
+      END IF;
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'profiles' AND column_name = 'last_nickname_change'
+      ) THEN
+        ALTER TABLE profiles ADD COLUMN last_nickname_change TIMESTAMP WITH TIME ZONE;
+      END IF;
+    END $$;
+  `)
 
   migrationRun = true
 }

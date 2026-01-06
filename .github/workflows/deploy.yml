@@ -475,20 +475,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Database migrations - run BEFORE deploy
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-      - name: Run database migrations
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          echo "🗄️ Running database migrations..."
-          pnpm --filter @villa/web db:migrate
-          echo "✅ Migrations completed successfully"
+      # Note: Database migrations run on app startup (ensureTables).
+      # CI can't access the private VPC database - only apps in the VPC can.
 
       - uses: digitalocean/action-doctl@v2
         with:
@@ -728,20 +716,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Database migrations - run BEFORE deploy
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-      - name: Run database migrations
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          echo "🗄️ Running database migrations..."
-          pnpm --filter @villa/web db:migrate
-          echo "✅ Migrations completed successfully"
+      # Note: Database migrations run on app startup (ensureTables).
+      # CI can't access the private VPC database - only apps in the VPC can.
 
       - uses: digitalocean/action-doctl@v2
         with:
