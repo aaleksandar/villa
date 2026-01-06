@@ -357,7 +357,7 @@ export default function MetricsPage() {
                 Cost Tracking
                 {data.costs.hasData ? (
                   <span className="text-xs bg-green-500/10 text-green-600 px-2 py-0.5 rounded ml-2">
-                    From .claude/costs.json
+                    Verified from Anthropic export
                   </span>
                 ) : (
                   <span className="text-xs bg-ink/5 text-ink-muted px-2 py-0.5 rounded ml-2">
@@ -367,23 +367,107 @@ export default function MetricsPage() {
               </h2>
 
               {data.costs.hasData ? (
-                <div className="bg-cream-50 border border-ink/5 rounded-xl p-6">
-                  <div className="text-4xl font-bold mb-2">
-                    ${data.costs.totalSpent.toFixed(2)}
+                <div className="space-y-6">
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-cream-50 border border-ink/5 rounded-xl p-4">
+                      <div className="text-3xl font-bold">${data.costs.totalSpent.toFixed(2)}</div>
+                      <div className="text-sm text-ink-muted">Total spent</div>
+                      {data.costs.period && (
+                        <div className="text-xs text-ink-muted mt-1">
+                          {data.costs.period.start} → {data.costs.period.end}
+                        </div>
+                      )}
+                    </div>
+                    <div className="bg-cream-50 border border-ink/5 rounded-xl p-4">
+                      <div className="text-3xl font-bold">${data.costs.dailyAverage.toFixed(2)}</div>
+                      <div className="text-sm text-ink-muted">Daily average</div>
+                      {data.costs.period && (
+                        <div className="text-xs text-ink-muted mt-1">{data.costs.period.days} days</div>
+                      )}
+                    </div>
+                    <div className="bg-cream-50 border border-ink/5 rounded-xl p-4 col-span-2">
+                      <div className="text-sm font-medium mb-2">By Model</div>
+                      <div className="space-y-1">
+                        {Object.entries(data.costs.byModel).map(([model, cost]) => {
+                          const pct = (cost / data.costs.totalSpent) * 100
+                          const color = model.includes('opus') ? 'bg-purple-500' :
+                                       model.includes('sonnet') ? 'bg-blue-500' :
+                                       model.includes('haiku') ? 'bg-green-500' : 'bg-gray-400'
+                          return (
+                            <div key={model} className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${color}`} />
+                              <span className="text-xs text-ink-muted flex-1 truncate">
+                                {model.replace('claude-', '').replace('-4.5', '')}
+                              </span>
+                              <span className="text-xs font-mono">${cost.toFixed(2)}</span>
+                              <span className="text-xs text-ink-muted w-10 text-right">{pct.toFixed(0)}%</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-ink-muted">Total spent ({data.costs.currency})</div>
 
-                  {data.costs.entries.length > 0 && (
-                    <div className="mt-6 space-y-2">
+                  {/* Daily Breakdown */}
+                  <div className="bg-cream-50 border border-ink/5 rounded-xl p-6">
+                    <h3 className="font-medium mb-4">Daily Breakdown</h3>
+                    <div className="space-y-3">
                       {data.costs.entries.map((entry, i) => (
-                        <div key={i} className="flex justify-between items-center py-2 border-b border-ink/5 last:border-0">
-                          <div>
-                            <div className="font-mono text-sm">{entry.date}</div>
-                            <div className="text-xs text-ink-muted">{entry.source}</div>
+                        <div key={i} className="flex items-center gap-4">
+                          <div className="w-24 font-mono text-sm">{entry.date}</div>
+                          <div className="flex-1">
+                            <div className="flex h-6 rounded overflow-hidden bg-ink/5">
+                              {entry.breakdown && (
+                                <>
+                                  {entry.breakdown.opus && entry.breakdown.opus > 0 && (
+                                    <div
+                                      className="bg-purple-500 h-full"
+                                      style={{ width: `${(entry.breakdown.opus / entry.amount) * 100}%` }}
+                                      title={`Opus: $${entry.breakdown.opus.toFixed(2)}`}
+                                    />
+                                  )}
+                                  {entry.breakdown.sonnet && entry.breakdown.sonnet > 0 && (
+                                    <div
+                                      className="bg-blue-500 h-full"
+                                      style={{ width: `${(entry.breakdown.sonnet / entry.amount) * 100}%` }}
+                                      title={`Sonnet: $${entry.breakdown.sonnet.toFixed(2)}`}
+                                    />
+                                  )}
+                                  {entry.breakdown.haiku && entry.breakdown.haiku > 0 && (
+                                    <div
+                                      className="bg-green-500 h-full"
+                                      style={{ width: `${(entry.breakdown.haiku / entry.amount) * 100}%` }}
+                                      title={`Haiku: $${entry.breakdown.haiku.toFixed(2)}`}
+                                    />
+                                  )}
+                                  {entry.breakdown.web_search && entry.breakdown.web_search > 0 && (
+                                    <div
+                                      className="bg-gray-400 h-full"
+                                      style={{ width: `${(entry.breakdown.web_search / entry.amount) * 100}%` }}
+                                      title={`Web Search: $${entry.breakdown.web_search.toFixed(2)}`}
+                                    />
+                                  )}
+                                </>
+                              )}
+                            </div>
                           </div>
-                          <div className="font-medium">${entry.amount.toFixed(2)}</div>
+                          <div className="w-20 text-right font-medium">${entry.amount.toFixed(2)}</div>
                         </div>
                       ))}
+                    </div>
+                    <div className="flex items-center gap-4 mt-4 pt-4 border-t border-ink/5 text-xs text-ink-muted">
+                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-purple-500" /> Opus</div>
+                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500" /> Sonnet</div>
+                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500" /> Haiku</div>
+                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-gray-400" /> Web</div>
+                    </div>
+                  </div>
+
+                  {/* Source */}
+                  {data.costs.sourceFile && (
+                    <div className="text-xs text-ink-muted text-center">
+                      Source: <code className="bg-ink/5 px-1.5 py-0.5 rounded">{data.costs.sourceFile}</code>
                     </div>
                   )}
                 </div>

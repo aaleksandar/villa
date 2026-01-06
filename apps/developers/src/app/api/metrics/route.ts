@@ -25,12 +25,28 @@ interface SessionMetrics {
   efficiency: number   // (1 - corrections/commits) * 100
 }
 
-// Cost data - MUST be manually entered
+// Cost data - from Anthropic console export
 interface CostEntry {
   date: string
   amount: number
-  description: string
-  source: 'manual' | 'invoice' | 'api'
+  breakdown?: {
+    opus?: number
+    sonnet?: number
+    haiku?: number
+    web_search?: number
+  }
+  source: 'manual' | 'invoice' | 'console-export'
+}
+
+interface CostSummary {
+  total: number
+  dailyAverage: number
+  byModel: {
+    'claude-opus-4.5': number
+    'claude-sonnet-4.5': number
+    'claude-haiku-4.5': number
+    'web-search': number
+  }
 }
 
 interface MetricsResponse {
@@ -48,7 +64,11 @@ interface MetricsResponse {
     hasData: boolean
     entries: CostEntry[]
     totalSpent: number
+    dailyAverage: number
+    byModel: Record<string, number>
     currency: string
+    period?: { start: string; end: string; days: number }
+    sourceFile?: string
     note: string
   }
   lastUpdated: string
@@ -137,8 +157,17 @@ function getRecentSessions(days: number): SessionMetrics[] {
   return sessions
 }
 
-// Load REAL cost data from file (manually entered)
-function loadCostData(): { entries: CostEntry[], total: number } {
+// Load REAL cost data from file (from Anthropic console export)
+interface CostData {
+  entries: CostEntry[]
+  total: number
+  dailyAverage: number
+  byModel: Record<string, number>
+  period?: { start: string; end: string; days: number }
+  sourceFile?: string
+}
+
+function loadCostData(): CostData {
   try {
     const cwd = process.cwd()
     const costPath = existsSync(join(cwd, '..', '..', '.claude', 'costs.json'))
@@ -146,16 +175,27 @@ function loadCostData(): { entries: CostEntry[], total: number } {
       : join(cwd, '.claude', 'costs.json')
 
     if (!existsSync(costPath)) {
-      return { entries: [], total: 0 }
+      return { entries: [], total: 0, dailyAverage: 0, byModel: {} }
     }
 
     const data = JSON.parse(readFileSync(costPath, 'utf-8'))
     const entries: CostEntry[] = Array.isArray(data.entries) ? data.entries : []
-    const total = entries.reduce((sum, e) => sum + (e.amount || 0), 0)
 
-    return { entries, total }
+    // Use summary if available, otherwise calculate from entries
+    const total = data.summary?.total ?? entries.reduce((sum, e) => sum + (e.amount || 0), 0)
+    const dailyAverage = data.summary?.dailyAverage ?? (entries.length > 0 ? total / entries.length : 0)
+    const byModel = data.summary?.byModel ?? {}
+
+    return {
+      entries,
+      total,
+      dailyAverage,
+      byModel,
+      period: data.period,
+      sourceFile: data._source_file
+    }
   } catch {
-    return { entries: [], total: 0 }
+    return { entries: [], total: 0, dailyAverage: 0, byModel: {} }
   }
 }
 
@@ -189,7 +229,7 @@ export async function GET(request: Request) {
       lastCommit: sessions.length > 0 ? sessions[0].date : 'N/A'
     }
 
-    // Load REAL cost data (only if manually entered)
+    // Load REAL cost data (from Anthropic console export)
     const costData = loadCostData()
 
     const response: MetricsResponse = {
@@ -198,13 +238,17 @@ export async function GET(request: Request) {
         totals
       },
       costs: {
-        hasData: costData.entries.length > 0,
+        hasData: costData.entries.length > 0 && costData.total > 0,
         entries: costData.entries,
         totalSpent: costData.total,
+        dailyAverage: costData.dailyAverage,
+        byModel: costData.byModel,
         currency: 'USD',
-        note: costData.entries.length > 0
-          ? 'From manually entered data in .claude/costs.json'
-          : 'No cost data. Add entries to .claude/costs.json to track spending.'
+        period: costData.period,
+        sourceFile: costData.sourceFile,
+        note: costData.entries.length > 0 && costData.total > 0
+          ? `From Anthropic console export (${costData.sourceFile || '.claude/costs.json'})`
+          : 'No cost data. Export from console.anthropic.com and add to .claude/costs.json'
       },
       lastUpdated: new Date().toISOString()
     }
