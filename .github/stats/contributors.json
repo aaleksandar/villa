@@ -1,0 +1,30 @@
+{
+  "generated": "2026-01-06T12:53:04.501Z",
+  "period": {
+    "since": "v0.3.0",
+    "until": "HEAD"
+  },
+  "totals": {
+    "commits": 20,
+    "contributors": 1,
+    "additions": 9346,
+    "deletions": 435
+  },
+  "contributors": [
+    {
+      "username": "Vadim",
+      "commits": 20,
+      "additions": 9346,
+      "deletions": 435,
+      "prsOpened": 0,
+      "prsMerged": 0,
+      "firstContribution": "2026-01-06 19:52:43 +0700",
+      "latestContribution": "2026-01-06 01:06:16 +0700",
+      "achievements": [
+        "first-pr",
+        "contributor-level-2"
+      ]
+    }
+  ],
+  "newContributors": []
+}
