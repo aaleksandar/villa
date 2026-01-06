@@ -52,11 +52,28 @@ export async function GET(request: Request) {
     ]
 
     let statsData = null
+
+    // First try local filesystem (works in development)
     for (const statsPath of possiblePaths) {
       if (existsSync(statsPath)) {
         const rawData = readFileSync(statsPath, 'utf-8')
         statsData = JSON.parse(rawData)
         break
+      }
+    }
+
+    // Fallback to GitHub raw content (works in production)
+    if (!statsData) {
+      try {
+        const githubUrl = 'https://raw.githubusercontent.com/rockfridrich/villa/main/.github/stats/contributors.json'
+        const response = await fetch(githubUrl, {
+          next: { revalidate: 300 } // Cache for 5 minutes
+        })
+        if (response.ok) {
+          statsData = await response.json()
+        }
+      } catch {
+        // GitHub fetch failed, continue to error response
       }
     }
 
