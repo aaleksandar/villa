@@ -76,8 +76,34 @@ export const villaTheme: ThemeFragment = {
 
 // Porto instance management
 let portoInstance: ReturnType<typeof Porto.create> | null = null
+let portoRelayInstance: ReturnType<typeof Porto.create> | null = null
 let themeController: Dialog.ThemeController | null = null
 let currentMode: 'popup' | 'inline' = 'popup'
+
+/**
+ * Custom WebAuthn handlers for relay mode
+ * Allows Villa UI to display custom animations/feedback during passkey operations
+ */
+export interface VillaWebAuthnHandlers {
+  /** Called before passkey creation starts */
+  onPasskeyCreate?: (options: CredentialCreationOptions) => Promise<void>
+  /** Called before passkey selection starts */
+  onPasskeyGet?: (options: CredentialRequestOptions) => Promise<void>
+  /** Called when authentication completes successfully */
+  onComplete?: (result: { address: string }) => void
+  /** Called when authentication fails */
+  onError?: (error: Error) => void
+}
+
+let webAuthnHandlers: VillaWebAuthnHandlers = {}
+
+/**
+ * Set custom WebAuthn handlers for relay mode
+ * Must be called before using relay mode functions
+ */
+export function setWebAuthnHandlers(handlers: VillaWebAuthnHandlers): void {
+  webAuthnHandlers = handlers
+}
 
 // Note: Porto SDK labels customization is documented but not yet in types
 // When available, add: signInPrompt, signIn, signUp, createAccount, dialogTitle
@@ -160,6 +186,42 @@ export function getPorto(options: PortoOptions = {}): ReturnType<typeof Porto.cr
 export function resetPorto(): void {
   portoInstance = null
   themeController = null
+}
+
+/**
+ * Get or create Porto relay instance with custom WebAuthn handlers
+ * Use this for headless auth where Villa UI controls the entire flow
+ */
+export function getPortoRelay(): ReturnType<typeof Porto.create> {
+  if (!portoRelayInstance) {
+    portoRelayInstance = Porto.create({
+      mode: Mode.relay({
+        webAuthn: {
+          createFn: async (options) => {
+            if (!options) {
+              throw new Error('WebAuthn creation options are required')
+            }
+            // Notify Villa UI that passkey creation is starting
+            await webAuthnHandlers.onPasskeyCreate?.(options as CredentialCreationOptions)
+            // Browser shows biometric prompt
+            const credential = await navigator.credentials.create(options as CredentialCreationOptions)
+            return credential as PublicKeyCredential
+          },
+          getFn: async (options) => {
+            if (!options) {
+              throw new Error('WebAuthn request options are required')
+            }
+            // Notify Villa UI that passkey selection is starting
+            await webAuthnHandlers.onPasskeyGet?.(options as CredentialRequestOptions)
+            // Browser shows biometric prompt
+            const assertion = await navigator.credentials.get(options as CredentialRequestOptions)
+            return assertion as PublicKeyCredential
+          },
+        },
+      }),
+    })
+  }
+  return portoRelayInstance
 }
 
 /**
@@ -452,4 +514,75 @@ export async function signSiweMessage(address: string, options?: {
   const signature = await signMessage(message, address)
 
   return { message, signature }
+}
+
+/**
+ * Create a new Porto account using relay mode
+ * Uses Villa's custom UI with WebAuthn handlers for feedback
+ * No Porto dialog is shown - Villa controls the entire flow
+ */
+export async function createAccountHeadless(): Promise<PortoConnectResult> {
+  try {
+    const porto = getPortoRelay()
+    const result = await porto.provider.request({
+      method: 'wallet_connect',
+      params: [{
+        capabilities: {
+          email: false,
+        },
+      }],
+    })
+
+    const response = result as unknown as { accounts: readonly { address: string }[] }
+
+    if (response.accounts && response.accounts.length > 0) {
+      const address = response.accounts[0].address
+      webAuthnHandlers.onComplete?.({ address })
+      return { success: true, address }
+    }
+
+    return {
+      success: false,
+      error: new Error('No account returned from Porto'),
+    }
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error('Unknown error')
+    webAuthnHandlers.onError?.(error)
+    return {
+      success: false,
+      error,
+    }
+  }
+}
+
+/**
+ * Sign in with existing Porto account using relay mode
+ * Uses Villa's custom UI with WebAuthn handlers for feedback
+ * No Porto dialog is shown - Villa controls the entire flow
+ */
+export async function signInHeadless(): Promise<PortoConnectResult> {
+  try {
+    const porto = getPortoRelay()
+    const accounts = await porto.provider.request({
+      method: 'eth_requestAccounts',
+    })
+
+    if (accounts && accounts.length > 0) {
+      const address = accounts[0]
+      webAuthnHandlers.onComplete?.({ address })
+      return { success: true, address }
+    }
+
+    return {
+      success: false,
+      error: new Error('No account selected'),
+    }
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error('Unknown error')
+    webAuthnHandlers.onError?.(error)
+    return {
+      success: false,
+      error,
+    }
+  }
 }
