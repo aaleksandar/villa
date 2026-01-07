@@ -169,17 +169,24 @@ export default function SettingsPage() {
 
       // Update local identity store for display name and avatar
       if (updates.displayName !== undefined || updates.avatar !== undefined) {
-        // Convert avatar back to string for store compatibility
-        // Store expects string | undefined, but we have AvatarConfig | CustomAvatar
-        // For now, we'll serialize it as JSON string
-        let avatarForStore: string | undefined = undefined
+        // Store accepts AvatarConfig directly or string
+        // For CustomAvatar, store the dataUrl string
+        let avatarForStore: string | { style: 'avataaars' | 'bottts'; selection: 'male' | 'female' | 'other'; variant: number } | undefined
+
         if (updates.avatar) {
-          if ('type' in updates.avatar && updates.avatar.type === 'custom') {
-            // CustomAvatar - store the dataUrl
-            avatarForStore = updates.avatar.dataUrl
+          // Check if it's a CustomAvatar (has 'type' property with value 'custom')
+          const isCustom = 'type' in updates.avatar && updates.avatar.type === 'custom'
+          if (isCustom) {
+            // CustomAvatar → store dataUrl string
+            avatarForStore = (updates.avatar as CustomAvatar).dataUrl
           } else {
-            // AvatarConfig - serialize to JSON
-            avatarForStore = JSON.stringify(updates.avatar)
+            // AvatarConfig → store object (cast to validated type)
+            const config = updates.avatar as AvatarConfig
+            avatarForStore = {
+              style: config.style,
+              selection: config.selection,
+              variant: config.variant,
+            }
           }
         }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, Copy, Check, Pencil, X } from 'lucide-react'
+import { LogOut, Copy, Check, Pencil, X, Settings } from 'lucide-react'
 import { Button, Card, CardContent, Avatar, Input, Spinner } from '@/components/ui'
 import { useIdentityStore } from '@/lib/store'
 import { disconnectPorto } from '@/lib/porto'
@@ -157,9 +157,14 @@ export default function HomePage() {
       <div className="max-w-sm mx-auto space-y-6">
         <header className="flex items-center justify-between">
           <h1 className="text-2xl font-serif text-ink">Villa</h1>
-          <Button variant="ghost" size="default" onClick={handleLogout}>
-            <LogOut className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="default" onClick={() => router.push('/settings')} aria-label="Settings">
+              <Settings className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="default" onClick={handleLogout} aria-label="Sign out">
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
         </header>
 
         <Card>
