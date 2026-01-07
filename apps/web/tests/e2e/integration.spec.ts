@@ -19,60 +19,37 @@ test.describe('Onboarding Flow Integration', () => {
   test('navigates through onboarding steps correctly', async ({ page }) => {
     // Step 1: Welcome screen
     await expect(page.getByRole('heading', { name: 'Villa' })).toBeVisible()
-    await expect(page.getByText('Your identity. No passwords.')).toBeVisible()
+    // VillaAuthScreen splits text: "Your identity." and "No passwords." (gradient span)
+    await expect(page.getByText(/your identity/i).first()).toBeVisible()
 
-    // Click Create Villa ID
-    await page.getByRole('button', { name: 'Create Villa ID' }).click()
+    // Click Create Villa ID - VillaAuthScreen uses "Create new Villa ID" aria-label
+    await page.getByRole('button', { name: /create.*villa id/i }).click()
 
-    // Step 2: Connecting screen should show
-    await expect(
-      page.getByRole('heading', { name: 'Connecting...' })
-        .or(page.getByRole('heading', { name: 'Something went wrong' }))
-    ).toBeVisible({ timeout: 10000 })
-
-    // Porto container should be present
-    const portoContainer = page.locator('.min-h-\\[520px\\]')
-    await expect(portoContainer).toBeVisible()
+    // Step 2: VillaAuthScreen shows "Creating..." in button text
+    await expect(page.getByText('Creating...')).toBeVisible({ timeout: 10000 })
   })
 
   test('shows error step with retry button on failure', async ({ page }) => {
-    // Click create to trigger Porto flow
-    await page.getByRole('button', { name: 'Create Villa ID' }).click()
+    // Click create to trigger Porto flow - VillaAuthScreen uses "Create new Villa ID" aria-label
+    await page.getByRole('button', { name: /create.*villa id/i }).click()
 
     // Wait for either connecting or error state
     await page.waitForTimeout(2000)
 
-    // If error occurred (likely in test environment), verify error UI
-    const errorHeading = page.getByRole('heading', { name: 'Something went wrong' })
-    const isErrorVisible = await errorHeading.isVisible().catch(() => false)
+    // VillaAuthScreen shows inline error alert, not a heading
+    const errorAlert = page.getByRole('alert').filter({ hasText: /error|failed/i })
+    const isErrorVisible = await errorAlert.isVisible().catch(() => false)
 
     if (isErrorVisible) {
       // Verify error UI elements
-      await expect(errorHeading).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Try Again' })).toBeVisible()
-
-      // Verify error icon
-      const errorIcon = page.locator('[class*="red-"]').first()
-      await expect(errorIcon).toBeVisible()
+      await expect(errorAlert).toBeVisible()
     }
   })
 
-  test('retry button returns to welcome screen', async ({ page }) => {
-    // Trigger flow
-    await page.getByRole('button', { name: 'Create Villa ID' }).click()
-    await page.waitForTimeout(2000)
-
-    // If error state is shown, test retry
-    const tryAgainButton = page.getByRole('button', { name: 'Try Again' })
-    const isRetryVisible = await tryAgainButton.isVisible().catch(() => false)
-
-    if (isRetryVisible) {
-      await tryAgainButton.click()
-
-      // Should return to welcome screen
-      await expect(page.getByRole('heading', { name: 'Villa' })).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Create Villa ID' })).toBeVisible()
-    }
+  test.skip('retry button returns to welcome screen', async () => {
+    // This test depends on error state which VillaAuthScreen handles inline
+    // VillaAuthScreen doesn't have a separate "Try Again" button - errors are inline alerts
+    // Skip this test as the UI pattern changed
   })
 
   test('profile step validates display name and shows errors', async ({ page }) => {
@@ -96,18 +73,11 @@ test.describe('Onboarding Flow Integration', () => {
   })
 
   test('sign in flow navigates correctly', async ({ page }) => {
-    // Click Sign In button
-    await page.getByRole('button', { name: 'Sign In' }).click()
+    // Click Sign In button - VillaAuthScreen uses "Sign in with passkey" aria-label
+    await page.getByRole('button', { name: /sign in/i }).click()
 
-    // Should show connecting state
-    await expect(
-      page.getByRole('heading', { name: 'Connecting...' })
-        .or(page.getByRole('heading', { name: 'Something went wrong' }))
-    ).toBeVisible({ timeout: 10000 })
-
-    // Porto container should be present
-    const portoContainer = page.locator('.min-h-\\[520px\\]')
-    await expect(portoContainer).toBeVisible()
+    // VillaAuthScreen shows "Signing in..." in button text
+    await expect(page.getByText('Signing in...')).toBeVisible({ timeout: 10000 })
   })
 })
 
@@ -249,7 +219,8 @@ test.describe('Home Screen Integration', () => {
 
     // Check icon reverts back after timeout
     await page.waitForTimeout(2500)
-    const copyIcon = page.locator('[class*="lucide-copy"]')
+    // There may be multiple copy icons (nickname + address), use .first()
+    const copyIcon = page.locator('[class*="lucide-copy"]').first()
     await expect(copyIcon).toBeVisible()
   })
 
@@ -308,18 +279,15 @@ test.describe('Mobile Integration', () => {
     await page.evaluate(() => localStorage.clear())
     await page.goto('/onboarding')
 
-    // Verify buttons are tappable
-    const createButton = page.getByRole('button', { name: 'Create Villa ID' })
+    // Verify buttons are tappable - VillaAuthScreen uses "Create new Villa ID" aria-label
+    const createButton = page.getByRole('button', { name: /create.*villa id/i })
     await expect(createButton).toBeVisible()
 
     // Click works on mobile viewports
     await createButton.click()
 
-    // Should navigate to connecting screen
-    await expect(
-      page.getByRole('heading', { name: 'Connecting...' })
-        .or(page.getByRole('heading', { name: 'Something went wrong' }))
-    ).toBeVisible({ timeout: 10000 })
+    // VillaAuthScreen shows "Creating..." in button text
+    await expect(page.getByText('Creating...')).toBeVisible({ timeout: 10000 })
   })
 
   test('viewport meta is correctly configured', async ({ page }) => {
@@ -379,7 +347,8 @@ test.describe('Mobile Integration', () => {
     await page.goto('/onboarding')
 
     // Check button sizes (should be at least 44x44px for accessibility)
-    const createButton = page.getByRole('button', { name: 'Create Villa ID' })
+    // VillaAuthScreen uses "Create new Villa ID" aria-label
+    const createButton = page.getByRole('button', { name: /create.*villa id/i })
     const buttonBox = await createButton.boundingBox()
 
     expect(buttonBox).not.toBeNull()
@@ -428,17 +397,11 @@ test.describe('Mobile Integration', () => {
     await page.goto('/onboarding')
 
     // Click Create Villa ID (click works for mobile viewports)
-    await page.getByRole('button', { name: 'Create Villa ID' }).click()
-    await page.waitForTimeout(2000)
+    // VillaAuthScreen uses "Create new Villa ID" aria-label
+    await page.getByRole('button', { name: /create.*villa id/i }).click()
 
-    // If error, click retry
-    const retryButton = page.getByRole('button', { name: 'Try Again' })
-    const isRetryVisible = await retryButton.isVisible().catch(() => false)
-
-    if (isRetryVisible) {
-      await retryButton.click()
-      await expect(page.getByRole('heading', { name: 'Villa' })).toBeVisible()
-    }
+    // VillaAuthScreen shows "Creating..." in button text
+    await expect(page.getByText('Creating...')).toBeVisible({ timeout: 10000 })
   })
 
   test('text is readable on mobile viewport', async ({ page }) => {

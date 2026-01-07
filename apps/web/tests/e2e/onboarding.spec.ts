@@ -17,35 +17,31 @@ test.describe('Onboarding Flow', () => {
     await page.goto('/onboarding')
 
     await expect(page.getByRole('heading', { name: 'Villa' })).toBeVisible()
-    await expect(page.getByText('Your identity. No passwords.')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Create Villa ID' })).toBeVisible()
-    await expect(page.getByText('Secured by passkeys')).toBeVisible()
+    // VillaAuthScreen splits text: "Your identity." and "No passwords." (gradient span)
+    await expect(page.getByText(/your identity/i).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /create.*villa id/i })).toBeVisible()
+    await expect(page.getByText(/secured by passkeys/i)).toBeVisible()
   })
 
   test('shows connecting state when creating identity', async ({ page }) => {
     await page.goto('/onboarding')
 
-    // Click create - goes directly to Porto (no explainer step)
-    await page.getByRole('button', { name: 'Create Villa ID' }).click()
+    // Click create - VillaAuthScreen shows inline loading state
+    await page.getByRole('button', { name: /create.*villa id/i }).click()
 
-    // Should show connecting state OR error state (Porto may fail in test environment)
-    await expect(
-      page.getByRole('heading', { name: 'Connecting...' })
-        .or(page.getByRole('heading', { name: 'Something went wrong' }))
-    ).toBeVisible({ timeout: 10000 })
+    // VillaAuthScreen shows "Creating..." in button text
+    // The button becomes disabled and shows loading spinner + "Creating..."
+    await expect(page.getByText('Creating...')).toBeVisible({ timeout: 10000 })
   })
 
   test('shows connecting state when signing in', async ({ page }) => {
     await page.goto('/onboarding')
 
-    await page.getByRole('button', { name: 'Sign In' }).click()
+    await page.getByRole('button', { name: /sign in/i }).click()
 
-    // Should show connecting state OR error state
-    await expect(
-      page.getByRole('heading', { name: 'Connecting...' })
-        .or(page.getByRole('heading', { name: 'Something went wrong' }))
-    ).toBeVisible({ timeout: 10000 })
+    // VillaAuthScreen shows "Signing in..." in button text
+    await expect(page.getByText('Signing in...')).toBeVisible({ timeout: 10000 })
   })
 })
 
@@ -104,9 +100,9 @@ test.describe('Mobile Responsiveness', () => {
     await page.evaluate(() => localStorage.clear())
     await page.reload()
 
-    await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Sign In' })).toBeInViewport()
-    await expect(page.getByRole('button', { name: 'Create Villa ID' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /sign in/i })).toBeInViewport()
+    await expect(page.getByRole('button', { name: /create.*villa id/i })).toBeVisible()
   })
 
   test('profile screen fits mobile viewport', async ({ page }) => {

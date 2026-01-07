@@ -40,8 +40,9 @@ test.describe('Authentication Flows', () => {
       // Check for main elements
       await expect(page.getByRole('heading', { name: 'Villa' })).toBeVisible({ timeout: 10000 })
 
-      // Check for either "Your identity. No passwords." or just "No passwords."
-      const headlineText = page.getByText(/your identity.*no passwords/i).or(page.getByText(/no passwords/i))
+      // Check for headline text - in VillaAuthScreen the text is split: "Your identity." and "No passwords." (gradient)
+      // Use .first() since "No passwords." may appear in multiple places due to styling
+      const headlineText = page.getByText(/your identity/i).first()
       await expect(headlineText).toBeVisible({ timeout: 10000 })
 
       // Check for CTA buttons with more flexible selectors
