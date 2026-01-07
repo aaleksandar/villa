@@ -28,6 +28,7 @@ export const STORAGE_KEYS = {
   avatar: 'villa/avatar',
   preferences: 'villa/preferences',
   session: 'villa/session',
+  recentApps: 'villa/recent-apps',
 } as const
 
 // TinyCloud authentication state
@@ -46,6 +47,23 @@ export interface VillaSession {
   nickname?: string
   lastActive: number
   deviceId: string
+}
+
+/**
+ * Recent app tracking for ecosystem navigation
+ */
+export interface RecentApp {
+  appId: string          // Unique identifier (e.g., 'residents', 'map')
+  name: string           // Display name
+  url: string            // App URL
+  iconUrl?: string       // Optional icon
+  lastUsed: number       // Timestamp
+  usageCount: number     // Total visits
+}
+
+export interface RecentAppsData {
+  apps: RecentApp[]
+  lastSynced: number
 }
 
 // Client singleton
@@ -295,6 +313,8 @@ export const preferencesStore = new VillaStorage<VillaPreferences>(STORAGE_KEYS.
 
 export const sessionStore = new VillaStorage<VillaSession>(STORAGE_KEYS.session)
 
+export const recentAppsStore = new VillaStorage<RecentAppsData>(STORAGE_KEYS.recentApps)
+
 /**
  * Sync all local data to TinyCloud
  * Call after TinyCloud authentication to push offline changes
@@ -326,6 +346,16 @@ export async function syncToTinyCloud(): Promise<boolean> {
     }
   }
 
+  // Sync recent apps
+  const recentAppsData = recentAppsStore.loadLocal()
+  if (recentAppsData) {
+    try {
+      await recentAppsStore.save(recentAppsData)
+    } catch {
+      // Continue
+    }
+  }
+
   return true
 }
 
@@ -339,4 +369,58 @@ export async function updateSession(address: string, nickname?: string): Promise
     lastActive: Date.now(),
     deviceId: getDeviceId(),
   })
+}
+
+/**
+ * Track app usage for Recent Apps feature
+ * @param app The app being visited
+ */
+export async function trackAppUsage(app: Omit<RecentApp, 'lastUsed' | 'usageCount'>): Promise<void> {
+  const MAX_RECENT_APPS = 10
+
+  // Load current data
+  let data = await recentAppsStore.load()
+  if (!data) {
+    data = { apps: [], lastSynced: Date.now() }
+  }
+
+  // Find existing app entry
+  const existingIndex = data.apps.findIndex(a => a.appId === app.appId)
+
+  if (existingIndex >= 0) {
+    // Update existing
+    const existing = data.apps[existingIndex]
+    data.apps.splice(existingIndex, 1) // Remove from current position
+    data.apps.unshift({
+      ...existing,
+      ...app, // Update with any new info
+      lastUsed: Date.now(),
+      usageCount: existing.usageCount + 1,
+    })
+  } else {
+    // Add new app
+    data.apps.unshift({
+      ...app,
+      lastUsed: Date.now(),
+      usageCount: 1,
+    })
+  }
+
+  // Keep only most recent
+  if (data.apps.length > MAX_RECENT_APPS) {
+    data.apps = data.apps.slice(0, MAX_RECENT_APPS)
+  }
+
+  data.lastSynced = Date.now()
+
+  // Save
+  await recentAppsStore.save(data)
+}
+
+/**
+ * Get recent apps for display
+ */
+export async function getRecentApps(): Promise<RecentApp[]> {
+  const data = await recentAppsStore.load()
+  return data?.apps || []
 }

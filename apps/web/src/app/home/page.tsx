@@ -2,12 +2,35 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, Copy, Check, Pencil, X, Settings } from 'lucide-react'
+import { LogOut, Copy, Check, Pencil, X, Settings, ExternalLink, Compass } from 'lucide-react'
 import { Button, Card, CardContent, Avatar, Input, Spinner } from '@/components/ui'
 import { useIdentityStore } from '@/lib/store'
 import { disconnectPorto } from '@/lib/porto'
 import { displayNameSchema } from '@/lib/validation'
-import { authenticateTinyCloud, syncToTinyCloud, isTinyCloudAuthenticatedFor } from '@/lib/storage/tinycloud-client'
+import {
+  authenticateTinyCloud,
+  syncToTinyCloud,
+  isTinyCloudAuthenticatedFor,
+  getRecentApps,
+  trackAppUsage,
+  type RecentApp,
+} from '@/lib/storage/tinycloud-client'
+
+// Featured ecosystem apps
+const ECOSYSTEM_APPS = [
+  {
+    appId: 'residents',
+    name: 'Residents',
+    url: 'https://residents.proofofretreat.me/',
+    description: 'Community directory',
+  },
+  {
+    appId: 'map',
+    name: 'Map',
+    url: 'https://map.proofofretreat.me/',
+    description: 'Village explorer',
+  },
+]
 
 export default function HomePage() {
   const router = useRouter()
@@ -20,6 +43,9 @@ export default function HomePage() {
   const [editError, setEditError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Recent apps state
+  const [recentApps, setRecentApps] = useState<RecentApp[]>([])
 
   // Ref for tracking timeout to prevent memory leaks
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -43,6 +69,9 @@ export default function HomePage() {
   useEffect(() => {
     if (!identity?.address) return
 
+    // Load recent apps immediately from localStorage
+    getRecentApps().then(setRecentApps).catch(console.warn)
+
     // Check if TinyCloud is already authenticated for this address
     if (isTinyCloudAuthenticatedFor(identity.address)) return
 
@@ -51,6 +80,8 @@ export default function HomePage() {
       .then(success => {
         if (success) {
           syncToTinyCloud().catch(console.warn)
+          // Reload recent apps after sync (may have newer data from TinyCloud)
+          getRecentApps().then(setRecentApps).catch(console.warn)
         }
       })
       .catch(console.warn)
@@ -139,6 +170,20 @@ export default function HomePage() {
     }
   }
 
+  const handleVisitApp = async (app: typeof ECOSYSTEM_APPS[0]) => {
+    // Track usage before navigating
+    await trackAppUsage({
+      appId: app.appId,
+      name: app.name,
+      url: app.url,
+    })
+    // Refresh recent apps list
+    const updated = await getRecentApps()
+    setRecentApps(updated)
+    // Open in new tab
+    window.open(app.url, '_blank', 'noopener,noreferrer')
+  }
+
   const truncateAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`
   }
@@ -157,11 +202,11 @@ export default function HomePage() {
         <header className="flex items-center justify-between">
           <h1 className="text-2xl font-serif text-ink">Villa</h1>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="default" onClick={() => router.push('/settings')} aria-label="Settings">
-              <Settings className="w-5 h-5" />
+            <Button variant="ghost" size="lg" onClick={() => router.push('/settings')} aria-label="Settings">
+              <Settings className="w-6 h-6" />
             </Button>
-            <Button variant="ghost" size="default" onClick={handleLogout} aria-label="Sign out">
-              <LogOut className="w-5 h-5" />
+            <Button variant="ghost" size="lg" onClick={handleLogout} aria-label="Sign out">
+              <LogOut className="w-6 h-6" />
             </Button>
           </div>
         </header>
@@ -241,6 +286,59 @@ export default function HomePage() {
             <div className="flex justify-between text-sm">
               <span className="text-ink-muted">Status</span>
               <span className="text-accent-green">Active</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Ecosystem Apps */}
+        <Card>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Compass className="w-5 h-5 text-ink-muted" />
+                <span className="font-medium text-ink">Ecosystem</span>
+              </div>
+            </div>
+
+            {/* Recent Apps (if any) */}
+            {recentApps.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-xs text-ink-muted uppercase tracking-wide">Recent</span>
+                <div className="space-y-1">
+                  {recentApps.slice(0, 3).map((app) => (
+                    <button
+                      key={app.appId}
+                      onClick={() => handleVisitApp({ appId: app.appId, name: app.name, url: app.url, description: '' })}
+                      className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-cream-100 transition-colors text-left"
+                    >
+                      <span className="text-sm text-ink">{app.name}</span>
+                      <ExternalLink className="w-4 h-4 text-ink-muted" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Featured Apps */}
+            <div className="space-y-2">
+              <span className="text-xs text-ink-muted uppercase tracking-wide">
+                {recentApps.length > 0 ? 'All Apps' : 'Apps'}
+              </span>
+              <div className="space-y-1">
+                {ECOSYSTEM_APPS.map((app) => (
+                  <button
+                    key={app.appId}
+                    onClick={() => handleVisitApp(app)}
+                    className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-cream-100 transition-colors text-left"
+                  >
+                    <div>
+                      <span className="text-sm text-ink">{app.name}</span>
+                      <p className="text-xs text-ink-muted">{app.description}</p>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-ink-muted" />
+                  </button>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
