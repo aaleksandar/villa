@@ -1543,6 +1543,56 @@ Phase 3: Features (10% token cost, 70% user value)
 - First-time contributors often unfamiliar with lock files
 - Early detection = less frustration = more contributors
 
+### 48. Autonomous Session Verification Strategy
+
+**Incident 2026-01-07:** 90-minute autonomous session to clear Sprint 4 backlog spent ~40% of time verifying already-completed work.
+
+**The Problem:**
+```
+Tasks "Build UI component X" were still open
+But components had been built in previous sessions
+Session spent time reading each file to verify completeness
+No parallel delegation to verification agents
+```
+
+**Anti-Patterns Detected:**
+1. **Sequential verification** (~15 min wasted) - Read 4 component files one-by-one
+2. **No agent delegation** (~20 min wasted) - All work in main terminal
+3. **Task status drift** - Components done but tasks still open
+
+**Prevention (autonomous session checklist):**
+
+1. **Delegate verification upfront** (parallel agents):
+   ```bash
+   # At session start, spawn verification in parallel
+   @explore "Verify files exist: X.tsx, Y.tsx, Z.tsx" &
+   @test "Run E2E suite, report flakiness" &
+   # Work on ADRs/docs while agents run
+   ```
+
+2. **Check file existence before claiming "build" tasks:**
+   ```bash
+   # Before working on "build component X" task
+   ls -la apps/web/src/components/ui/x.tsx
+   # If exists, verify completeness instead of building
+   ```
+
+3. **Close tasks immediately when work discovered complete:**
+   - Don't wait to batch closures
+   - bd close <id> --reason="Already implemented - verified in session"
+
+**Token Efficiency Score:**
+- Sequential work that could parallelize: ~44% waste
+- Optimal: Verify → close → next in <2 min per task
+
+**Session Structure (recommended for 90-min autonomous):**
+```
+Minutes 0-10:   @explore verify + @test run (parallel)
+Minutes 10-60:  Main work (ADRs, specs, new features)
+Minutes 60-80:  Review agent outputs, close tasks
+Minutes 80-90:  PR creation, deployment, sync
+```
+
 ### CI Failure - 2026-01-06 21:28
 - Workflow: .github/workflows/contracts.yml
 - Run: https://github.com/rockfridrich/villa/actions/runs/20751345377
@@ -1557,3 +1607,8 @@ Phase 3: Features (10% token cost, 70% user value)
 - Workflow: .github/workflows/contracts.yml
 - Run: https://github.com/rockfridrich/villa/actions/runs/20759418150
 - Action: Check `gh run view 20759418150 --log-failed`
+
+### CI Failure - 2026-01-07 14:46
+- Workflow: .github/workflows/contracts.yml
+- Run: https://github.com/rockfridrich/villa/actions/runs/20774334373
+- Action: Check `gh run view 20774334373 --log-failed`
