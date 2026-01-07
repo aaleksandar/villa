@@ -8,8 +8,20 @@
  * The storage is user-controlled and decentralized.
  */
 
-import { TinyCloudWeb } from '@tinycloudlabs/web-sdk'
 import { signMessage } from '@/lib/porto'
+
+// TinyCloud SDK is dynamically imported to avoid SSR issues with HTMLElement
+type TinyCloudWeb = {
+  generateSiweMessage: (address: string, options: { statement: string }) => Promise<{
+    prepareMessage: () => string
+  }>
+  signInWithSignature: (message: { prepareMessage: () => string }, signature: string) => Promise<void>
+  storage: {
+    put: (key: string, data: unknown) => Promise<void>
+    get: (key: string) => Promise<{ data: unknown } | null>
+    delete: (key: string) => Promise<void>
+  }
+}
 
 // Storage keys
 export const STORAGE_KEYS = {
@@ -59,6 +71,11 @@ function getDeviceId(): string {
  * Note: TinyCloud requires SIWE authentication via signIn()
  */
 export async function getTinyCloud(): Promise<TinyCloudWeb> {
+  // Prevent SSR execution
+  if (typeof window === 'undefined') {
+    throw new Error('TinyCloud can only be used in browser environment')
+  }
+
   // Return existing instance if connected
   if (tinyCloudInstance) {
     return tinyCloudInstance
@@ -69,10 +86,12 @@ export async function getTinyCloud(): Promise<TinyCloudWeb> {
     return connectionPromise
   }
 
-  // Create new instance (doesn't connect automatically)
+  // Create new instance with dynamic import to avoid SSR issues
   connectionPromise = (async () => {
     try {
-      const tc = new TinyCloudWeb()
+      // Dynamic import to avoid SSR HTMLElement error
+      const { TinyCloudWeb: TinyCloudClass } = await import('@tinycloudlabs/web-sdk')
+      const tc = new TinyCloudClass() as unknown as TinyCloudWeb
       tinyCloudInstance = tc
       return tc
     } catch (error) {

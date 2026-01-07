@@ -21,6 +21,7 @@ import {
   type InAppBrowserInfo,
 } from '@/lib/browser'
 import { getNicknameByAddress } from '@/lib/nickname'
+import { authenticateTinyCloud, syncToTinyCloud } from '@/lib/storage/tinycloud-client'
 
 type Step =
   | 'inapp-browser'
@@ -157,6 +158,16 @@ function OnboardingContent() {
       // Store the Porto wallet address
       setAddress(result.address)
 
+      // After Porto success, trigger TinyCloud in background (don't block UX)
+      authenticateTinyCloud(result.address)
+        .then(success => {
+          if (success) {
+            console.log('TinyCloud authenticated')
+            syncToTinyCloud().catch(console.warn)
+          }
+        })
+        .catch(console.warn)
+
       // Show success and move to profile
       setStep('success')
       timeoutRef.current = setTimeout(() => setStep('profile'), 1500)
@@ -191,6 +202,16 @@ function OnboardingContent() {
 
       // Store the Porto wallet address
       setAddress(result.address)
+
+      // After Porto success, trigger TinyCloud in background (don't block UX)
+      authenticateTinyCloud(result.address)
+        .then(success => {
+          if (success) {
+            console.log('TinyCloud authenticated')
+            syncToTinyCloud().catch(console.warn)
+          }
+        })
+        .catch(console.warn)
 
       // Check if we have a stored identity with this address (same device)
       if (identity && identity.address === result.address && identity.avatar) {

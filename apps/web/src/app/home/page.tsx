@@ -7,6 +7,7 @@ import { Button, Card, CardContent, Avatar, Input, Spinner } from '@/components/
 import { useIdentityStore } from '@/lib/store'
 import { disconnectPorto } from '@/lib/porto'
 import { displayNameSchema } from '@/lib/validation'
+import { authenticateTinyCloud, syncToTinyCloud, isTinyCloudAuthenticatedFor } from '@/lib/storage/tinycloud-client'
 
 export default function HomePage() {
   const router = useRouter()
@@ -37,6 +38,24 @@ export default function HomePage() {
       router.replace('/onboarding')
     }
   }, [identity, router])
+
+  // Authenticate TinyCloud on mount for returning users on new devices
+  useEffect(() => {
+    if (!identity?.address) return
+
+    // Check if TinyCloud is already authenticated for this address
+    if (isTinyCloudAuthenticatedFor(identity.address)) return
+
+    // Trigger background authentication
+    authenticateTinyCloud(identity.address)
+      .then(success => {
+        if (success) {
+          console.log('TinyCloud authenticated on home')
+          syncToTinyCloud().catch(console.warn)
+        }
+      })
+      .catch(console.warn)
+  }, [identity?.address])
 
   if (!identity) {
     return (
