@@ -189,13 +189,41 @@ export function resetPorto(): void {
 }
 
 /**
+ * Villa Passkey Domain Configuration
+ *
+ * keystoreHost determines the WebAuthn Relying Party ID (rpId).
+ * Passkeys are permanently bound to this domain - users see "villa.cash"
+ * in browser/OS passkey prompts instead of "porto.sh".
+ *
+ * Options:
+ * - 'self': Use current domain (localhost in dev, villa.cash in prod)
+ * - 'villa.cash': Always use villa.cash (recommended for prod)
+ * - 'key.villa.cash': Use subdomain for passkey operations
+ */
+const VILLA_KEYSTORE_HOST = process.env.NODE_ENV === 'production'
+  ? 'villa.cash'
+  : 'self' // 'self' uses current domain (localhost:3000 in dev)
+
+/**
  * Get or create Porto relay instance with custom WebAuthn handlers
- * Use this for headless auth where Villa UI controls the entire flow
+ *
+ * IMPORTANT: This mode binds passkeys to Villa's domain (villa.cash),
+ * NOT Porto's domain (id.porto.sh). Users see "villa.cash" in:
+ * - Browser passkey prompts
+ * - 1Password/iCloud Keychain
+ * - System passkey manager
+ *
+ * Porto still provides:
+ * - Smart account contracts on Base
+ * - Bundler/relayer for gas sponsorship
+ * - Account abstraction infrastructure
  */
 export function getPortoRelay(): ReturnType<typeof Porto.create> {
   if (!portoRelayInstance) {
     portoRelayInstance = Porto.create({
       mode: Mode.relay({
+        // Bind passkeys to Villa's domain instead of Porto's
+        keystoreHost: VILLA_KEYSTORE_HOST,
         webAuthn: {
           createFn: async (options) => {
             if (!options) {
@@ -203,7 +231,7 @@ export function getPortoRelay(): ReturnType<typeof Porto.create> {
             }
             // Notify Villa UI that passkey creation is starting
             await webAuthnHandlers.onPasskeyCreate?.(options as CredentialCreationOptions)
-            // Browser shows biometric prompt
+            // Browser shows biometric prompt - user sees "villa.cash"
             const credential = await navigator.credentials.create(options as CredentialCreationOptions)
             return credential as PublicKeyCredential
           },
@@ -213,7 +241,7 @@ export function getPortoRelay(): ReturnType<typeof Porto.create> {
             }
             // Notify Villa UI that passkey selection is starting
             await webAuthnHandlers.onPasskeyGet?.(options as CredentialRequestOptions)
-            // Browser shows biometric prompt
+            // Browser shows biometric prompt - user sees "villa.cash"
             const assertion = await navigator.credentials.get(options as CredentialRequestOptions)
             return assertion as PublicKeyCredential
           },

@@ -61,10 +61,34 @@ export async function ensureTables() {
     )
   `
 
+  // Create webauthn_credentials table if not exists
+  await db`
+    CREATE TABLE IF NOT EXISTS webauthn_credentials (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      public_key TEXT NOT NULL,
+      counter BIGINT DEFAULT 0,
+      address VARCHAR(42) NOT NULL,
+      nickname VARCHAR(32) NOT NULL,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      last_used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )
+  `
+
   // Create indexes (IF NOT EXISTS is implicit for CREATE INDEX in PG 9.5+)
   await db`
     CREATE INDEX IF NOT EXISTS idx_profiles_nickname
     ON profiles(nickname_normalized)
+  `
+
+  await db`
+    CREATE INDEX IF NOT EXISTS idx_webauthn_user_id
+    ON webauthn_credentials(user_id)
+  `
+
+  await db`
+    CREATE INDEX IF NOT EXISTS idx_webauthn_address
+    ON webauthn_credentials(address)
   `
 
   // Migration: Add nickname change tracking columns if they don't exist
