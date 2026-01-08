@@ -1,6 +1,9 @@
 /**
  * Database connection module
  * Uses postgres.js for efficient connection pooling
+ *
+ * Graceful degradation: Returns appropriate errors if DATABASE_URL not set,
+ * allowing app to start without DB (for CI E2E tests that don't need DB).
  */
 import postgres from 'postgres'
 
@@ -9,8 +12,17 @@ let sql: ReturnType<typeof postgres> | null = null
 let migrationRun = false
 
 /**
+ * Check if database is configured
+ * Used by API routes to return graceful errors instead of crashing
+ */
+export function isDatabaseAvailable(): boolean {
+  return !!process.env.DATABASE_URL
+}
+
+/**
  * Get database connection
  * Creates a connection pool on first call, reuses on subsequent calls
+ * Throws if DATABASE_URL not set - callers should check isDatabaseAvailable() first
  */
 export function getDb() {
   if (sql) return sql
@@ -39,9 +51,11 @@ export function getDb() {
  *
  * Migrations run on app startup within DigitalOcean VPC.
  * CI/CD cannot access the private database network.
+ * Gracefully skips if DATABASE_URL not configured.
  */
 export async function ensureTables() {
   if (migrationRun) return
+  if (!isDatabaseAvailable()) return // Skip migration if no DB
 
   const db = getDb()
 

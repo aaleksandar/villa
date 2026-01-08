@@ -190,9 +190,10 @@ jobs:
         run: pnpm run test:e2e:chromium
         env:
           CI: true
-          # DATABASE_URL needed because E2E webserver may hit API routes that check database
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          # Glide SDK project ID for funding feature tests
+          # DATABASE_URL intentionally NOT set - CI runs E2E against local mock
+          # API routes gracefully degrade when DB unavailable (return 503)
+          # DB-dependent tests skip in CI (test.skip guards)
+          # Real DB tests run in deploy.yml against deployed apps with VPC access
           NEXT_PUBLIC_GLIDE_PROJECT_ID: villa-dev
 
       - name: Upload test results
