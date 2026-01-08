@@ -37,13 +37,8 @@ test.describe('Authentication Flows', () => {
       // Wait for page to be fully loaded
       await page.waitForLoadState('networkidle')
 
-      // Check for main elements
-      await expect(page.getByRole('heading', { name: 'Villa' })).toBeVisible({ timeout: 10000 })
-
-      // Check for headline text - in VillaAuthScreen the text is split: "Your identity." and "No passwords." (gradient)
-      // Use .first() since "No passwords." may appear in multiple places due to styling
-      const headlineText = page.getByText(/your identity/i).first()
-      await expect(headlineText).toBeVisible({ timeout: 10000 })
+      // Check for main elements - heading is "Your identity. No passwords."
+      await expect(page.getByRole('heading', { name: /your identity/i })).toBeVisible({ timeout: 10000 })
 
       // Check for CTA buttons with more flexible selectors
       const signInButton = page.getByRole('button', { name: /sign in/i })
@@ -413,8 +408,8 @@ test.describe('Authentication Flows', () => {
       await page.waitForURL(/\/onboarding/)
       await page.waitForLoadState('networkidle')
 
-      // Should see welcome screen elements
-      await expect(page.getByRole('heading', { name: 'Villa' })).toBeVisible({ timeout: 10000 })
+      // Should see welcome screen elements - heading is "Your identity. No passwords."
+      await expect(page.getByRole('heading', { name: /your identity/i })).toBeVisible({ timeout: 10000 })
       await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible({ timeout: 10000 })
       await expect(page.getByRole('button', { name: /create.*villa id/i })).toBeVisible({ timeout: 10000 })
     })
@@ -467,8 +462,8 @@ test.describe('Authentication Flows', () => {
       if (isError) {
         await page.getByRole('button', { name: /try again/i }).click()
 
-        // Should return to welcome screen
-        await expect(page.getByRole('heading', { name: 'Villa' })).toBeVisible({ timeout: 10000 })
+        // Should return to welcome screen - heading is "Your identity. No passwords."
+        await expect(page.getByRole('heading', { name: /your identity/i })).toBeVisible({ timeout: 10000 })
         await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible({ timeout: 10000 })
       }
     })
@@ -481,7 +476,8 @@ test.describe('Authentication Flows', () => {
 
       // Without both step AND address params, the page stays on welcome
       // This is expected - you can't show profile step without an address
-      await expect(page.getByRole('heading', { name: 'Villa' })).toBeVisible({ timeout: 10000 })
+      // Heading is "Your identity. No passwords."
+      await expect(page.getByRole('heading', { name: /your identity/i })).toBeVisible({ timeout: 10000 })
       await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible()
     })
 
@@ -604,9 +600,9 @@ test.describe('Authentication Flows', () => {
       await page.goto('/onboarding')
       await page.waitForLoadState('networkidle')
 
-      // Check all elements are visible and in viewport
-      await expect(page.getByRole('heading', { name: 'Villa' })).toBeVisible({ timeout: 10000 })
-      await expect(page.getByRole('heading', { name: 'Villa' })).toBeInViewport()
+      // Check all elements are visible and in viewport - heading is "Your identity. No passwords."
+      await expect(page.getByRole('heading', { name: /your identity/i })).toBeVisible({ timeout: 10000 })
+      await expect(page.getByRole('heading', { name: /your identity/i })).toBeInViewport()
 
       const signInButton = page.getByRole('button', { name: /sign in/i })
       const createButton = page.getByRole('button', { name: /create.*villa id/i })
