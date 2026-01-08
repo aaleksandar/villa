@@ -181,8 +181,7 @@ test.describe('SDK Demo - Live/Mock Toggle', () => {
 })
 
 // These API tests require a database connection
-// CI has graceful degradation (returns mocked responses when DB unavailable)
-// The assertions below work with both real DB and mock responses
+// CI uses graceful degradation (mock responses when DATABASE_URL not set)
 test.describe('ENS API Resolution', () => {
 
   test('GET /api/nicknames/check returns availability', async ({ request }) => {

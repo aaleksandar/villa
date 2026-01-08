@@ -456,8 +456,8 @@ jobs:
       - run: pnpm --filter @villa/web exec playwright test --project=chromium
         env:
           CI: true
-          # DATABASE_URL needed because E2E webserver may hit API routes that check database
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Note: DATABASE_URL intentionally NOT set - CI can't reach VPC database
+          # API routes gracefully degrade, returning mock responses
           # Glide SDK project ID for funding feature tests
           NEXT_PUBLIC_GLIDE_PROJECT_ID: villa-dev
 
@@ -701,8 +701,8 @@ jobs:
       - run: pnpm --filter @villa/web exec playwright test --project=chromium
         env:
           CI: true
-          # DATABASE_URL needed because E2E webserver may hit API routes that check database
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Note: DATABASE_URL intentionally NOT set - CI can't reach VPC database
+          # API routes gracefully degrade, returning mock responses
           # Glide SDK project ID for funding feature tests
           NEXT_PUBLIC_GLIDE_PROJECT_ID: villa-dev
 
