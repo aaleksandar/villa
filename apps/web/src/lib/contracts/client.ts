@@ -24,12 +24,15 @@ export const anvilChain: Chain = {
   },
 }
 
+/** Base Sepolia RPC URL */
+const BASE_SEPOLIA_RPC = 'https://sepolia.base.org'
+
 /** Base Sepolia with explicit RPC (viem default is rate-limited) */
 const baseSepoliaWithRpc: Chain = {
   ...baseSepolia,
   rpcUrls: {
     ...baseSepolia.rpcUrls,
-    default: { http: ['https://sepolia.base.org'] },
+    default: { http: [BASE_SEPOLIA_RPC] },
   },
 }
 
@@ -72,6 +75,20 @@ export function getCurrentChain(): Chain {
 }
 
 /**
+ * Get RPC URL for a chain
+ */
+function getRpcUrl(chainId: number): string | undefined {
+  switch (chainId) {
+    case 84532:
+      return BASE_SEPOLIA_RPC
+    case 31337:
+      return 'http://127.0.0.1:8545'
+    default:
+      return undefined
+  }
+}
+
+/**
  * Get public client for the configured chain
  *
  * @param chainId - Optional chain ID override (defaults to NEXT_PUBLIC_CHAIN_ID)
@@ -83,10 +100,11 @@ export function getCurrentChain(): Chain {
  */
 export function getPublicClient(chainId?: number): ReturnType<typeof createPublicClient> {
   const chain = chainId ? getChain(chainId) : getCurrentChain()
+  const rpcUrl = getRpcUrl(chain.id)
 
   return createPublicClient({
     chain,
-    transport: http(),
+    transport: http(rpcUrl),
   })
 }
 
@@ -120,11 +138,12 @@ export function getWalletClient(
 ) {
   const account = privateKeyToAccount(privateKey)
   const chain = chainId ? getChain(chainId) : getCurrentChain()
+  const rpcUrl = getRpcUrl(chain.id)
 
   return createWalletClient({
     account,
     chain,
-    transport: http(),
+    transport: http(rpcUrl),
   })
 }
 
