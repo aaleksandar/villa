@@ -13,6 +13,34 @@ Active patterns for Villa development. Historical patterns in [LEARNINGS-archive
 
 ## Core Patterns
 
+### 0. Local Development Requires HTTPS (CRITICAL)
+
+**Passkeys/WebAuthn require secure context (HTTPS).** HTTP will silently fail.
+
+```bash
+# ✅ PREFERRED: Docker with HTTPS proxy (matches deploy)
+pnpm dev:docker   # Uses docker-compose.dev.yml + Caddy HTTPS
+
+# ✅ ALTERNATIVE: Direct HTTPS
+pnpm dev:https    # Opens https://localhost:3000 with mkcert
+```
+
+```bash
+# ❌ WRONG: HTTP mode breaks passkeys
+pnpm dev  # http://localhost:3000 - passkeys won't work
+```
+
+**Symptoms of HTTP mode:**
+- Passkey creation fails silently
+- "NotAllowedError" in console
+- Porto dialog appears but biometric never triggers
+- 1Password doesn't intercept
+
+**When HTTP is acceptable:**
+- API-only testing (no auth flows)
+- Static page development (no passkeys)
+- Never for onboarding/login testing
+
 ### 1. Parallel Execution (DEFAULT)
 
 ```
@@ -834,3 +862,104 @@ I am an orchestrator, not an implementer.
 bd create "W1: SDK quickstart video" --priority=1
 # ...repeat for all tasks
 ```
+
+### CI Failure - 2026-01-08 18:26
+- Workflow: Deploy
+- Run: https://github.com/rockfridrich/villa/actions/runs/20814810963
+- Action: Check `gh run view 20814810963 --log-failed`
+
+### CI Failure - 2026-01-08 18:59
+- Workflow: Deploy
+- Run: https://github.com/rockfridrich/villa/actions/runs/20815760593
+- Action: Check `gh run view 20815760593 --log-failed`
+
+### CI Failure - 2026-01-08 19:11
+- Workflow: .github/workflows/contracts.yml
+- Run: https://github.com/rockfridrich/villa/actions/runs/20816272406
+- Action: Check `gh run view 20816272406 --log-failed`
+
+### CI Failure - 2026-01-08 19:29
+- Workflow: .github/workflows/contracts.yml
+- Run: https://github.com/rockfridrich/villa/actions/runs/20816844009
+- Action: Check `gh run view 20816844009 --log-failed`
+
+### CI Failure - 2026-01-08 19:39
+- Workflow: .github/workflows/contracts.yml
+- Run: https://github.com/rockfridrich/villa/actions/runs/20816844009
+- Action: Check `gh run view 20816844009 --log-failed`
+
+### CI Failure - 2026-01-08 20:14
+- Workflow: .github/workflows/contracts.yml
+- Run: https://github.com/rockfridrich/villa/actions/runs/20818045926
+- Action: Check `gh run view 20818045926 --log-failed`
+
+### CI Failure - 2026-01-09 00:46
+- Workflow: .github/workflows/contracts.yml
+- Run: https://github.com/rockfridrich/villa/actions/runs/20826237331
+- Action: Check `gh run view 20826237331 --log-failed`
+
+### CI Failure - 2026-01-09 01:26
+- Workflow: .github/workflows/contracts.yml
+- Run: https://github.com/rockfridrich/villa/actions/runs/20827389446
+- Action: Check `gh run view 20827389446 --log-failed`
+
+### CI Failure - 2026-01-09 01:46
+- Workflow: Deploy
+- Run: https://github.com/rockfridrich/villa/actions/runs/20827594740
+- Action: Check `gh run view 20827594740 --log-failed`
+
+### CI Failure - 2026-01-09 02:36
+- Workflow: Deploy
+- Run: https://github.com/rockfridrich/villa/actions/runs/20828940690
+- Action: Check `gh run view 20828940690 --log-failed`
+
+---
+
+### 61. keystoreHost Only Works in Relay Mode (2026-01-09)
+
+**Token Impact:** Prevents 3+ hours of wasted implementation
+
+**The Issue:**
+Porto SDK's `keystoreHost` option (for custom passkey domain) only works in **relay mode**, not **dialog mode**.
+
+**What Happened:**
+- Implemented `getPortoIframe()` with `keystoreHost: 'key.villa.cash'`
+- TypeScript error: "keystoreHost does not exist in type 'Parameters'"
+- Had to remove keystoreHost - passkeys remain on Porto's domain
+
+**The Trade-off:**
+| Mode | 1Password Works | Custom Domain | Use Case |
+|------|-----------------|---------------|----------|
+| Dialog | Yes | No (porto.sh) | Production - ecosystem support |
+| Relay | No | Yes (keystoreHost) | Future - custom branding |
+
+**Before Porto Auth Changes:**
+1. Check Porto SDK types for supported options per mode
+2. Understand trade-offs: dialog = ecosystem, relay = customization
+3. Test with 1Password BEFORE committing
+4. E2E tests don't catch ecosystem integration issues
+
+**Path to Custom Domain + 1Password:**
+- Self-host Porto dialog on key.villa.cash
+- OR fork Porto contracts and implement own WebAuthn
+
+---
+
+### 62. Cost Analysis Protocol (2026-01-09)
+
+**Weekly Cost Target:** <$350/week (<$50/day)
+**Jan 1-8 Actual:** $970.63 ($138.66/day) - 3x over target
+
+**Model Distribution (Problem):**
+- Opus: $882.06 (91%) - Should be <30%
+- Sonnet: $66.38 (7%)
+- Haiku: $21.43 (2%)
+
+**Root Cause:** Opus implementing instead of orchestrating.
+
+**Cost Reduction Protocol:**
+1. Opus: Orchestration + architecture only
+2. @build (sonnet): All implementation
+3. @explore, @test, @ops (haiku): Search, test, deploy
+
+**Enforcement:** Check @ agent mentions in session. Target: 80%+ delegation.
