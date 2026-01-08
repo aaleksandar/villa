@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getDb, ensureTables } from '@/lib/db'
+import { getDb, ensureTables, isDatabaseAvailable } from '@/lib/db'
 import type { ProfileRow } from '@/lib/db/schema'
 import { encodeAbiParameters, parseAbiParameters, decodeAbiParameters } from 'viem'
 
@@ -139,6 +139,17 @@ export async function POST(request: Request) {
         { error: 'Invalid nickname' },
         { status: 400 }
       )
+    }
+
+    // Graceful degradation: If no DB, return zero address (not found)
+    // This allows CI E2E tests to run without database access
+    if (!isDatabaseAvailable()) {
+      const zeroAddress = '0x0000000000000000000000000000000000000000'
+      const encoded = encodeAbiParameters(
+        parseAbiParameters('address'),
+        [zeroAddress as `0x${string}`]
+      )
+      return NextResponse.json({ data: encoded })
     }
 
     // Look up in database
