@@ -17,7 +17,7 @@ import {
   getCurrentUrl,
   type InAppBrowserInfo,
 } from '@/lib/browser'
-import { authenticateTinyCloud, syncToTinyCloud } from '@/lib/storage/tinycloud-client'
+import { authenticateTinyCloud, syncToTinyCloud, avatarStore } from '@/lib/storage/tinycloud-client'
 
 type Step =
   | 'inapp-browser'
@@ -214,6 +214,15 @@ function OnboardingContent() {
       createdAt: Date.now(),
     })
 
+    // Save avatar to TinyCloud for cross-device sync
+    avatarStore.save({
+      type: 'generated',
+      style: config.style,
+      selection: config.selection,
+      variant: config.variant,
+      createdAt: Date.now(),
+    }).catch(console.warn)
+
     // Fire and forget - persist to API, authenticate TinyCloud, and sync
     saveProfile(address, result.data, config)
     authenticateTinyCloud(address)
@@ -245,6 +254,20 @@ function OnboardingContent() {
     )
   }
 
+  // Check if user has existing profile
+  const checkExistingProfile = async (address: string) => {
+    try {
+      const response = await fetch(`/api/nicknames/reverse/${address}`)
+      if (response.ok) {
+        const data = await response.json()
+        return data.nickname || null
+      }
+    } catch {
+      // Continue to profile creation
+    }
+    return null
+  }
+
   // Handle VillaAuthScreen success (relay mode)
   // VillaAuthScreen only handles passkey auth, returns address
   // We need to collect nickname and avatar separately
@@ -252,8 +275,16 @@ function OnboardingContent() {
     // Update local state with address
     setAddress(authAddress)
 
-    // Move to profile step to collect nickname
-    setStep('profile')
+    // Check for existing profile
+    const existingNickname = await checkExistingProfile(authAddress)
+    if (existingNickname) {
+      // User already has a nickname - show welcome back and skip to avatar
+      setDisplayName(existingNickname)
+      setStep('welcome-back')
+    } else {
+      // New user - collect nickname
+      setStep('profile')
+    }
   }
 
   // Show VillaAuthScreen for welcome step

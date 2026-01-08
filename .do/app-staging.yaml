@@ -39,8 +39,10 @@ services:
         value: beta.villa.cash
       - key: NEXT_PUBLIC_CHAIN_ID
         value: "84532"
+        scope: RUN_AND_BUILD_TIME
       - key: NEXT_PUBLIC_GLIDE_PROJECT_ID
         value: villa-dev
+        scope: RUN_AND_BUILD_TIME
       - key: DATABASE_URL
         value: "${DATABASE_URL}"
         type: SECRET

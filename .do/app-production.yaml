@@ -38,6 +38,12 @@ services:
         value: production
       - key: NEXT_PUBLIC_DOMAIN
         value: villa.cash
+      - key: NEXT_PUBLIC_CHAIN_ID
+        value: "8453"
+        scope: RUN_AND_BUILD_TIME
+      - key: NEXT_PUBLIC_GLIDE_PROJECT_ID
+        value: villa-prod
+        scope: RUN_AND_BUILD_TIME
       - key: DATABASE_URL
         value: "${DATABASE_URL}"
         type: SECRET

@@ -331,12 +331,10 @@ export class VillaStorage<T> {
 }
 
 // Pre-configured storage instances
-export const avatarStore = new VillaStorage<{
-  type: 'custom'
-  dataUrl: string
-  hash: string
-  uploadedAt: number
-}>(STORAGE_KEYS.avatar)
+export const avatarStore = new VillaStorage<
+  | { type: 'custom'; dataUrl: string; hash: string; uploadedAt: number }
+  | { type: 'generated'; style: string; selection: string; variant: number; createdAt: number }
+>(STORAGE_KEYS.avatar)
 
 export const preferencesStore = new VillaStorage<VillaPreferences>(STORAGE_KEYS.preferences)
 
