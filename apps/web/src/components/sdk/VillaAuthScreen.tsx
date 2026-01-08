@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { ShieldCheck, Loader2, AlertCircle } from 'lucide-react'
+import { ShieldCheck, Loader2, AlertCircle, ChevronDown, ChevronUp, Info } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import { setWebAuthnHandlers, createAccountHeadless, signInHeadless } from '@/lib/porto'
 import { PasskeyPrompt } from './PasskeyPrompt'
@@ -19,8 +19,16 @@ export interface VillaAuthScreenProps {
 /**
  * VillaAuthScreen - Full-screen authentication UI using Porto relay mode
  *
- * Replaces Porto's default popup with Villa-branded full-screen experience.
- * Uses relay mode to intercept WebAuthn calls and show PasskeyPrompt.
+ * WARNING: This component uses relay mode which breaks 1Password and passkey
+ * ecosystem integrations. Use VillaAuth.tsx for main onboarding flows.
+ *
+ * Only use VillaAuthScreen for:
+ * - SDK iframe scenarios (where Porto dialog won't render)
+ * - Mobile in-app browsers with limited dialog support
+ * - Custom headless integrations where full UI control is required
+ *
+ * For main Villa onboarding, use VillaAuth which preserves 1Password support.
+ * See LEARNINGS.md Pattern 50 for details.
  */
 export function VillaAuthScreen({
   onSuccess,
@@ -31,6 +39,8 @@ export function VillaAuthScreen({
   const [loadingAction, setLoadingAction] = useState<'signin' | 'create' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [passkeyMode, setPasskeyMode] = useState<'idle' | 'create' | 'authenticate'>('idle')
+  const [showEducation, setShowEducation] = useState(false)
+  const [showNoPasskeyHelp, setShowNoPasskeyHelp] = useState(false)
 
   const shouldReduceMotion = useReducedMotion()
 
@@ -47,7 +57,7 @@ export function VillaAuthScreen({
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { duration: 0.3, staggerChildren: 0.1 },
+      transition: { duration: 0.3, staggerChildren: 0.08 },
     },
   }
 
@@ -69,13 +79,24 @@ export function VillaAuthScreen({
         setPasskeyMode('idle')
         setIsLoading(false)
         setLoadingAction(null)
+        setShowNoPasskeyHelp(false)
         onSuccess?.(result.address)
       },
       onError: (error) => {
         setPasskeyMode('idle')
         setIsLoading(false)
         setLoadingAction(null)
-        setError(error.message)
+
+        // Check if error is "no passkey found" scenario
+        const message = error.message.toLowerCase()
+        if (message.includes('notallowed') ||
+            message.includes('no credentials') ||
+            message.includes('cancel')) {
+          setShowNoPasskeyHelp(true)
+          setError('No passkey found on this device.')
+        } else {
+          setError(error.message)
+        }
       },
     })
 
@@ -87,21 +108,33 @@ export function VillaAuthScreen({
 
   const handleSignIn = async () => {
     setError(null)
+    setShowNoPasskeyHelp(false)
     setIsLoading(true)
     setLoadingAction('signin')
 
     const result = await signInHeadless()
 
     if (!result.success) {
-      setError(result.error.message)
       setIsLoading(false)
       setLoadingAction(null)
+
+      // Check if error suggests no passkey exists
+      const message = result.error.message.toLowerCase()
+      if (message.includes('notallowed') ||
+          message.includes('no credentials') ||
+          message.includes('cancel')) {
+        setShowNoPasskeyHelp(true)
+        setError('No passkey found on this device.')
+      } else {
+        setError(result.error.message)
+      }
     }
     // Success is handled by onComplete handler
   }
 
   const handleCreateAccount = async () => {
     setError(null)
+    setShowNoPasskeyHelp(false)
     setIsLoading(true)
     setLoadingAction('create')
 
@@ -133,15 +166,75 @@ export function VillaAuthScreen({
         </motion.div>
 
         {/* Center: Content */}
-        <div className="w-full max-w-sm mx-auto space-y-8">
+        <div className="w-full max-w-sm mx-auto space-y-6">
           {/* Headline */}
-          <motion.div variants={itemVariants} className="text-center space-y-2">
-            <h1 className="text-3xl font-serif text-ink">
+          <motion.div variants={itemVariants} className="text-center space-y-3">
+            <h1 className="text-3xl font-serif text-ink leading-tight">
               Your identity.{' '}
               <span className="bg-gradient-to-r from-accent-yellow to-accent-green bg-clip-text text-transparent">
                 No passwords.
               </span>
             </h1>
+            <p className="text-sm text-ink-muted max-w-xs mx-auto">
+              Sign in with your fingerprint, face, or security key
+            </p>
+          </motion.div>
+
+          {/* Passkey Education - Expandable */}
+          <motion.div variants={itemVariants}>
+            <button
+              onClick={() => setShowEducation(!showEducation)}
+              className="w-full flex items-center justify-between p-4 bg-cream-100 hover:bg-cream-200 rounded-lg transition-colors duration-150 motion-reduce:transition-none"
+              aria-expanded={showEducation}
+              aria-controls="passkey-education"
+            >
+              <span className="flex items-center gap-2 text-sm font-medium text-ink">
+                <Info className="w-4 h-4 text-accent-brown" />
+                Why passkeys?
+              </span>
+              {showEducation ? (
+                <ChevronUp className="w-4 h-4 text-ink-muted" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-ink-muted" />
+              )}
+            </button>
+
+            <AnimatePresence>
+              {showEducation && (
+                <motion.div
+                  id="passkey-education"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-4 space-y-3 text-sm text-ink-light bg-white border border-neutral-100 rounded-lg mt-2">
+                    <div className="flex items-start gap-3">
+                      <ShieldCheck className="w-5 h-5 text-accent-green flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-ink">Phishing-resistant</p>
+                        <p className="text-xs text-ink-muted mt-1">No passwords to steal or guess</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <ShieldCheck className="w-5 h-5 text-accent-green flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-ink">Biometric security</p>
+                        <p className="text-xs text-ink-muted mt-1">Face ID, Touch ID, or fingerprint</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <ShieldCheck className="w-5 h-5 text-accent-green flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-ink">Works everywhere</p>
+                        <p className="text-xs text-ink-muted mt-1">Sync across devices automatically</p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {/* Error Message */}
@@ -149,12 +242,28 @@ export function VillaAuthScreen({
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2 text-error-text bg-error-bg border border-error-border p-3 rounded-md"
+              className="flex items-center gap-2 text-error-text bg-error-bg border border-error-border p-3 rounded-lg"
               role="alert"
               aria-live="polite"
             >
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span className="text-sm">{error}</span>
+            </motion.div>
+          )}
+
+          {/* No Passkey Help */}
+          {showNoPasskeyHelp && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 bg-warning-bg border border-warning-border rounded-lg space-y-3"
+            >
+              <p className="text-sm font-medium text-warning-text">
+                No passkey found for this device
+              </p>
+              <p className="text-xs text-ink-muted">
+                You can create a new Villa ID, or try signing in from a device where you previously set up a passkey.
+              </p>
             </motion.div>
           )}
 
@@ -166,14 +275,14 @@ export function VillaAuthScreen({
               transition={springConfig}
               onClick={handleSignIn}
               disabled={isLoading}
-              aria-label="Sign in with passkey"
+              aria-label="Sign in with existing passkey"
               className="w-full min-h-14 px-6 py-3 text-base font-medium
                          bg-gradient-to-br from-accent-yellow via-villa-500 to-accent-yellow
                          hover:from-villa-600 hover:to-villa-700
                          text-accent-brown rounded-lg
                          focus:outline-none focus:ring-2 focus:ring-accent-yellow focus:ring-offset-2
                          disabled:opacity-50 disabled:cursor-not-allowed
-                         transition-colors duration-150"
+                         transition-colors duration-150 motion-reduce:transition-none"
             >
               {isLoading && loadingAction === 'signin' ? (
                 <span className="flex items-center justify-center gap-2">
@@ -191,13 +300,13 @@ export function VillaAuthScreen({
               transition={springConfig}
               onClick={handleCreateAccount}
               disabled={isLoading}
-              aria-label="Create new Villa ID"
+              aria-label="Create new Villa ID with passkey"
               className="w-full min-h-14 px-6 py-3 text-base font-medium
                          bg-cream-100 hover:bg-cream-200
                          text-ink border border-neutral-100 rounded-lg
                          focus:outline-none focus:ring-2 focus:ring-accent-yellow focus:ring-offset-2
                          disabled:opacity-50 disabled:cursor-not-allowed
-                         transition-colors duration-150"
+                         transition-colors duration-150 motion-reduce:transition-none"
             >
               {isLoading && loadingAction === 'create' ? (
                 <span className="flex items-center justify-center gap-2">
@@ -209,6 +318,54 @@ export function VillaAuthScreen({
               )}
             </motion.button>
           </motion.div>
+
+          {/* Supported Providers */}
+          <motion.div
+            variants={itemVariants}
+            className="pt-4"
+          >
+            <p className="text-xs text-center text-ink-muted mb-3">Passkey providers supported</p>
+            <div className="grid grid-cols-3 gap-3">
+              {/* Row 1 */}
+              <div className="flex flex-col items-center gap-2 p-3 bg-white rounded-lg border border-neutral-100">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">1P</span>
+                </div>
+                <span className="text-xs text-ink-muted">1Password</span>
+              </div>
+              <div className="flex flex-col items-center gap-2 p-3 bg-white rounded-lg border border-neutral-100">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
+                  <span className="text-white text-xl"></span>
+                </div>
+                <span className="text-xs text-ink-muted">iCloud</span>
+              </div>
+              <div className="flex flex-col items-center gap-2 p-3 bg-white rounded-lg border border-neutral-100">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-green-600 flex items-center justify-center">
+                  <span className="text-white text-xl font-bold">G</span>
+                </div>
+                <span className="text-xs text-ink-muted">Google</span>
+              </div>
+              {/* Row 2 */}
+              <div className="flex flex-col items-center gap-2 p-3 bg-white rounded-lg border border-neutral-100">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
+                  <span className="text-white text-xl font-bold">W</span>
+                </div>
+                <span className="text-xs text-ink-muted">Windows</span>
+              </div>
+              <div className="flex flex-col items-center gap-2 p-3 bg-white rounded-lg border border-neutral-100">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
+                  <span className="text-white text-xl"></span>
+                </div>
+                <span className="text-xs text-ink-muted">Browser</span>
+              </div>
+              <div className="flex flex-col items-center gap-2 p-3 bg-white rounded-lg border border-neutral-100">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-600 to-blue-600 flex items-center justify-center">
+                  <ShieldCheck className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-xs text-ink-muted">FIDO2</span>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
         {/* Bottom: Trust Badge */}
@@ -217,7 +374,7 @@ export function VillaAuthScreen({
           className="pb-8 flex items-center justify-center gap-2"
         >
           <ShieldCheck className="w-4 h-4 text-accent-green" />
-          <span className="text-sm text-ink-muted">Secured by passkeys</span>
+          <span className="text-sm text-ink-muted">Secured by passkeys on Base</span>
         </motion.div>
       </motion.div>
 

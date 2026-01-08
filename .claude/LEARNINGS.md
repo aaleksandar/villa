@@ -569,3 +569,18 @@ E2E tests miss ecosystem behavior because:
 
 **Key Learning:** Architecture (ecosystem support) > UI customization when passkeys are involved.
 
+
+### CI Failure - 2026-01-08 02:52
+- Workflow: Deploy
+- Run: https://github.com/rockfridrich/villa/actions/runs/20794071579
+- Action: Check `gh run view 20794071579 --log-failed`
+
+### CI Failure - 2026-01-08 04:01
+- Workflow: Deploy
+- Run: https://github.com/rockfridrich/villa/actions/runs/20796063077
+- Action: Check `gh run view 20796063077 --log-failed`
+
+### CI Failure - 2026-01-08 04:35
+- Workflow: Deploy
+- Run: https://github.com/rockfridrich/villa/actions/runs/20796063077
+- Action: Check `gh run view 20796063077 --log-failed`

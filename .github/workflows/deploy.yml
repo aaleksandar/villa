@@ -456,6 +456,8 @@ jobs:
       - run: pnpm --filter @villa/web exec playwright test --project=chromium
         env:
           CI: true
+          # DATABASE_URL needed because E2E webserver may hit API routes that check database
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # =============================================================================
   # DEPLOY STAGING - To beta.villa.cash on push to main
@@ -697,6 +699,8 @@ jobs:
       - run: pnpm --filter @villa/web exec playwright test --project=chromium
         env:
           CI: true
+          # DATABASE_URL needed because E2E webserver may hit API routes that check database
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # =============================================================================
   # DEPLOY PRODUCTION - To villa.cash on release tags only
