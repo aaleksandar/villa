@@ -24,10 +24,19 @@ export const anvilChain: Chain = {
   },
 }
 
+/** Base Sepolia with explicit RPC (viem default is rate-limited) */
+const baseSepoliaWithRpc: Chain = {
+  ...baseSepolia,
+  rpcUrls: {
+    ...baseSepolia.rpcUrls,
+    default: { http: ['https://sepolia.base.org'] },
+  },
+}
+
 /** Supported chains */
 export const SUPPORTED_CHAINS = {
   anvil: anvilChain,
-  baseSepolia,
+  baseSepolia: baseSepoliaWithRpc,
 } as const
 
 /** Get chain ID from environment or default to Anvil */
@@ -50,7 +59,7 @@ export function getChain(chainId: number): Chain {
     case 31337:
       return anvilChain
     case 84532:
-      return baseSepolia
+      return baseSepoliaWithRpc
     default:
       console.warn(`Unsupported chain ID: ${chainId}, defaulting to Anvil`)
       return anvilChain
