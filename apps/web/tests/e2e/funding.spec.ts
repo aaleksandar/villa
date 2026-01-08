@@ -46,15 +46,14 @@ test.describe('Funding - Add Funds Button', () => {
     await expect(page.getByText(/deposit from any chain/i)).toBeVisible()
   })
 
-  test('disables button when Glide not configured', async ({ page }) => {
-    // Override env var to simulate missing config
-    await page.addInitScript(() => {
-      // @ts-expect-error - modifying process.env for test
-      window.process = { env: { NEXT_PUBLIC_GLIDE_PROJECT_ID: '' } }
-    })
-
+  // Skip: Can't reliably override NEXT_PUBLIC env vars at runtime in Next.js
+  // The env var is baked in at build time. This test would require a separate build.
+  test.skip('disables button when Glide not configured', async ({ page }) => {
+    // This test is skipped because NEXT_PUBLIC_* env vars are inlined at build time
+    // and can't be overridden via addInitScript. To test this scenario:
+    // 1. Build without GLIDE_PROJECT_ID
+    // 2. Run tests against that build
     await page.goto('/home')
-
     const addFundsButton = page.getByRole('button', { name: /add funds/i })
     await expect(addFundsButton).toBeDisabled()
     await expect(page.getByText(/temporarily unavailable/i)).toBeVisible()
@@ -81,9 +80,8 @@ test.describe('Funding - Add Funds Button', () => {
     // Loading state
     await expect(page.getByText(/connecting to funding service/i)).toBeVisible()
 
-    // Wait for active state (simulated 500ms delay)
-    await page.waitForTimeout(600)
-    await expect(page.getByText(/deposit from any chain to your villa id/i)).toBeVisible()
+    // Wait for active state (auto-transitions after 500ms)
+    await expect(page.getByText(/deposit from any chain to your villa id/i)).toBeVisible({ timeout: 2000 })
   })
 
   test('closes modal when backdrop clicked', async ({ page }) => {
@@ -124,8 +122,8 @@ test.describe('Funding - Success State', () => {
     await page.goto('/home')
     await page.getByRole('button', { name: /add funds/i }).click()
 
-    // Wait for active state
-    await page.waitForTimeout(600)
+    // Wait for active state with Test Success button visible
+    await expect(page.getByRole('button', { name: /test success/i })).toBeVisible({ timeout: 2000 })
 
     // Click Test Success button (temporary demo)
     await page.getByRole('button', { name: /test success/i }).click()
@@ -150,10 +148,15 @@ test.describe('Funding - Success State', () => {
   test('opens block explorer in new tab', async ({ page, context }) => {
     await page.goto('/home')
     await page.getByRole('button', { name: /add funds/i }).click()
-    await page.waitForTimeout(600)
+
+    // Wait for active state with Test Success button visible
+    await expect(page.getByRole('button', { name: /test success/i })).toBeVisible({ timeout: 2000 })
     await page.getByRole('button', { name: /test success/i }).click()
 
-    // Listen for new tab
+    // Wait for success state
+    await expect(page.getByRole('heading', { name: 'Funds Added!' })).toBeVisible()
+
+    // Listen for new tab BEFORE clicking (race condition fix)
     const newPagePromise = context.waitForEvent('page')
 
     // Click block explorer link
@@ -189,8 +192,8 @@ test.describe('Funding - Error State', () => {
     await page.goto('/home')
     await page.getByRole('button', { name: /add funds/i }).click()
 
-    // Wait for active state
-    await page.waitForTimeout(600)
+    // Wait for active state with Test Error button visible
+    await expect(page.getByRole('button', { name: /test error/i })).toBeVisible({ timeout: 2000 })
 
     // Click Test Error button (temporary demo)
     await page.getByRole('button', { name: /test error/i }).click()
@@ -209,7 +212,9 @@ test.describe('Funding - Error State', () => {
   test('retry button resets to active state', async ({ page }) => {
     await page.goto('/home')
     await page.getByRole('button', { name: /add funds/i }).click()
-    await page.waitForTimeout(600)
+
+    // Wait for active state
+    await expect(page.getByRole('button', { name: /test error/i })).toBeVisible({ timeout: 2000 })
     await page.getByRole('button', { name: /test error/i }).click()
 
     // Error state visible
@@ -220,14 +225,16 @@ test.describe('Funding - Error State', () => {
 
     // Should return to loading then active state
     await expect(page.getByText(/connecting to funding service/i)).toBeVisible()
-    await page.waitForTimeout(600)
-    await expect(page.getByText(/deposit from any chain to your villa id/i)).toBeVisible()
+    // Wait for active state again
+    await expect(page.getByText(/deposit from any chain to your villa id/i)).toBeVisible({ timeout: 2000 })
   })
 
   test('cancel button closes modal', async ({ page }) => {
     await page.goto('/home')
     await page.getByRole('button', { name: /add funds/i }).click()
-    await page.waitForTimeout(600)
+
+    // Wait for active state
+    await expect(page.getByRole('button', { name: /test error/i })).toBeVisible({ timeout: 2000 })
     await page.getByRole('button', { name: /test error/i }).click()
 
     // Error state visible
