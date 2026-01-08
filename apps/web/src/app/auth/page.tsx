@@ -2,14 +2,17 @@
 
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useMemo, Suspense } from 'react'
-import { VillaAuthScreen } from '@/components/sdk'
+import { VillaAuthScreen, VillaAuthDialog } from '@/components/sdk'
 
 /**
  * Auth Page - SDK iframe target
  *
- * This page is loaded inside an iframe by the Villa SDK.
+ * This page is loaded inside an iframe by the Villa SDK at key.villa.cash.
  * It handles the full auth flow and communicates back to the parent via postMessage.
- * Always uses relay mode (VillaAuthScreen) for consistent UX.
+ *
+ * Auth Modes:
+ * - key.villa.cash: Uses dialog mode (Porto UI, 1Password intercept, keystoreHost)
+ * - Other domains: Uses relay mode (Villa UI) for backward compatibility
  *
  * Query params:
  * - appId: the integrating app's ID (currently unused)
@@ -24,6 +27,8 @@ const VILLA_ORIGINS = [
   'https://dev-1.villa.cash',
   'https://dev-2.villa.cash',
   'https://developers.villa.cash',
+  'https://key.villa.cash',
+  'https://beta-key.villa.cash',
 ] as const
 
 // Development origins (localhost only - NEVER use wildcard)
@@ -61,6 +66,16 @@ function isInPopup(): boolean {
   const explicitMode = params.get('mode')
 
   return explicitMode === 'popup' || (window.opener != null && window.opener !== window)
+}
+
+/**
+ * Check if we're on the key.villa.cash domain (auth subdomain)
+ * When on key.villa.cash, use dialog mode for 1Password support
+ */
+function isKeyDomain(): boolean {
+  if (typeof window === 'undefined') return false
+  const hostname = window.location.hostname
+  return hostname === 'key.villa.cash' || hostname === 'beta-key.villa.cash'
 }
 
 /**
@@ -138,9 +153,10 @@ function AuthPageContent() {
     return getValidatedParentOrigin(queryOrigin)
   }, [queryOrigin])
 
-  // Detect if we're in popup or iframe mode
+  // Detect context: popup, iframe, key domain
   const inPopup = useMemo(() => isInPopup(), [])
   const inIframe = useMemo(() => isInIframe(), [])
+  const onKeyDomain = useMemo(() => isKeyDomain(), [])
 
   // Post message to parent window (iframe) or opener (popup) with validated origin
   const postToParent = useCallback((message: Record<string, unknown>) => {
@@ -202,8 +218,12 @@ function AuthPageContent() {
     }
   }, [postToParent, inPopup])
 
+  // Use dialog mode on key.villa.cash (1Password support)
+  // Use relay mode on other domains (Villa UI)
+  const AuthComponent = onKeyDomain ? VillaAuthDialog : VillaAuthScreen
+
   return (
-    <VillaAuthScreen
+    <AuthComponent
       onSuccess={handleSuccess}
       onCancel={handleCancel}
     />

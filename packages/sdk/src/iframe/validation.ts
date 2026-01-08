@@ -18,6 +18,8 @@ export const ALLOWED_ORIGINS = [
   'https://beta.villa.cash',
   'https://dev-1.villa.cash',
   'https://dev-2.villa.cash',
+  'https://key.villa.cash',
+  'https://beta-key.villa.cash',
 ] as const
 
 /**

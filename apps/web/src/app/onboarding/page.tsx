@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AlertCircle, ExternalLink, Copy, CheckCircle2 } from 'lucide-react'
 import { Button, Input, Spinner, SuccessCelebration } from '@/components/ui'
-import { AvatarSelection, VillaAuthScreen } from '@/components/sdk'
+import { AvatarSelection } from '@/components/sdk'
+import { VillaBridge } from '@rockfridrich/villa-sdk'
 import { useIdentityStore } from '@/lib/store'
 import { displayNameSchema } from '@/lib/validation'
 import type { AvatarConfig } from '@/types'
@@ -133,8 +134,102 @@ function OnboardingContent() {
     }
   }, [identity, router, isTestMode])
 
-  // Note: handleAuthSuccess removed - VillaAuth now handles full flow internally
-  // and returns complete identity via handleVillaAuthComplete
+  // VillaBridge reference for SDK iframe/popup auth
+  const bridgeRef = useRef<VillaBridge | null>(null)
+
+  // Check if user has existing profile
+  const checkExistingProfile = useCallback(async (addr: string) => {
+    try {
+      const response = await fetch(`/api/nicknames/reverse/${addr}`)
+      if (response.ok) {
+        const data = await response.json()
+        return data.nickname || null
+      }
+    } catch {
+      // Continue to profile creation
+    }
+    return null
+  }, [])
+
+  // Handle SDK auth success
+  // VillaBridge opens iframe to key.villa.cash for passkey auth
+  const handleAuthSuccess = useCallback(async (authAddress: string) => {
+    // Update local state with address
+    setAddress(authAddress)
+
+    // Check for existing profile
+    const existingNickname = await checkExistingProfile(authAddress)
+    if (existingNickname) {
+      // User already has a nickname - show welcome back and skip to avatar
+      setDisplayName(existingNickname)
+      setStep('welcome-back')
+    } else {
+      // New user - collect nickname
+      setStep('profile')
+    }
+  }, [checkExistingProfile])
+
+  // Open SDK auth (iframe to key.villa.cash)
+  const openAuth = useCallback(async () => {
+    setStep('connecting')
+
+    // Determine network based on chain ID
+    const chainId = process.env.NEXT_PUBLIC_CHAIN_ID
+    const network = chainId === '84532' ? 'base-sepolia' : 'base'
+
+    // Create VillaBridge to open auth iframe
+    const bridge = new VillaBridge({
+      appId: 'villa-web',
+      network,
+      debug: process.env.NODE_ENV === 'development',
+    })
+    bridgeRef.current = bridge
+
+    // Set up event handlers
+    bridge.on('success', (bridgeIdentity) => {
+      handleAuthSuccess(bridgeIdentity.address)
+      bridge.close()
+    })
+
+    bridge.on('cancel', () => {
+      setStep('welcome')
+      bridge.close()
+    })
+
+    bridge.on('error', (errorMsg) => {
+      setError({
+        message: errorMsg || 'Authentication failed',
+        retry: () => {
+          setError(null)
+          setStep('welcome')
+        },
+      })
+      setStep('error')
+      bridge.close()
+    })
+
+    // Open the auth iframe/popup
+    try {
+      await bridge.open()
+    } catch (err) {
+      console.error('Failed to open auth:', err)
+      setError({
+        message: 'Failed to open authentication. Please try again.',
+        retry: () => {
+          setError(null)
+          setStep('welcome')
+        },
+      })
+      setStep('error')
+    }
+  }, [handleAuthSuccess])
+
+  // Cleanup bridge on unmount
+  useEffect(() => {
+    return () => {
+      bridgeRef.current?.close()
+    }
+  }, [])
 
   const handleSubmitProfile = () => {
     const result = displayNameSchema.safeParse(displayName)
@@ -254,55 +349,18 @@ function OnboardingContent() {
     )
   }
 
-  // Check if user has existing profile
-  const checkExistingProfile = async (address: string) => {
-    try {
-      const response = await fetch(`/api/nicknames/reverse/${address}`)
-      if (response.ok) {
-        const data = await response.json()
-        return data.nickname || null
-      }
-    } catch {
-      // Continue to profile creation
-    }
-    return null
-  }
-
-  // Handle VillaAuthScreen success (relay mode)
-  // VillaAuthScreen only handles passkey auth, returns address
-  // We need to collect nickname and avatar separately
-  const handleAuthSuccess = async (authAddress: string) => {
-    // Update local state with address
-    setAddress(authAddress)
-
-    // Check for existing profile
-    const existingNickname = await checkExistingProfile(authAddress)
-    if (existingNickname) {
-      // User already has a nickname - show welcome back and skip to avatar
-      setDisplayName(existingNickname)
-      setStep('welcome-back')
-    } else {
-      // New user - collect nickname
-      setStep('profile')
-    }
-  }
-
-  // Show VillaAuthScreen for welcome step
-  // Uses Porto relay mode - shows Villa UI on villa.cash domain
-  // Note: Relay mode doesn't trigger 1Password/passkey manager integrations
-  if (step === 'welcome' || step === 'connecting') {
-    return (
-      <VillaAuthScreen
-        onSuccess={handleAuthSuccess}
-      />
-    )
-  }
-
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-cream-50">
       <div className="w-full max-w-md">
         {step === 'inapp-browser' && inAppBrowser && (
           <InAppBrowserStep browserInfo={inAppBrowser} />
+        )}
+
+        {(step === 'welcome' || step === 'connecting') && (
+          <WelcomeStep
+            onGetStarted={openAuth}
+            isLoading={step === 'connecting'}
+          />
         )}
 
         {step === 'success' && <SuccessStep />}
@@ -438,6 +496,57 @@ function SuccessStep() {
         <h2 className="text-2xl font-serif text-ink">Connected!</h2>
         <p className="text-ink-muted">
           Your secure identity is ready
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function WelcomeStep({
+  onGetStarted,
+  isLoading,
+}: {
+  onGetStarted: () => void
+  isLoading: boolean
+}) {
+  return (
+    <div className="text-center space-y-8">
+      <div className="space-y-4">
+        <div className="w-20 h-20 mx-auto bg-gradient-to-br from-accent-yellow to-villa-500 rounded-2xl flex items-center justify-center shadow-lg">
+          <span className="text-4xl font-serif text-accent-brown">V</span>
+        </div>
+        <h1 className="text-3xl font-serif tracking-tight text-ink">
+          Welcome to Villa
+        </h1>
+        <p className="text-ink-muted max-w-xs mx-auto">
+          Your identity. No passwords. Just you.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <Button
+          size="lg"
+          className="w-full"
+          onClick={onGetStarted}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Spinner size="sm" className="mr-2" />
+              Opening...
+            </>
+          ) : (
+            'Get Started'
+          )}
+        </Button>
+        <p className="text-xs text-ink-muted">
+          Sign in with your fingerprint, face, or security key
+        </p>
+      </div>
+
+      <div className="pt-4 border-t border-neutral-100">
+        <p className="text-xs text-ink-muted">
+          Works with 1Password, iCloud Keychain, Google Password Manager, and hardware keys
         </p>
       </div>
     </div>

@@ -25,6 +25,8 @@ export type { PasskeyPromptProps } from './PasskeyPrompt'
 export { SignInWelcome } from './SignInWelcome'
 export { VillaAuthScreen } from './VillaAuthScreen'
 export type { VillaAuthScreenProps } from './VillaAuthScreen'
+export { VillaAuthDialog } from './VillaAuthDialog'
+export type { VillaAuthDialogProps } from './VillaAuthDialog'
 
 // Profile sub-components
 export { ProfileSection, EditableField } from './profile'

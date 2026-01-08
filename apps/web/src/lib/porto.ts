@@ -713,3 +713,95 @@ export async function signInImmediate(): Promise<PortoConnectResult> {
     return { success: false, error }
   }
 }
+
+// Porto iframe instance for key.villa.cash auth
+let portoIframeInstance: ReturnType<typeof Porto.create> | null = null
+
+/**
+ * Get Porto instance for iframe/popup auth (dialog mode)
+ *
+ * This is used by key.villa.cash to handle authentication in the SDK iframe.
+ * - Dialog mode: Shows Porto UI, 1Password browser extension can intercept
+ * - Note: Passkeys register to Porto's domain (id.porto.sh) in dialog mode
+ *
+ * @param container - Optional container for inline rendering
+ */
+export function getPortoIframe(container?: HTMLElement): ReturnType<typeof Porto.create> {
+  // Always create fresh instance to ensure clean state
+  portoIframeInstance = Porto.create({
+    chains: getPortoChains(),
+    mode: Mode.dialog({
+      renderer: container
+        ? Dialog.experimental_inline({ element: () => container })
+        : Dialog.popup({
+            type: 'popup',
+            size: { width: 380, height: 520 },
+          }),
+      host: 'https://id.porto.sh/dialog',
+      theme: villaTheme,
+    }),
+  })
+
+  return portoIframeInstance
+}
+
+/**
+ * Create account using dialog mode (for key.villa.cash iframe)
+ * Shows Porto dialog, 1Password can intercept
+ */
+export async function createAccountDialog(container?: HTMLElement): Promise<PortoConnectResult> {
+  try {
+    const porto = getPortoIframe(container)
+    const result = await porto.provider.request({
+      method: 'wallet_connect',
+      params: [{
+        capabilities: {
+          email: false,
+        },
+      }],
+    })
+
+    const response = result as unknown as { accounts: readonly { address: string }[] }
+
+    if (response.accounts && response.accounts.length > 0) {
+      return { success: true, address: response.accounts[0].address }
+    }
+
+    return {
+      success: false,
+      error: new Error('No account returned from Porto'),
+    }
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error('Unknown error'),
+    }
+  }
+}
+
+/**
+ * Sign in using dialog mode (for key.villa.cash iframe)
+ * Shows Porto dialog, 1Password can intercept
+ */
+export async function signInDialog(container?: HTMLElement): Promise<PortoConnectResult> {
+  try {
+    const porto = getPortoIframe(container)
+    const accounts = await porto.provider.request({
+      method: 'eth_requestAccounts',
+    })
+
+    if (accounts && accounts.length > 0) {
+      return { success: true, address: accounts[0] }
+    }
+
+    return {
+      success: false,
+      error: new Error('No account selected'),
+    }
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error('Unknown error'),
+    }
+  }
+}

@@ -8,6 +8,8 @@ name: villa-staging
 domains:
   - domain: beta.villa.cash
     type: PRIMARY
+  - domain: beta-key.villa.cash
+    type: ALIAS
 
 services:
   - name: web

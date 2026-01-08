@@ -9,6 +9,8 @@ domains:
     type: PRIMARY
   - domain: www.villa.cash
     type: ALIAS
+  - domain: key.villa.cash
+    type: ALIAS
 
 services:
   - name: web
