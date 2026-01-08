@@ -192,6 +192,8 @@ jobs:
           CI: true
           # DATABASE_URL needed because E2E webserver may hit API routes that check database
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Glide SDK project ID for funding feature tests
+          NEXT_PUBLIC_GLIDE_PROJECT_ID: villa-dev
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
