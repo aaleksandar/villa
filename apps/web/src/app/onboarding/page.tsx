@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AlertCircle, ExternalLink, Copy, CheckCircle2 } from 'lucide-react'
 import { Button, Input, Spinner, SuccessCelebration } from '@/components/ui'
-import { AvatarSelection, VillaAuthScreen } from '@/components/sdk'
+import { AvatarSelection, VillaAuth, type VillaAuthResponse } from '@/components/sdk'
 import { useIdentityStore } from '@/lib/store'
 import { displayNameSchema } from '@/lib/validation'
 import type { AvatarConfig } from '@/types'
@@ -17,7 +17,6 @@ import {
   getCurrentUrl,
   type InAppBrowserInfo,
 } from '@/lib/browser'
-import { getNicknameByAddress } from '@/lib/nickname'
 import { authenticateTinyCloud, syncToTinyCloud } from '@/lib/storage/tinycloud-client'
 
 type Step =
@@ -244,44 +243,54 @@ function OnboardingContent() {
     )
   }
 
-  // Handle VillaAuthScreen success (relay mode with villa.cash passkey domain)
-  // Flow: Auth → check nickname → profile OR welcome-back → avatar → home
-  const handleAuthSuccess = async (authAddress: string) => {
-    setAddress(authAddress)
-
-    // Trigger TinyCloud auth in background
-    authenticateTinyCloud(authAddress).catch(console.warn)
-
-    // Check if returning user (has existing nickname)
-    try {
-      const existingNickname = await getNicknameByAddress(authAddress)
-      if (existingNickname?.nickname) {
-        // Returning user - show welcome back, then avatar selection
-        setDisplayName(existingNickname.nickname)
-        setStep('welcome-back')
+  // Handle VillaAuth completion (dialog mode - proper 1Password/passkey manager support)
+  // VillaAuth handles full flow internally: passkey → nickname → avatar
+  const handleAuthComplete = async (result: VillaAuthResponse) => {
+    if (!result.success) {
+      // User cancelled or error occurred
+      if (result.code === 'CANCELLED') {
+        setStep('welcome')
       } else {
-        // New user - needs to choose nickname
-        setStep('profile')
+        setStep('error')
       }
-    } catch {
-      // On error, assume new user
-      setStep('profile')
+      return
     }
+
+    // Success! VillaAuth has already collected: address, nickname, avatar
+    const { address: authAddress, nickname, avatar } = result.identity
+
+    // Update local state (for any remaining steps)
+    setAddress(authAddress)
+    setDisplayName(nickname)
+
+    // Save to Zustand store
+    setIdentity({
+      address: authAddress,
+      displayName: nickname,
+      avatar,
+      createdAt: Date.now(),
+    })
+
+    // Trigger TinyCloud auth and sync in background
+    // syncToTinyCloud reads from store, so must happen after setIdentity
+    authenticateTinyCloud(authAddress)
+      .then(() => syncToTinyCloud())
+      .catch(console.warn)
+
+    // Show success then redirect to home
+    setStep('success')
+    setTimeout(() => {
+      router.push('/home')
+    }, 2000)
   }
 
-  // Handle auth cancel
-  const handleAuthCancel = () => {
-    // User cancelled - stay on welcome, they can try again
-    setStep('welcome')
-  }
-
-  // Show VillaAuthScreen for welcome/connecting steps
-  // Uses Porto relay mode with villa.cash keystoreHost for passkey domain ownership
+  // Show VillaAuth for welcome step
+  // Uses Porto dialog mode - properly triggers 1Password, iCloud Keychain, Google Password Manager
+  // CRITICAL: Do NOT use VillaAuthScreen here - relay mode bypasses passkey manager hooks
   if (step === 'welcome' || step === 'connecting') {
     return (
-      <VillaAuthScreen
-        onSuccess={handleAuthSuccess}
-        onCancel={handleAuthCancel}
+      <VillaAuth
+        onComplete={handleAuthComplete}
       />
     )
   }
