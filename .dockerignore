@@ -51,3 +51,8 @@ playwright.config*
 # CI/CD
 .github
 .do
+
+# Claude development
+.claude
+.beads
+costs

@@ -1,21 +1,34 @@
-# Development Dockerfile with hot reload
+# Development Dockerfile for Villa Monorepo
+# No BuildKit cache mounts - works with standalone docker-compose
+
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies for native modules
-RUN apk add --no-cache libc6-compat
+# Install dependencies for native modules (node-gyp needs python and build tools)
+RUN apk add --no-cache libc6-compat python3 make g++
 
-# Copy package files
-COPY package.json package-lock.json* ./
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+# Copy package files for all workspaces
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/sdk/package.json ./packages/sdk/
+COPY packages/ui/package.json ./packages/ui/
+COPY packages/config/package.json ./packages/config/
 
 # Install all dependencies (including devDependencies)
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
-# Copy source (will be overwritten by volume mount)
+# Copy source code
 COPY . .
+
+# Build environment
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
 
 EXPOSE 3000
 
-# Start dev server
-CMD ["npm", "run", "dev"]
+# Start dev server with turbo
+CMD ["pnpm", "turbo", "run", "dev", "--filter=@villa/web"]

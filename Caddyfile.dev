@@ -1,0 +1,14 @@
+# Local HTTPS proxy for passkey development
+# Caddy auto-generates self-signed certs
+
+localhost:443 {
+    reverse_proxy web:3000
+
+    # Enable TLS with auto-generated cert
+    tls internal
+
+    # Headers for proper proxying
+    header {
+        X-Forwarded-Proto https
+    }
+}
