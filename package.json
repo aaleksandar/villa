@@ -14,9 +14,10 @@
   },
   "scripts": {
     "dev": "turbo run dev --filter=@villa/web",
+    "dev:local": "./scripts/dev.sh --local",
     "dev:https": "pnpm --filter @villa/web dev:https",
-    "dev:docker": "docker-compose -f docker-compose.dev.yml up --build",
-    "dev:docker:down": "docker-compose -f docker-compose.dev.yml down",
+    "dev:docker": "docker-compose -f docker-compose.local.yml up -d && pnpm dev",
+    "dev:docker:down": "docker-compose -f docker-compose.local.yml down",
     "dev:developers": "pnpm --filter @villa/developers dev",
     "build": "turbo run build",
     "lint": "turbo run lint",

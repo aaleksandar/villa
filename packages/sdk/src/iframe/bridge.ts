@@ -43,16 +43,18 @@ const AUTH_URLS = {
   'base-sepolia': 'https://beta-key.villa.cash/auth',
 } as const
 
-/** Development auth URL - for local testing */
-const DEV_AUTH_URL = 'https://localhost/auth'
-
 /**
  * Get auth URL based on network and environment
+ * In development: uses current origin (local.villa.cash or localhost)
  */
 function getAuthUrl(network: 'base' | 'base-sepolia'): string {
-  // Check if running in development
-  if (isDevelopment()) {
-    return DEV_AUTH_URL
+  // In development, use the same origin as the current page
+  if (isDevelopment() && typeof window !== 'undefined') {
+    const { hostname, protocol } = window.location
+    // local.villa.cash, localhost, or 127.0.0.1
+    if (hostname === 'local.villa.cash' || hostname === 'localhost' || hostname === '127.0.0.1') {
+      return `${protocol}//${hostname}/auth`
+    }
   }
   return AUTH_URLS[network]
 }

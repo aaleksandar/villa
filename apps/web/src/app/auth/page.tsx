@@ -31,8 +31,9 @@ const VILLA_ORIGINS = [
   'https://beta-key.villa.cash',
 ] as const
 
-// Development origins (localhost only - NEVER use wildcard)
+// Development origins (localhost/local.villa.cash - NEVER use wildcard)
 const DEV_ORIGINS = [
+  'https://local.villa.cash',
   'https://localhost',
   'https://localhost:443',
   'https://localhost:3000',
@@ -80,6 +81,7 @@ function isKeyDomain(): boolean {
   return (
     hostname === 'key.villa.cash' ||
     hostname === 'beta-key.villa.cash' ||
+    hostname === 'local.villa.cash' ||
     hostname === 'localhost' ||
     hostname === '127.0.0.1'
   )

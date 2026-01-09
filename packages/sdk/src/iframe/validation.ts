@@ -26,6 +26,7 @@ export const ALLOWED_ORIGINS = [
  * Development origins (only active when NODE_ENV === 'development')
  */
 export const DEV_ORIGINS = [
+  'https://local.villa.cash',
   'https://localhost',
   'https://localhost:3000',
   'https://localhost:3001',
