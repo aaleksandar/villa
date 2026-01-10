@@ -3,15 +3,19 @@ import { test, expect } from '@playwright/test'
 /**
  * Cross-Platform Passkey Authentication Tests
  *
- * Tests VillaAuthDialog and VillaAuthScreen components across different
+ * Tests VillaAuthScreen component (at /auth route) across different
  * viewport sizes and device types. Verifies UI rendering, button states,
  * error handling, and loading states.
  *
  * Note: WebAuthn/passkey ceremonies cannot be fully mocked in Playwright,
  * so tests focus on UI states, navigation, and error display.
+ *
+ * ARCHITECTURE:
+ * - VillaAuthScreen is rendered at /auth route (iframe target)
+ * - Tests should use /auth, NOT /onboarding
  */
 
-test.describe('VillaAuthDialog - Auth Domain (key.villa.cash)', () => {
+test.describe('VillaAuthScreen - Auth Route (/auth)', () => {
   test.beforeEach(async ({ page }) => {
     // Clear any existing state
     await page.goto('/')
@@ -24,12 +28,13 @@ test.describe('VillaAuthDialog - Auth Domain (key.villa.cash)', () => {
       await page.setViewportSize({ width: 1280, height: 720 })
     })
 
-    test('renders auth dialog UI on desktop', async ({ page }) => {
+    test('renders VillaAuthScreen UI on desktop', async ({ page }) => {
       await page.goto('/auth?appId=test')
       await page.waitForLoadState('networkidle')
 
-      // Check for Villa branding
-      await expect(page.getByRole('heading', { name: 'Your identity' })).toBeVisible({ timeout: 10000 })
+      // Check for VillaAuthScreen headline
+      await expect(page.getByRole('heading', { name: /your identity/i })).toBeVisible({ timeout: 10000 })
+      await expect(page.getByText(/no passwords/i)).toBeVisible()
 
       // Check for CTA buttons
       const signInButton = page.getByRole('button', { name: /sign in/i })
@@ -76,16 +81,17 @@ test.describe('VillaAuthDialog - Auth Domain (key.villa.cash)', () => {
       await expect(page.getByText(/works everywhere/i)).toBeVisible()
     })
 
-    test('displays supported passkey managers', async ({ page }) => {
+    test('displays supported device biometric providers', async ({ page }) => {
       await page.goto('/auth?appId=test')
       await page.waitForLoadState('networkidle')
 
-      // Check for passkey manager logos/labels
-      await expect(page.getByText('1Password')).toBeVisible()
+      // Check for device biometric provider logos/labels
       await expect(page.getByText('iCloud')).toBeVisible()
       await expect(page.getByText('Google')).toBeVisible()
       await expect(page.getByText('Windows')).toBeVisible()
+      await expect(page.getByText('Browser')).toBeVisible()
       await expect(page.getByText('FIDO2')).toBeVisible()
+      await expect(page.getByText('1Password')).toBeVisible()
     })
   })
 
@@ -95,7 +101,7 @@ test.describe('VillaAuthDialog - Auth Domain (key.villa.cash)', () => {
       await page.setViewportSize({ width: 768, height: 1024 })
     })
 
-    test('renders auth dialog UI on tablet', async ({ page }) => {
+    test('renders VillaAuthScreen UI on tablet', async ({ page }) => {
       await page.goto('/auth?appId=test')
       await page.waitForLoadState('networkidle')
 
@@ -133,7 +139,7 @@ test.describe('VillaAuthDialog - Auth Domain (key.villa.cash)', () => {
       await page.setViewportSize({ width: 375, height: 667 })
     })
 
-    test('renders auth dialog UI on mobile', async ({ page }) => {
+    test('renders VillaAuthScreen UI on mobile', async ({ page }) => {
       await page.goto('/auth?appId=test')
       await page.waitForLoadState('networkidle')
 
@@ -447,177 +453,6 @@ test.describe('VillaAuthDialog - Auth Domain (key.villa.cash)', () => {
       // Verify button is focusable
       const isFocused = await signInButton.evaluate((el) => document.activeElement === el)
       expect(isFocused).toBe(true)
-    })
-  })
-})
-
-test.describe('VillaAuthScreen - SDK Relay Mode (Apps)', () => {
-  test.beforeEach(async ({ page }) => {
-    // VillaAuthScreen is used in onboarding with relay mode
-    await page.goto('/')
-    await page.evaluate(() => localStorage.clear())
-  })
-
-  test.describe('Mobile Viewport', () => {
-    test.beforeEach(async ({ page }) => {
-      await page.setViewportSize({ width: 375, height: 667 })
-    })
-
-    test('VillaAuthScreen renders on mobile', async ({ page }) => {
-      await page.goto('/onboarding')
-      await page.waitForLoadState('networkidle')
-
-      // Should show welcome screen with buttons
-      const signInButton = page.getByRole('button', { name: /sign in/i })
-      const createButton = page.getByRole('button', { name: /create.*villa id/i })
-
-      await expect(signInButton).toBeVisible({ timeout: 10000 })
-      await expect(createButton).toBeVisible({ timeout: 10000 })
-    })
-
-    test('VillaAuthScreen supports biometric messages', async ({ page }) => {
-      await page.goto('/onboarding')
-      await page.waitForLoadState('networkidle')
-
-      // Check for device biometric messaging
-      const biometricText = page.getByText(/device biometric/i).or(
-        page.getByText(/fingerprint.*face.*security key/i)
-      )
-
-      await expect(biometricText).toBeVisible()
-    })
-  })
-
-  test.describe('Desktop Viewport', () => {
-    test.beforeEach(async ({ page }) => {
-      await page.setViewportSize({ width: 1280, height: 720 })
-    })
-
-    test('VillaAuthScreen renders on desktop', async ({ page }) => {
-      await page.goto('/onboarding')
-      await page.waitForLoadState('networkidle')
-
-      // Should show welcome screen with buttons
-      const signInButton = page.getByRole('button', { name: /sign in/i })
-      const createButton = page.getByRole('button', { name: /create.*villa id/i })
-
-      await expect(signInButton).toBeVisible({ timeout: 10000 })
-      await expect(createButton).toBeVisible({ timeout: 10000 })
-    })
-
-    test('VillaAuthScreen displays provider logos', async ({ page }) => {
-      await page.goto('/onboarding')
-      await page.waitForLoadState('networkidle')
-
-      // Check for provider logos (iCloud, Google, Windows, Browser, FIDO2, 1Password)
-      const providers = ['iCloud', 'Google', 'Windows', 'Browser', 'FIDO2', '1Password']
-
-      for (const provider of providers) {
-        await expect(page.getByText(provider)).toBeVisible()
-      }
-    })
-  })
-
-  test.describe('Loading and Error States', () => {
-    test('shows loading state in VillaAuthScreen Sign In', async ({ page }) => {
-      await page.goto('/onboarding')
-      await page.waitForLoadState('networkidle')
-
-      const signInButton = page.getByRole('button', { name: /sign in/i })
-      await signInButton.click()
-
-      // Should show loading indicator
-      const loadingText = page.getByText(/signing in|loading/i)
-      const disabledButton = page.locator('button[disabled]')
-
-      await expect(
-        loadingText.or(disabledButton)
-      ).toBeVisible({ timeout: 10000 })
-    })
-
-    test('shows loading state in VillaAuthScreen Create', async ({ page }) => {
-      await page.goto('/onboarding')
-      await page.waitForLoadState('networkidle')
-
-      const createButton = page.getByRole('button', { name: /create.*villa id/i })
-      await createButton.click()
-
-      // Should show loading indicator
-      const loadingText = page.getByText(/creating|loading/i)
-      const disabledButton = page.locator('button[disabled]')
-
-      await expect(
-        loadingText.or(disabledButton)
-      ).toBeVisible({ timeout: 10000 })
-    })
-
-    test('VillaAuthScreen displays error messages', async ({ page }) => {
-      await page.goto('/onboarding')
-      await page.waitForLoadState('networkidle')
-
-      // Click create (will likely error in test env)
-      const createButton = page.getByRole('button', { name: /create.*villa id/i })
-      await createButton.click()
-
-      // Wait for error to appear
-      await page.waitForTimeout(3000)
-
-      // Check if error is displayed
-      const errorAlert = page.getByRole('alert')
-      const hasError = await errorAlert.isVisible().catch(() => false)
-
-      if (hasError) {
-        // Verify error message is readable
-        const errorText = await errorAlert.textContent()
-        expect(errorText?.length).toBeGreaterThan(0)
-      }
-    })
-  })
-
-  test.describe('Button Functionality', () => {
-    test('VillaAuthScreen Sign In button is functional', async ({ page }) => {
-      await page.goto('/onboarding')
-      await page.waitForLoadState('networkidle')
-
-      const signInButton = page.getByRole('button', { name: /sign in/i })
-      await expect(signInButton).toBeEnabled()
-      await expect(signInButton).toBeInViewport()
-
-      // Click should work
-      await signInButton.click()
-      expect(true).toBe(true) // Verify click succeeded
-    })
-
-    test('VillaAuthScreen Create Villa ID button is functional', async ({ page }) => {
-      await page.goto('/onboarding')
-      await page.waitForLoadState('networkidle')
-
-      const createButton = page.getByRole('button', { name: /create.*villa id/i })
-      await expect(createButton).toBeEnabled()
-      await expect(createButton).toBeInViewport()
-
-      // Click should work
-      await createButton.click()
-      expect(true).toBe(true) // Verify click succeeded
-    })
-
-    test('VillaAuthScreen education section is toggleable', async ({ page }) => {
-      await page.goto('/onboarding')
-      await page.waitForLoadState('networkidle')
-
-      const educationButton = page.getByRole('button', { name: /why passkeys/i })
-      const content = page.getByText(/phishing-resistant/i)
-
-      // Initially hidden
-      await expect(content).not.toBeVisible()
-
-      // Expand
-      await educationButton.click()
-      await expect(content).toBeVisible()
-
-      // Collapse
-      await educationButton.click()
-      await expect(content).not.toBeVisible()
     })
   })
 })
