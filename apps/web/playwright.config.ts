@@ -59,9 +59,11 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          command: 'pnpm run dev',
+          // Use production server in CI (pre-built), dev server locally
+          command: CI ? 'pnpm run start' : 'pnpm run dev',
           url: 'http://localhost:3000',
-          reuseExistingServer: !process.env.CI,
+          reuseExistingServer: !CI,
+          timeout: CI ? 30000 : 120000, // CI has pre-built, starts faster
         },
       }),
 })

@@ -1,11 +1,17 @@
 # Dependencies (will be installed in container)
 node_modules
 
-# Build outputs
+# Build outputs - explicitly list known locations
 .next
+apps/.next
+apps/*/.next
+apps/**/.next
+
+# General build outputs
 out
 build
 dist
+.turbo
 
 # Testing
 coverage
@@ -36,16 +42,16 @@ docker-compose*.yml
 *.md
 !README.md
 
-# Tests (not needed in production)
-tests
-*.spec.ts
-*.test.ts
+# Tests (keep for test Docker builds, remove for production builds later)
+# tests  # Needed for test Docker
+# *.spec.ts  # Needed for test Docker
+# *.test.ts  # Needed for test Docker
 
-# Development configs
+# Development configs (keep playwright.config for test builds)
 .eslintrc*
 .prettierrc*
 vitest.config*
-playwright.config*
+# playwright.config*  # Needed for test Docker
 # Note: tsconfig.json is REQUIRED for path aliases (@/*)
 
 # CI/CD
@@ -56,3 +62,6 @@ playwright.config*
 .claude
 .beads
 costs
+
+# Examples (not needed for tests)
+examples
