@@ -717,6 +717,19 @@ export async function signInImmediate(): Promise<PortoConnectResult> {
 
 // Porto iframe instance for key.villa.cash auth
 let portoIframeInstance: ReturnType<typeof Porto.create> | null = null
+let portoRpcServerInstance: ReturnType<typeof Porto.create> | null = null
+
+/**
+ * Get environment-aware dialog host for rpcServer mode
+ * - Production: https://key.villa.cash/auth
+ * - Development: https://localhost:3000/auth
+ */
+function getDialogHost(): string {
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://key.villa.cash/auth'
+  }
+  return 'https://localhost:3000/auth'
+}
 
 /**
  * Get Porto instance for iframe/popup auth (dialog mode)
@@ -744,6 +757,33 @@ export function getPortoIframe(container?: HTMLElement): ReturnType<typeof Porto
   })
 
   return portoIframeInstance
+}
+
+/**
+ * Get Porto instance for self-hosted dialog
+ * Used by key.villa.cash/auth page to host the auth UI
+ * Passkeys are bound to key.villa.cash domain
+ * 1Password works because WebAuthn happens in iframe context
+ *
+ * Uses Mode.dialog with custom host pointing to our self-hosted auth page
+ * This allows us to control the dialog rendering while maintaining 1Password compatibility
+ */
+export function getPortoRpcServer(container?: HTMLElement): ReturnType<typeof Porto.create> {
+  // Always create fresh instance to ensure clean state
+  portoRpcServerInstance = Porto.create({
+    chains: getPortoChains(),
+    mode: Mode.dialog({
+      renderer: container
+        ? Dialog.experimental_inline({ element: () => container })
+        : Dialog.popup({
+            type: 'popup',
+            size: { width: 380, height: 520 },
+          }),
+      host: getDialogHost(), // Points to key.villa.cash/auth (production) or localhost:3000/auth (dev)
+      theme: villaTheme,
+    }),
+  })
+  return portoRpcServerInstance
 }
 
 /**
@@ -789,6 +829,72 @@ export async function createAccountDialog(container?: HTMLElement): Promise<Port
 export async function signInDialog(container?: HTMLElement): Promise<PortoConnectResult> {
   try {
     const porto = getPortoIframe(container)
+    const accounts = await porto.provider.request({
+      method: 'eth_requestAccounts',
+    })
+
+    if (accounts && accounts.length > 0) {
+      return { success: true, address: accounts[0] }
+    }
+
+    return {
+      success: false,
+      error: new Error('No account selected'),
+    }
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error('Unknown error'),
+    }
+  }
+}
+
+/**
+ * Create account using self-hosted dialog
+ * Used by key.villa.cash/auth page to host Porto UI
+ * Passkeys bound to key.villa.cash domain - 1Password works
+ * @param container - Optional container element for inline rendering
+ */
+export async function createAccountRpcServer(container?: HTMLElement): Promise<PortoConnectResult> {
+  try {
+    const porto = getPortoRpcServer(container)
+    const result = await porto.provider.request({
+      method: 'wallet_connect',
+      params: [{
+        capabilities: {
+          createAccount: true,  // Force account creation flow
+          email: false,
+        },
+      }],
+    })
+
+    const response = result as unknown as { accounts: readonly { address: string }[] }
+
+    if (response.accounts && response.accounts.length > 0) {
+      return { success: true, address: response.accounts[0].address }
+    }
+
+    return {
+      success: false,
+      error: new Error('No account returned from Porto'),
+    }
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error('Unknown error'),
+    }
+  }
+}
+
+/**
+ * Sign in using self-hosted dialog
+ * Used by key.villa.cash/auth page to host Porto UI
+ * Passkeys bound to key.villa.cash domain - 1Password works
+ * @param container - Optional container element for inline rendering
+ */
+export async function signInRpcServer(container?: HTMLElement): Promise<PortoConnectResult> {
+  try {
+    const porto = getPortoRpcServer(container)
     const accounts = await porto.provider.request({
       method: 'eth_requestAccounts',
     })

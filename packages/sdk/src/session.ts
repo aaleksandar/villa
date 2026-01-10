@@ -25,6 +25,7 @@ const SessionSchema = z.object({
     }),
   }),
   expiresAt: z.number(),
+  isValid: z.boolean(),
   createdAt: z.number().optional(),
 })
 

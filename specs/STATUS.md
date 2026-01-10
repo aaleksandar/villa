@@ -6,6 +6,30 @@
 
 ## Active Specs
 
+### Cross-Chain Deposits via Glide
+**File:** `specs/active/cross-chain-deposits.md`
+**Status:** Draft (pending approval)
+**Created:** 2026-01-08
+**Priority:** P1 (post-mainnet enhancement)
+
+**Summary:** Enable users to fund their Villa Base address from any chain using Glide's bridging widget. One-click deposits from Ethereum, Arbitrum, Optimism, Polygon, etc.
+
+**Blockers:**
+- Needs Glide project creation and API credentials
+- Mainnet deploy should complete first (Base address must be valid)
+
+**Next Actions:**
+1. Review and approve spec
+2. Create Glide project at buildwithglide.com
+3. `@build "Implement cross-chain deposits"` after approval
+
+**Design Work Needed:**
+- "Add Funds" button placement on home page
+- Success/error states within Villa chrome
+- Mobile bottom sheet variant
+
+---
+
 ### Sprint: Auth Stabilization & Corrections
 **File:** `specs/active/sprint-corrections.md`
 **Status:** Active (needs user decisions)

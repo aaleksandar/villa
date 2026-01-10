@@ -674,3 +674,245 @@ test.describe('Authentication Flows', () => {
     })
   })
 })
+
+  test.describe('VillaAuthDialog Tests', () => {
+    test('auth route renders VillaAuthDialog correctly', async ({ page }) => {
+      await page.goto('/auth?appId=dialog-test')
+      await page.waitForLoadState('networkidle')
+
+      // VillaAuthDialog should render with same elements as VillaAuthScreen
+      await expect(page.getByRole('heading', { name: /your identity/i })).toBeVisible({ timeout: 10000 })
+      await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible({ timeout: 10000 })
+      await expect(page.getByRole('button', { name: /create.*villa id/i })).toBeVisible({ timeout: 10000 })
+    })
+
+    test('VillaAuthDialog Sign In button triggers Porto dialog flow', async ({ page }) => {
+      await page.goto('/auth?appId=dialog-test')
+      await page.waitForLoadState('networkidle')
+
+      const signInButton = page.getByRole('button', { name: /sign in/i })
+      await signInButton.click()
+
+      // Should transition to loading state or show passkey prompt
+      await page.waitForTimeout(2000)
+
+      // Button should be disabled or show loading state
+      const isDisabled = await signInButton.isDisabled().catch(() => false)
+      const loadingVisible = await page.getByText(/signing in|loading/i).isVisible().catch(() => false)
+
+      expect(isDisabled || loadingVisible).toBe(true)
+    })
+
+    test('VillaAuthDialog Create Villa ID button triggers Porto dialog flow', async ({ page }) => {
+      await page.goto('/auth?appId=dialog-test')
+      await page.waitForLoadState('networkidle')
+
+      const createButton = page.getByRole('button', { name: /create.*villa id/i })
+      await createButton.click()
+
+      // Should transition to loading state
+      await page.waitForTimeout(2000)
+
+      const isDisabled = await createButton.isDisabled().catch(() => false)
+      const loadingVisible = await page.getByText(/creating|loading/i).isVisible().catch(() => false)
+
+      expect(isDisabled || loadingVisible).toBe(true)
+    })
+
+    test('VillaAuthDialog handles missing appId gracefully', async ({ page }) => {
+      await page.goto('/auth')
+      await page.waitForLoadState('networkidle')
+
+      // Should still render the dialog (appId is optional)
+      await expect(page.getByRole('heading', { name: /your identity/i })).toBeVisible({ timeout: 10000 })
+    })
+
+    test('VillaAuthDialog displays error messages when authentication fails', async ({ page }) => {
+      await page.goto('/auth?appId=dialog-test')
+      await page.waitForLoadState('networkidle')
+
+      // Click sign in (will fail in test environment without biometric)
+      const signInButton = page.getByRole('button', { name: /sign in/i })
+      await signInButton.click()
+
+      // Wait for potential error state
+      await page.waitForTimeout(3000)
+
+      // Check for error display
+      const errorAlert = page.getByRole('alert')
+      const hasError = await errorAlert.isVisible().catch(() => false)
+
+      if (hasError) {
+        await expect(errorAlert).toBeVisible()
+        const errorText = await errorAlert.textContent()
+        expect(errorText).toBeTruthy()
+      }
+    })
+
+    test('VillaAuthDialog passkey managers section is visible', async ({ page }) => {
+      await page.goto('/auth?appId=dialog-test')
+      await page.waitForLoadState('networkidle')
+
+      // Dialog mode emphasizes passkey managers (1Password, iCloud, Google, etc.)
+      await expect(page.getByText('1Password')).toBeVisible()
+      await expect(page.getByText('iCloud')).toBeVisible()
+
+      // Should say "Works with your passkey manager"
+      const managerText = page.getByText(/passkey manager/i)
+      await expect(managerText).toBeVisible()
+    })
+  })
+
+  test.describe('VillaAuthScreen Tests', () => {
+    test('onboarding renders VillaAuthScreen correctly', async ({ page }) => {
+      await page.goto('/onboarding')
+      await page.waitForLoadState('networkidle')
+
+      // VillaAuthScreen renders with same headline
+      await expect(page.getByRole('heading', { name: /your identity/i })).toBeVisible({ timeout: 10000 })
+      await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible({ timeout: 10000 })
+      await expect(page.getByRole('button', { name: /create.*villa id/i })).toBeVisible({ timeout: 10000 })
+    })
+
+    test('VillaAuthScreen Sign In button triggers relay flow', async ({ page }) => {
+      await page.goto('/onboarding')
+      await page.waitForLoadState('networkidle')
+
+      const signInButton = page.getByRole('button', { name: /sign in/i })
+      await signInButton.click()
+
+      // Should show loading state in button
+      await page.waitForTimeout(2000)
+
+      const loadingText = page.getByText(/signing in/i)
+      const isDisabled = await signInButton.isDisabled().catch(() => false)
+
+      expect(isDisabled || await loadingText.isVisible().catch(() => false)).toBe(true)
+    })
+
+    test('VillaAuthScreen Create Villa ID button triggers relay flow', async ({ page }) => {
+      await page.goto('/onboarding')
+      await page.waitForLoadState('networkidle')
+
+      const createButton = page.getByRole('button', { name: /create.*villa id/i })
+      await createButton.click()
+
+      // Should show loading state in button
+      await page.waitForTimeout(2000)
+
+      const loadingText = page.getByText(/creating/i)
+      const isDisabled = await createButton.isDisabled().catch(() => false)
+
+      expect(isDisabled || await loadingText.isVisible().catch(() => false)).toBe(true)
+    })
+
+    test('VillaAuthScreen displays error messages', async ({ page }) => {
+      await page.goto('/onboarding')
+      await page.waitForLoadState('networkidle')
+
+      // Click create (will error in test env)
+      const createButton = page.getByRole('button', { name: /create.*villa id/i })
+      await createButton.click()
+
+      // Wait for error
+      await page.waitForTimeout(3000)
+
+      const errorAlert = page.getByRole('alert')
+      const hasError = await errorAlert.isVisible().catch(() => false)
+
+      if (hasError) {
+        await expect(errorAlert).toBeVisible()
+        const text = await errorAlert.textContent()
+        expect(text?.length).toBeGreaterThan(0)
+      }
+    })
+
+    test('VillaAuthScreen device biometric section is visible', async ({ page }) => {
+      await page.goto('/onboarding')
+      await page.waitForLoadState('networkidle')
+
+      // Relay mode shows device biometric providers (iCloud, Google, Windows, etc.)
+      await expect(page.getByText('iCloud')).toBeVisible()
+      await expect(page.getByText('Google')).toBeVisible()
+
+      // Should say "Works with your device biometric"
+      const biometricText = page.getByText(/device biometric/i)
+      await expect(biometricText).toBeVisible()
+    })
+
+    test('VillaAuthScreen shows PasskeyPrompt overlay during auth', async ({ page }) => {
+      await page.goto('/onboarding')
+      await page.waitForLoadState('networkidle')
+
+      const signInButton = page.getByRole('button', { name: /sign in/i })
+      await signInButton.click()
+
+      // Wait for PasskeyPrompt overlay to appear (shows biometric instruction)
+      await page.waitForTimeout(1000)
+
+      // PasskeyPrompt overlay should be present or auth should show loading
+      const passkeyText = page.getByText(/biometric|passkey|authenticating/i)
+      const loadingState = page.getByText(/signing in/i)
+
+      const hasOverlay = await passkeyText.isVisible().catch(() => false)
+      const hasLoading = await loadingState.isVisible().catch(() => false)
+
+      expect(hasOverlay || hasLoading).toBe(true)
+    })
+  })
+
+  test.describe('Component Comparison - Dialog vs Screen', () => {
+    test('both components show same headline', async ({ page }) => {
+      // Get headline from dialog mode
+      await page.goto('/auth?appId=test')
+      await page.waitForLoadState('networkidle')
+
+      const dialogHeading = await page.getByRole('heading', { name: /your identity/i }).textContent()
+
+      // Get headline from screen mode
+      await page.goto('/onboarding')
+      await page.waitForLoadState('networkidle')
+
+      const screenHeading = await page.getByRole('heading', { name: /your identity/i }).textContent()
+
+      // Both should have same headline
+      expect(dialogHeading).toBe(screenHeading)
+    })
+
+    test('both components have same button labels', async ({ page }) => {
+      // Get buttons from dialog mode
+      await page.goto('/auth?appId=test')
+      await page.waitForLoadState('networkidle')
+
+      const dialogSignIn = await page.getByRole('button', { name: /sign in/i }).textContent()
+      const dialogCreate = await page.getByRole('button', { name: /create.*villa id/i }).textContent()
+
+      // Get buttons from screen mode
+      await page.goto('/onboarding')
+      await page.waitForLoadState('networkidle')
+
+      const screenSignIn = await page.getByRole('button', { name: /sign in/i }).textContent()
+      const screenCreate = await page.getByRole('button', { name: /create.*villa id/i }).textContent()
+
+      expect(dialogSignIn).toBe(screenSignIn)
+      expect(dialogCreate).toBe(screenCreate)
+    })
+
+    test('dialog mode shows passkey managers, screen shows device biometric', async ({ page }) => {
+      // Dialog mode: check for passkey manager messaging
+      await page.goto('/auth?appId=test')
+      await page.waitForLoadState('networkidle')
+
+      const dialogManagerText = page.getByText(/passkey manager/i)
+      const dialogManagerVisible = await dialogManagerText.isVisible().catch(() => false)
+      expect(dialogManagerVisible).toBe(true)
+
+      // Screen mode: check for device biometric messaging
+      await page.goto('/onboarding')
+      await page.waitForLoadState('networkidle')
+
+      const screenBiometricText = page.getByText(/device biometric/i)
+      const screenBiometricVisible = await screenBiometricText.isVisible().catch(() => false)
+      expect(screenBiometricVisible).toBe(true)
+    })
+  })

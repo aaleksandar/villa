@@ -792,3 +792,44 @@ console.log(localStorage.getItem('villa:session'))
 ## License
 
 MIT
+
+## Authentication Utilities
+
+The SDK includes low-level utilities for building custom authentication flows:
+
+- **WebAuthn error handling** - Parse and display user-friendly error messages
+- **Browser capability detection** - Detect available passkey features
+- **Passkey manager detection** - Identify 1Password, iCloud, Google, etc.
+- **Porto configuration helpers** - Validate and configure Porto SDK
+
+See [AUTH-UTILITIES.md](./AUTH-UTILITIES.md) for detailed documentation and examples.
+
+```typescript
+import {
+  detectBrowserCapabilities,
+  parseWebAuthnError,
+  isPasskeySupported,
+  getPasskeyManagerName,
+} from '@rockfridrich/villa-sdk'
+
+// Check if passkeys are supported
+if (!isPasskeySupported()) {
+  console.error('Passkeys not supported')
+}
+
+// Detect capabilities
+const caps = await detectBrowserCapabilities()
+console.log('Platform auth available:', caps.platformAuthenticatorAvailable)
+console.log('Passkey managers:', caps.passkeyManagers)
+
+// Handle WebAuthn errors gracefully
+try {
+  await navigator.credentials.create(options)
+} catch (error) {
+  const webAuthnError = parseWebAuthnError(error)
+  if (webAuthnError.shouldDisplay) {
+    showError(webAuthnError.userMessage)
+  }
+}
+```
+

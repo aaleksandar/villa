@@ -80,6 +80,27 @@ export {
 } from './contracts'
 export type { ContractDeployment, ChainContracts } from './contracts'
 
+// Auth utilities - WebAuthn error handling & browser capabilities
+export {
+  PasskeyManagerType,
+  WebAuthnErrorCode,
+  parseWebAuthnError,
+  detectBrowserCapabilities,
+  isPasskeySupported,
+  getPasskeyManagerName,
+  getPortoHost,
+  getChainConfig,
+  validatePortoConfig,
+  createVillaTheme,
+} from './auth-utils'
+export type {
+  BrowserCapabilities,
+  WebAuthnError,
+  PortoMode,
+  PortoThemeConfig,
+  PortoConfig,
+} from './auth-utils'
+
 // Types - all shared types for the ecosystem
 export type {
   Identity,

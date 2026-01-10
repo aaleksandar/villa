@@ -515,7 +515,7 @@ I should only orchestrate, not implement.
 - Run: https://github.com/rockfridrich/villa/actions/runs/20793433750
 - Action: Check `gh run view 20793433750 --log-failed`
 
-### 50. Porto Mode Selection Pattern (CRITICAL - 2026-01-08)
+### 50. Porto Mode Selection Pattern (CRITICAL - 2026-01-08, Updated 2026-01-10)
 
 **Cost Impact:** 2 hours token waste, user-found regression
 
@@ -549,15 +549,47 @@ Mode.relay({
 - Full custom UI control (PasskeyPrompt + animations)
 - Loses entire ecosystem support
 
+**Self-Hosted Porto Dialog** (NEW - 2026-01-10):
+```typescript
+// Main page: Mode.dialog pointing to self-hosted dialog
+Mode.dialog({
+  host: 'https://key.villa.cash/auth'
+})
+
+// Dialog page (key.villa.cash/auth): Mode.rpcServer
+Mode.rpcServer({
+  keystoreHost: 'key.villa.cash'
+})
+```
+
+**Why Self-Hosted Dialog Works:**
+- 1Password content scripts run in ALL frames including iframes
+- Iframe context provides fresh user gesture for WebAuthn
+- Porto's postMessage protocol handles parent-iframe communication
+- `Mode.rpcServer` exposes WebAuthn in iframe context where 1Password CAN intercept
+
+**Architecture:**
+```
+villa.cash (Mode.dialog) → iframe → key.villa.cash/auth (Mode.rpcServer)
+                                    └→ navigator.credentials.create()
+                                    └→ 1Password CAN intercept here
+```
+
+**Password Manager Support:**
+- ✅ 1Password (iframe context)
+- ✅ iCloud Keychain (OS-level)
+- ✅ Google Password Manager (OS-level)
+- ✅ Windows Hello (OS-level)
+
 **Usage Matrix:**
 
 | Scenario | Mode | Reason |
 |----------|------|--------|
-| Main onboarding | Dialog | 1Password support essential |
-| Main login page | Dialog | 1Password support essential |
-| SDK iframe (Porto dialog won't render) | Relay | Only viable option |
-| Mobile in-app browser | Relay | Limited dialog support |
-| Custom headless integration | Relay | Developer controls flow |
+| Main onboarding | Dialog (self-hosted) | 1Password support + custom branding |
+| Main login page | Dialog (self-hosted) | 1Password support + custom branding |
+| SDK iframe (nested) | Relay | Only viable option (nested iframe) |
+| Mobile in-app browser | Dialog (self-hosted) | Best ecosystem support |
+| Custom headless | Relay | Developer controls flow |
 
 **Critical Anti-Pattern:**
 ```
@@ -565,8 +597,8 @@ Mode.relay({
 ❌ WRONG: Assume relay mode is just "UI wrapper" around dialog
 ❌ WRONG: Assume E2E tests passing = passkey ecosystem works
 
-✅ RIGHT: Use dialog mode for main flows, customize via theme
-✅ RIGHT: Use relay mode ONLY when dialog won't render
+✅ RIGHT: Use self-hosted dialog mode for main flows (1Password + branding)
+✅ RIGHT: Use relay mode ONLY for nested iframe scenarios
 ✅ RIGHT: Manual test with real 1Password before shipping
 ```
 
@@ -578,6 +610,12 @@ Mode.relay({
 - 1Password only hooks into Porto's dialog iframe
 - Fix: Reverted onboarding to VillaAuth (dialog mode), kept relay mode only for SDK iframe
 
+**Solution Discovered:** 2026-01-10
+- Self-hosted Porto dialog using `Mode.rpcServer` on key.villa.cash
+- Main page uses `Mode.dialog({ host: 'https://key.villa.cash/auth' })`
+- Dialog page runs `Mode.rpcServer({ keystoreHost: 'key.villa.cash' })`
+- Result: 1Password support + custom domain + full UI control
+
 **Testing Limitation:**
 E2E tests miss ecosystem behavior because:
 - Headless Chromium doesn't support real biometric
@@ -587,7 +625,7 @@ E2E tests miss ecosystem behavior because:
 **Validation Checklist for Auth Changes:**
 ```bash
 # Before shipping ANY passkey changes:
-□ Understand Porto mode choice (dialog vs relay)
+□ Understand Porto mode choice (dialog vs relay vs self-hosted)
 □ Write ADR if switching modes
 □ Manual test on device with 1Password installed
 □ Verify biometric prompt appears
@@ -595,7 +633,7 @@ E2E tests miss ecosystem behavior because:
 □ Not just: "E2E tests passed"
 ```
 
-**Key Learning:** Architecture (ecosystem support) > UI customization when passkeys are involved.
+**Key Learning:** Self-hosted Porto dialog is the best of both worlds — ecosystem support + custom branding.
 
 
 ### CI Failure - 2026-01-08 02:52
@@ -1072,3 +1110,13 @@ CMD ["pnpm", "dev"]
 - Workflow: Deploy
 - Run: https://github.com/rockfridrich/villa/actions/runs/20845710806
 - Action: Check `gh run view 20845710806 --log-failed`
+
+### CI Failure - 2026-01-10 15:30
+- Workflow: Deploy
+- Run: https://github.com/rockfridrich/villa/actions/runs/20875192809
+- Action: Check `gh run view 20875192809 --log-failed`
+
+### CI Failure - 2026-01-10 16:15
+- Workflow: Deploy
+- Run: https://github.com/rockfridrich/villa/actions/runs/20875678378
+- Action: Check `gh run view 20875678378 --log-failed`
