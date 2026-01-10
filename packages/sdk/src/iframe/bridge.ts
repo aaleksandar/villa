@@ -37,10 +37,10 @@ const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000
 /** Default iframe detection timeout: 3 seconds */
 const DEFAULT_IFRAME_DETECTION_TIMEOUT_MS = 3 * 1000
 
-/** Villa auth URLs by network - points to key.villa.cash subdomain */
+/** Villa auth URLs by network */
 const AUTH_URLS = {
-  base: 'https://key.villa.cash/auth',
-  'base-sepolia': 'https://beta-key.villa.cash/auth',
+  base: 'https://villa.cash/auth',
+  'base-sepolia': 'https://beta.villa.cash/auth',
 } as const
 
 /**
