@@ -39,6 +39,12 @@ runs:
       shell: bash
       run: pnpm install --frozen-lockfile
 
+    - name: Build workspace packages
+      shell: bash
+      run: pnpm run build
+      # Build all packages (SDK, UI, etc.) so imports resolve correctly
+      # The Next.js app imports from @rockfridrich/villa-sdk which needs dist/
+
     - name: Cache Playwright browsers
       if: inputs.install-playwright == 'true'
       id: playwright-cache

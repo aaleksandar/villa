@@ -58,8 +58,9 @@ test.describe('SDK Iframe - Authentication Flow', () => {
     const iframeLocator = page.frameLocator('[data-testid="villa-auth-iframe"]')
 
     // Wait for frame to be ready - look for the heading first
+    // Use .first() to handle multiple matching headings (e.g., "Your Identity" and "Villa" brand)
     await expect(
-      iframeLocator.getByRole('heading', { name: /your identity|villa/i })
+      iframeLocator.getByRole('heading', { name: /your identity/i }).first()
     ).toBeVisible({ timeout: 15000 })
 
     // Then check for auth buttons - SignInWelcome has "Sign In" and "Create Villa ID"
