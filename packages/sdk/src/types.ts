@@ -9,16 +9,16 @@
 export interface Identity {
   /** Ethereum address derived from passkey */
   address: `0x${string}`
-  /** User's chosen nickname */
-  nickname: string
-  /** Avatar configuration */
-  avatar: AvatarConfig
+  /** User's chosen nickname (optional during initial auth, set in onboarding) */
+  nickname?: string
+  /** Avatar configuration (optional during initial auth) */
+  avatar?: AvatarConfig
 }
 
 /** Avatar configuration for deterministic generation */
 export interface AvatarConfig {
   /** DiceBear style name */
-  style: 'adventurer' | 'avataaars' | 'bottts' | 'thumbs'
+  style: string // Allow any style (lorelei, adventurer, avataaars, etc.)
   /** Seed for deterministic generation (usually address or nickname) */
   seed: string
   /** Optional gender preference for gendered styles */

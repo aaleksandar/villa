@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useMemo, Suspense } from 'react'
-import { VillaAuthScreen, VillaAuthDialog } from '@/components/sdk'
+import { VillaAuthScreen } from '@/components/sdk'
 
 /**
  * Auth Page - SDK iframe target
@@ -69,22 +69,6 @@ function isInPopup(): boolean {
   const explicitMode = params.get('mode')
 
   return explicitMode === 'popup' || (window.opener != null && window.opener !== window)
-}
-
-/**
- * Check if we're on the key.villa.cash domain (auth subdomain) or localhost
- * When on key.villa.cash or localhost, use dialog mode for 1Password support
- */
-function isKeyDomain(): boolean {
-  if (typeof window === 'undefined') return false
-  const hostname = window.location.hostname
-  return (
-    hostname === 'key.villa.cash' ||
-    hostname === 'beta-key.villa.cash' ||
-    hostname === 'local.villa.cash' ||
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1'
-  )
 }
 
 /**
@@ -162,10 +146,9 @@ function AuthPageContent() {
     return getValidatedParentOrigin(queryOrigin)
   }, [queryOrigin])
 
-  // Detect context: popup, iframe, key domain
+  // Detect context: popup or iframe
   const inPopup = useMemo(() => isInPopup(), [])
   const inIframe = useMemo(() => isInIframe(), [])
-  const onKeyDomain = useMemo(() => isKeyDomain(), [])
 
   // Post message to parent window (iframe) or opener (popup) with validated origin
   const postToParent = useCallback((message: Record<string, unknown>) => {
@@ -195,16 +178,14 @@ function AuthPageContent() {
   }, [postToParent])
 
   // Handle auth success
-  const handleSuccess = useCallback(async (address: string) => {
-    // Create identity object with minimal data
-    // The SDK will fetch full identity details if needed
+  const handleSuccess = useCallback(async (address: string, nickname?: string) => {
+    // Create identity object
     const identity = {
       address,
-      nickname: '',
+      nickname: nickname || '',
       avatar: {
         style: 'lorelei',
         seed: `${address}-default`,
-        gender: 'female',
       },
     }
 
@@ -227,12 +208,9 @@ function AuthPageContent() {
     }
   }, [postToParent, inPopup])
 
-  // Use dialog mode on key.villa.cash (1Password support)
-  // Use relay mode on other domains (Villa UI)
-  const AuthComponent = onKeyDomain ? VillaAuthDialog : VillaAuthScreen
-
+  // Always use relay mode - Villa's own passkeys, no external Porto UI
   return (
-    <AuthComponent
+    <VillaAuthScreen
       onSuccess={handleSuccess}
       onCancel={handleCancel}
     />

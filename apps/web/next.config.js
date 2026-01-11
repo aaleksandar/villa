@@ -5,6 +5,9 @@ const nextConfig = {
   // Enable standalone output for Docker deployment
   output: 'standalone',
 
+  // Transpile SDK packages for hot reload in development
+  transpilePackages: ['@rockfridrich/villa-sdk', '@rockfridrich/villa-sdk-react'],
+
   // Enable compression (gzip)
   compress: true,
 

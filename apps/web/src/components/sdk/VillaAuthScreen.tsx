@@ -2,14 +2,17 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { ShieldCheck, Loader2, AlertCircle, ChevronDown, ChevronUp, Info, Key, Chrome } from 'lucide-react'
+import { ShieldCheck, Loader2, AlertCircle, ChevronDown, ChevronUp, Info, Key, Chrome, Sparkles, Check } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import { setWebAuthnHandlers, createAccountHeadless, signInHeadless } from '@/lib/porto'
 import { PasskeyPrompt } from './PasskeyPrompt'
+import { generateRandomName } from '@/lib/random-name'
+
+type AuthStep = 'auth' | 'nickname' | 'welcome'
 
 export interface VillaAuthScreenProps {
-  /** Callback when authentication succeeds */
-  onSuccess?: (address: string) => void
+  /** Callback when authentication succeeds with address and nickname */
+  onSuccess?: (address: string, nickname?: string) => void
   /** Callback when user cancels */
   onCancel?: () => void
   /** Optional custom logo component */
@@ -35,11 +38,15 @@ export function VillaAuthScreen({
   onCancel: _onCancel,
   logo,
 }: VillaAuthScreenProps) {
+  const [step, setStep] = useState<AuthStep>('auth')
   const [error, setError] = useState<string | null>(null)
   const [passkeyMode, setPasskeyMode] = useState<'idle' | 'create' | 'authenticate'>('idle')
   const [showEducation, setShowEducation] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [loadingAction, setLoadingAction] = useState<'signin' | 'create' | null>(null)
+  const [authAddress, setAuthAddress] = useState<string | null>(null)
+  const [nickname, setNickname] = useState('')
+  const [generatedName, setGeneratedName] = useState('')
 
   const shouldReduceMotion = useReducedMotion()
 
@@ -101,6 +108,7 @@ export function VillaAuthScreen({
     setLoadingAction(null)
 
     if (result.success) {
+      // Existing user - skip nickname, go straight to success
       onSuccess?.(result.address)
     } else {
       setError(result.error?.message || 'Sign in failed')
@@ -120,12 +128,119 @@ export function VillaAuthScreen({
     setLoadingAction(null)
 
     if (result.success) {
-      onSuccess?.(result.address)
+      // New user - show nickname step
+      setAuthAddress(result.address)
+      const randomName = generateRandomName(result.address)
+      setGeneratedName(randomName)
+      setNickname(randomName) // Pre-fill with random name
+      setStep('nickname')
     } else {
       setError(result.error?.message || 'Account creation failed')
     }
   }
 
+  const handleNicknameSubmit = () => {
+    if (!authAddress) return
+    const finalNickname = nickname.trim() || generatedName
+    setStep('welcome')
+    // Brief welcome, then success
+    setTimeout(() => {
+      onSuccess?.(authAddress, finalNickname)
+    }, 1500)
+  }
+
+  const handleSkipNickname = () => {
+    if (!authAddress) return
+    setStep('welcome')
+    // Use generated random name
+    setTimeout(() => {
+      onSuccess?.(authAddress, generatedName)
+    }, 1500)
+  }
+
+  // Nickname step UI
+  if (step === 'nickname') {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex flex-col min-h-[100dvh] justify-center p-6 bg-cream-50"
+      >
+        <div className="w-full max-w-sm mx-auto space-y-8">
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 mx-auto bg-gradient-to-br from-accent-yellow to-villa-500 rounded-2xl flex items-center justify-center shadow-lg mb-4">
+              <Sparkles className="w-8 h-8 text-accent-brown" />
+            </div>
+            <h1 className="text-2xl font-serif text-ink">Choose your @handle</h1>
+            <p className="text-sm text-ink-muted">This is how others will find you</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted">@</span>
+              <input
+                type="text"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
+                placeholder={generatedName}
+                maxLength={20}
+                className="w-full pl-8 pr-4 py-4 text-lg bg-white border border-neutral-200 rounded-xl
+                           focus:outline-none focus:ring-2 focus:ring-accent-yellow focus:border-transparent
+                           placeholder:text-ink-muted/50"
+                autoFocus
+              />
+            </div>
+
+            <button
+              onClick={handleNicknameSubmit}
+              className="w-full min-h-14 px-6 py-3 text-base font-medium
+                         bg-gradient-to-br from-accent-yellow via-villa-500 to-accent-yellow
+                         text-accent-brown rounded-xl
+                         focus:outline-none focus:ring-2 focus:ring-accent-yellow focus:ring-offset-2
+                         transition-colors duration-150"
+            >
+              Continue
+            </button>
+
+            <button
+              onClick={handleSkipNickname}
+              className="w-full py-3 text-sm text-ink-muted hover:text-ink transition-colors"
+            >
+              Skip for now (use @{generatedName})
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    )
+  }
+
+  // Welcome step UI
+  if (step === 'welcome') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex flex-col min-h-[100dvh] justify-center items-center p-6 bg-cream-50"
+      >
+        <div className="text-center space-y-6">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+            className="w-20 h-20 mx-auto bg-gradient-to-br from-accent-green to-emerald-500 rounded-full flex items-center justify-center shadow-lg"
+          >
+            <Check className="w-10 h-10 text-white" />
+          </motion.div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-serif text-ink">Welcome to Villa!</h1>
+            <p className="text-ink-muted">@{nickname || generatedName}</p>
+          </div>
+        </div>
+      </motion.div>
+    )
+  }
+
+  // Auth step UI (default)
   return (
     <>
       <motion.div

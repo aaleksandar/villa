@@ -152,19 +152,27 @@ function OnboardingContent() {
   }, [])
 
   // Handle SDK auth success
-  // VillaBridge opens iframe to key.villa.cash for passkey auth
-  const handleAuthSuccess = useCallback(async (authAddress: string) => {
+  // VillaBridge opens iframe with auth flow (passkey + optional nickname)
+  const handleAuthSuccess = useCallback(async (bridgeIdentity: { address: string; nickname?: string }) => {
+    const { address: authAddress, nickname: authNickname } = bridgeIdentity
+
     // Update local state with address
     setAddress(authAddress)
 
-    // Check for existing profile
+    // If nickname provided from auth flow, use it
+    if (authNickname) {
+      setDisplayName(authNickname)
+      setStep('avatar')
+      return
+    }
+
+    // Otherwise check for existing profile (returning user)
     const existingNickname = await checkExistingProfile(authAddress)
     if (existingNickname) {
-      // User already has a nickname - show welcome back and skip to avatar
       setDisplayName(existingNickname)
       setStep('welcome-back')
     } else {
-      // New user - collect nickname
+      // Fallback - shouldn't happen as nickname is now in auth modal
       setStep('profile')
     }
   }, [checkExistingProfile])
@@ -177,23 +185,22 @@ function OnboardingContent() {
     const chainId = process.env.NEXT_PUBLIC_CHAIN_ID
     const network = chainId === '84532' ? 'base-sepolia' : 'base'
 
-    // Check if running on localhost for local development
-    const isLocalhost = typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-
     // Create VillaBridge to open auth iframe
-    // On localhost, explicitly set origin to use local auth page
+    // In development, the SDK auto-detects localhost and uses the current origin
     const bridge = new VillaBridge({
       appId: 'villa-web',
       network,
       debug: process.env.NODE_ENV === 'development',
-      origin: isLocalhost ? 'https://localhost' : undefined,
     })
     bridgeRef.current = bridge
 
     // Set up event handlers
     bridge.on('success', (bridgeIdentity) => {
-      handleAuthSuccess(bridgeIdentity.address)
+      // Pass full identity (address + nickname) to handler
+      handleAuthSuccess({
+        address: bridgeIdentity.address,
+        nickname: bridgeIdentity.nickname,
+      })
       bridge.close()
     })
 

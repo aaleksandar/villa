@@ -50,10 +50,11 @@ const AUTH_URLS = {
 function getAuthUrl(network: 'base' | 'base-sepolia'): string {
   // In development, use the same origin as the current page
   if (isDevelopment() && typeof window !== 'undefined') {
-    const { hostname, protocol } = window.location
+    const { hostname, protocol, port } = window.location
     // local.villa.cash, localhost, or 127.0.0.1
     if (hostname === 'local.villa.cash' || hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${protocol}//${hostname}/auth`
+      const portSuffix = port ? `:${port}` : ''
+      return `${protocol}//${hostname}${portSuffix}/auth`
     }
   }
   return AUTH_URLS[network]
@@ -428,7 +429,8 @@ export class VillaBridge {
   // ============================================================
 
   /**
-   * Create fullscreen container element
+   * Create container element - modal on desktop, fullscreen on mobile
+   * Includes instant loading UI that shows before iframe loads
    */
   private createContainer(): HTMLDivElement {
     const container = document.createElement('div')
@@ -437,25 +439,158 @@ export class VillaBridge {
     container.setAttribute('aria-modal', 'true')
     container.setAttribute('aria-label', 'Villa Authentication')
 
-    // Fullscreen fixed positioning
-    Object.assign(container.style, {
-      position: 'fixed',
-      top: '0',
-      left: '0',
-      width: '100vw',
-      height: '100vh',
-      zIndex: '999999',
-      backgroundColor: '#FFFDF8', // Villa cream
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    })
+    // Responsive: modal on desktop (>768px), fullscreen on mobile
+    const isMobile = window.innerWidth <= 768
+
+    if (isMobile) {
+      // Mobile: fullscreen
+      Object.assign(container.style, {
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        width: '100vw',
+        height: '100vh',
+        zIndex: '999999',
+        backgroundColor: '#FFFDF8', // Villa cream
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      })
+    } else {
+      // Desktop: modal with backdrop
+      Object.assign(container.style, {
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        width: '100vw',
+        height: '100vh',
+        zIndex: '999999',
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)', // Safari support
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+      })
+
+      // Click backdrop to close (cancel)
+      container.addEventListener('click', (e) => {
+        if (e.target === container) {
+          this.log('Backdrop clicked, cancelling')
+          this.emit('cancel')
+          this.close()
+        }
+      })
+    }
+
+    // Add instant loading UI (shows before iframe loads)
+    const loadingOverlay = this.createLoadingOverlay(isMobile)
+    container.appendChild(loadingOverlay)
 
     return container
   }
 
   /**
-   * Create iframe element
+   * Create loading overlay that shows instantly before iframe loads
+   * This provides seamless UX with no white flash
+   */
+  private createLoadingOverlay(isMobile: boolean): HTMLDivElement {
+    const overlay = document.createElement('div')
+    overlay.id = 'villa-loading-overlay'
+
+    Object.assign(overlay.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      right: '0',
+      bottom: '0',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#FFFDF8', // Villa cream
+      borderRadius: isMobile ? '0' : '16px',
+      zIndex: '1',
+      transition: 'opacity 0.2s ease-out',
+    })
+
+    // Villa logo
+    const logo = document.createElement('div')
+    Object.assign(logo.style, {
+      width: '64px',
+      height: '64px',
+      borderRadius: '16px',
+      background: 'linear-gradient(135deg, #FFE047 0%, #F5D547 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: '24px',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    })
+
+    const logoText = document.createElement('span')
+    logoText.textContent = 'V'
+    Object.assign(logoText.style, {
+      fontSize: '32px',
+      fontFamily: 'Georgia, serif',
+      color: '#5C4813',
+      fontWeight: '600',
+    })
+    logo.appendChild(logoText)
+    overlay.appendChild(logo)
+
+    // Loading spinner
+    const spinner = document.createElement('div')
+    Object.assign(spinner.style, {
+      width: '24px',
+      height: '24px',
+      border: '3px solid #E5E5E5',
+      borderTopColor: '#FFE047',
+      borderRadius: '50%',
+      animation: 'villa-spin 0.8s linear infinite',
+    })
+    overlay.appendChild(spinner)
+
+    // Loading text
+    const text = document.createElement('p')
+    text.textContent = 'Loading...'
+    Object.assign(text.style, {
+      marginTop: '16px',
+      fontSize: '14px',
+      color: '#666',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    })
+    overlay.appendChild(text)
+
+    // Add keyframes animation
+    if (!document.getElementById('villa-spinner-styles')) {
+      const style = document.createElement('style')
+      style.id = 'villa-spinner-styles'
+      style.textContent = `
+        @keyframes villa-spin {
+          to { transform: rotate(360deg); }
+        }
+      `
+      document.head.appendChild(style)
+    }
+
+    return overlay
+  }
+
+  /**
+   * Hide loading overlay when iframe is ready
+   */
+  private hideLoadingOverlay(): void {
+    const overlay = document.getElementById('villa-loading-overlay')
+    if (overlay) {
+      overlay.style.opacity = '0'
+      setTimeout(() => overlay.remove(), 200)
+    }
+  }
+
+  /**
+   * Create iframe element - modal card on desktop, fullscreen on mobile
    */
   private createIframe(scopes: string[]): HTMLIFrameElement {
     const iframe = document.createElement('iframe')
@@ -480,13 +615,31 @@ export class VillaBridge {
     iframe.sandbox.add('allow-popups')
     iframe.sandbox.add('allow-popups-to-escape-sandbox')
 
-    // Fullscreen styles
-    Object.assign(iframe.style, {
-      width: '100%',
-      height: '100%',
-      border: 'none',
-      backgroundColor: 'transparent',
-    })
+    // Responsive: modal card on desktop, fullscreen on mobile
+    const isMobile = window.innerWidth <= 768
+
+    if (isMobile) {
+      // Mobile: fullscreen
+      Object.assign(iframe.style, {
+        width: '100%',
+        height: '100%',
+        border: 'none',
+        backgroundColor: 'transparent',
+      })
+    } else {
+      // Desktop: modal card
+      Object.assign(iframe.style, {
+        width: '480px',
+        height: '640px',
+        maxWidth: 'calc(100vw - 32px)',
+        maxHeight: 'calc(100vh - 32px)',
+        border: 'none',
+        borderRadius: '16px',
+        backgroundColor: '#FFFDF8', // Villa cream
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        overflow: 'hidden',
+      })
+    }
 
     // Handle load errors
     iframe.onerror = () => {
@@ -540,6 +693,8 @@ export class VillaBridge {
           clearTimeout(this.timeoutId)
           this.timeoutId = null
         }
+        // Hide loading overlay - iframe content is now visible
+        this.hideLoadingOverlay()
         this.emit('ready')
         onReady()
         break

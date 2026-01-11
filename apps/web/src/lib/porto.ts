@@ -243,10 +243,15 @@ export function getPortoRelay(): ReturnType<typeof Porto.create> {
             if (!options) {
               throw new Error('WebAuthn creation options are required')
             }
+            // Override rp.name to show "Villa" in passkey managers
+            const createOptions = options as CredentialCreationOptions
+            if (createOptions.publicKey?.rp) {
+              createOptions.publicKey.rp.name = 'Villa'
+            }
             // Notify Villa UI that passkey creation is starting
-            await webAuthnHandlers.onPasskeyCreate?.(options as CredentialCreationOptions)
-            // Browser shows biometric prompt - user sees "villa.cash"
-            const credential = await navigator.credentials.create(options as CredentialCreationOptions)
+            await webAuthnHandlers.onPasskeyCreate?.(createOptions)
+            // Browser shows biometric prompt - user sees "Villa" as the passkey name
+            const credential = await navigator.credentials.create(createOptions)
             return credential as PublicKeyCredential
           },
           getFn: async (options) => {

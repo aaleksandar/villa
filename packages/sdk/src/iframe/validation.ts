@@ -77,15 +77,16 @@ export function validateOrigin(origin: string): boolean {
 
 /**
  * Identity schema for validation
+ * Note: nickname can be empty on initial auth (set later in onboarding)
  */
 const IdentitySchema = z.object({
   address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
-  nickname: z.string().min(1).max(50),
+  nickname: z.string().max(50).optional().or(z.literal('')),
   avatar: z.object({
-    style: z.enum(['adventurer', 'avataaars', 'bottts', 'thumbs']),
+    style: z.string(), // Allow any style (lorelei, adventurer, etc.)
     seed: z.string(),
     gender: z.enum(['male', 'female', 'other']).optional(),
-  }),
+  }).optional(),
 })
 
 /**
