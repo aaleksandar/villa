@@ -544,6 +544,45 @@ export async function sendTransaction(params: {
 }
 
 /**
+ * Send a transaction using Porto relay mode (user signs with passkey)
+ * Use this when user authenticated via relay mode (villa.cash passkeys)
+ * @param params Transaction parameters (to, value, data)
+ * @returns Transaction hash
+ */
+export async function sendTransactionHeadless(params: {
+  to: `0x${string}`
+  value?: bigint
+  data?: `0x${string}`
+}): Promise<string> {
+  const porto = getPortoRelay()
+
+  // Get the connected accounts first
+  const accounts = await porto.provider.request({
+    method: 'eth_accounts',
+  })
+
+  if (!accounts || accounts.length === 0) {
+    throw new Error('No connected account')
+  }
+
+  const from = accounts[0] as `0x${string}`
+
+  const txHash = await porto.provider.request({
+    method: 'eth_sendTransaction',
+    params: [
+      {
+        from,
+        to: params.to,
+        value: params.value ? `0x${params.value.toString(16)}` : undefined,
+        data: params.data,
+      },
+    ],
+  })
+
+  return txHash as string
+}
+
+/**
  * Generate a SIWE (Sign-In With Ethereum) message
  * Compatible with EIP-4361
  */

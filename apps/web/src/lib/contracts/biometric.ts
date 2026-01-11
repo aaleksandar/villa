@@ -8,7 +8,7 @@
 
 import { type Address, encodeFunctionData } from 'viem'
 import { getPublicClient, getWalletClient, getCurrentChain, ANVIL_ACCOUNTS } from './client'
-import { sendTransaction } from '@/lib/porto'
+import { sendTransactionHeadless } from '@/lib/porto'
 
 /** Local Anvil contract addresses */
 const ANVIL_ADDRESSES = {
@@ -160,8 +160,8 @@ export async function enrollFaceViaPorto({
     args: [faceKeyHash, livenessProof as `0x${string}`],
   })
 
-  // Send via Porto (user signs with passkey)
-  const txHash = await sendTransaction({
+  // Send via Porto relay mode (user signs with villa.cash passkey)
+  const txHash = await sendTransactionHeadless({
     to: addresses.BiometricRecoverySigner,
     data,
   })
