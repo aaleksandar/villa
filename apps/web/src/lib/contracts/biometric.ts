@@ -6,8 +6,9 @@
  * - Base Sepolia (testnet): 84532
  */
 
-import { type Address } from 'viem'
+import { type Address, encodeFunctionData } from 'viem'
 import { getPublicClient, getWalletClient, getCurrentChain, ANVIL_ACCOUNTS } from './client'
+import { sendTransaction } from '@/lib/porto'
 
 /** Local Anvil contract addresses */
 const ANVIL_ADDRESSES = {
@@ -125,6 +126,47 @@ export async function enrollFace({
   })
 
   return hash
+}
+
+interface EnrollFaceViaPortoParams {
+  faceKeyHash: `0x${string}`
+  livenessProof: `0x${string}`
+  chainId?: number
+}
+
+/**
+ * Enroll face recovery using Porto wallet (user signs via passkey)
+ *
+ * This is the production method for face enrollment - transactions are
+ * signed by the user's Porto smart account, not a hardcoded test key.
+ *
+ * @param params.faceKeyHash - Hash of face biometric template
+ * @param params.livenessProof - ZK proof of liveness (hex encoded)
+ * @param params.chainId - Optional chain ID (defaults to configured chain)
+ * @returns Transaction hash
+ */
+export async function enrollFaceViaPorto({
+  faceKeyHash,
+  livenessProof,
+  chainId,
+}: EnrollFaceViaPortoParams): Promise<`0x${string}`> {
+  const chain = chainId ?? getCurrentChain().id
+  const addresses = getContractAddresses(chain)
+
+  // Encode the contract call
+  const data = encodeFunctionData({
+    abi: BIOMETRIC_ABI,
+    functionName: 'enrollFace',
+    args: [faceKeyHash, livenessProof as `0x${string}`],
+  })
+
+  // Send via Porto (user signs with passkey)
+  const txHash = await sendTransaction({
+    to: addresses.BiometricRecoverySigner,
+    data,
+  })
+
+  return txHash as `0x${string}`
 }
 
 /**

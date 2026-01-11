@@ -19,6 +19,7 @@ export {
 // Biometric functions
 export {
   enrollFace,
+  enrollFaceViaPorto,
   isEnrolled,
   getFaceKeyHash,
   waitForTransaction,

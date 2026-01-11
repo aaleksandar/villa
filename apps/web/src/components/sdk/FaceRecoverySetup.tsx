@@ -13,11 +13,10 @@ import {
   generateFaceKeyHash,
 } from '@/lib/biometric'
 import {
-  enrollFace,
+  enrollFaceViaPorto,
   waitForTransaction,
   isChainConnected,
   getCurrentChain,
-  ANVIL_ACCOUNTS,
 } from '@/lib/contracts'
 
 interface FaceRecoverySetupProps {
@@ -180,14 +179,10 @@ export function FaceRecoverySetup({
         throw new Error(`${chainName} not connected. ${helpText}`)
       }
 
-      // Call enrollFace contract
-      // For local testing, use Anvil's test account as the sender
-      // In production, this would use the user's Porto account
-      const hash = await enrollFace({
-        account: ANVIL_ACCOUNTS.user1.address,
+      // Call enrollFace via Porto - user signs with their passkey
+      const hash = await enrollFaceViaPorto({
         faceKeyHash: faceKeyHash as `0x${string}`,
-        livenessProof: proofHex,
-        privateKey: ANVIL_ACCOUNTS.user1.privateKey,
+        livenessProof: proofHex as `0x${string}`,
         chainId: chain.id,
       })
 
