@@ -509,8 +509,8 @@ describe('auth', () => {
       await promise
 
       const savedIdentity = getIdentity()
-      expect(savedIdentity?.avatar.gender).toBe('female')
-      expect(savedIdentity?.avatar.style).toBe('bottts')
+      expect(savedIdentity?.avatar?.gender).toBe('female')
+      expect(savedIdentity?.avatar?.style).toBe('bottts')
     })
   })
 })
