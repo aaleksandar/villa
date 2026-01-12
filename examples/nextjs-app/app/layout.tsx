@@ -3,8 +3,8 @@ import { Providers } from './providers'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Villa SDK Example',
-  description: 'Next.js example using Villa SDK for passkey authentication',
+  title: 'Proof of Retreat - Residents',
+  description: 'Resident directory powered by Villa SDK passkey authentication',
 }
 
 export default function RootLayout({

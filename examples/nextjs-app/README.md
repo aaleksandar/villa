@@ -1,13 +1,14 @@
-# Villa SDK - Next.js Example
+# Proof of Retreat - Residents Directory
 
-A minimal Next.js 14 app demonstrating Villa SDK integration for passkey-based authentication on Base network.
+A Next.js 14 app demonstrating Villa SDK integration for a community resident directory with passkey-based authentication.
 
 ## What This Shows
 
 - Complete authentication flow (sign in, display identity, sign out)
+- Member directory with join/leave functionality
 - React hooks for identity management (`useIdentity`, `useAuth`)
 - Pre-built UI components (`VillaAuth`, `Avatar`)
-- Session persistence across page reloads
+- Session and resident data persistence with localStorage
 
 ## Quick Start
 
