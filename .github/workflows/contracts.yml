@@ -37,6 +37,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  security-events: write
 
 concurrency:
   group: contracts-${{ github.ref }}
