@@ -181,8 +181,10 @@ test.describe('SDK Demo - Live/Mock Toggle', () => {
 })
 
 // These API tests require a database connection
-// CI uses graceful degradation (mock responses when DATABASE_URL not set)
+// Skip when DATABASE_URL is not set or in local dev without DB
 test.describe('ENS API Resolution', () => {
+  // Skip these tests if DATABASE_URL is not configured (local dev)
+  test.skip(!process.env.DATABASE_URL, 'Requires DATABASE_URL')
 
   test('GET /api/nicknames/check returns availability', async ({ request }) => {
     const response = await request.get('/api/nicknames/check/testnickname12345')
