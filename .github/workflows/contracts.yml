@@ -150,52 +150,20 @@ jobs:
         with:
           script: |
             const passed = '${{ steps.slither.outcome }}' === 'success';
-
             const body = passed
-              ? `![Audit](https://media.giphy.com/media/3o7btNa0RUYa5E7iiQ/giphy.gif)
-
-## 🔐 Security Audit Passed
-
-Slither static analysis found no critical issues.
-
-| Check | Status |
-|-------|--------|
-| Reentrancy | ✅ |
-| Access Control | ✅ |
-| Integer Overflow | ✅ |
-| Unchecked Calls | ✅ |
-
-<sub>Full report in workflow artifacts</sub>`
-              : `## ⚠️ Security Audit Warnings
-
-Slither found potential issues. Review the SARIF report.
-
-<sub>Note: Some findings may be false positives</sub>`;
-
+              ? '## 🔐 Security Audit Passed\n\nSlither static analysis found no critical issues.'
+              : '## ⚠️ Security Audit Warnings\n\nSlither found potential issues. Review the SARIF report.';
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-
-            const botComment = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes('Security Audit')
-            );
-
+            const botComment = comments.find(c => c.user.type === 'Bot' && c.body.includes('Security Audit'));
+            const params = { owner: context.repo.owner, repo: context.repo.repo, body };
             if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body
-              });
+              await github.rest.issues.updateComment({ ...params, comment_id: botComment.id });
             } else {
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body
-              });
+              await github.rest.issues.createComment({ ...params, issue_number: context.issue.number });
             }
 
   # =============================================================================
@@ -398,27 +366,17 @@ Slither found potential issues. Review the SARIF report.
         if: github.event.inputs.dry_run != 'true'
         with:
           script: |
-            const network = 'Base Sepolia';
-            const explorer = 'https://sepolia.basescan.org';
             const nicknameAddr = '${{ steps.deploy.outputs.VillaNicknameResolver_address }}' || 'N/A';
             const recoveryAddr = '${{ steps.deploy.outputs.BiometricRecoverySigner_address }}' || 'N/A';
-
-            const body = `![Deploy](https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif)
-
-## 🚀 Contracts Deployed to ${network}!
-
-| Contract | Proxy Address | Explorer |
-|----------|---------------|----------|
-| VillaNicknameResolver | \`${nicknameAddr}\` | [View](${explorer}/address/${nicknameAddr}) |
-| BiometricRecoverySigner | \`${recoveryAddr}\` | [View](${explorer}/address/${recoveryAddr}) |
-
-### Verification Status
-- [ ] Source code verified on Basescan
-- [ ] Proxy admin ownership transferred
-- [ ] Initial configuration set
-
-<sub>Deployed by @${{ github.actor }} • Commit: \`${{ github.sha }}\`</sub>`;
-
+            const explorer = 'https://sepolia.basescan.org';
+            const body = [
+              '## 🚀 Contracts Deployed to Base Sepolia!',
+              '',
+              `- VillaNicknameResolver: [${nicknameAddr}](${explorer}/address/${nicknameAddr})`,
+              `- BiometricRecoverySigner: [${recoveryAddr}](${explorer}/address/${recoveryAddr})`,
+              '',
+              '_Deployed by @${{ github.actor }}_'
+            ].join('\n');
             await github.rest.repos.createCommitComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -520,33 +478,25 @@ Slither found potential issues. Review the SARIF report.
           script: |
             const nicknameAddr = '${{ steps.deploy.outputs.VillaNicknameResolver_address }}' || 'N/A';
             const recoveryAddr = '${{ steps.deploy.outputs.BiometricRecoverySigner_address }}' || 'N/A';
-            const tag = `contracts-v${new Date().toISOString().slice(0,10).replace(/-/g, '')}`;
-
-            const body = `## 🎉 Villa Contracts - Base Mainnet
-
-### Deployed Contracts
-
-| Contract | Address |
-|----------|---------|
-| VillaNicknameResolver (Proxy) | [\`${nicknameAddr}\`](https://basescan.org/address/${nicknameAddr}) |
-| BiometricRecoverySigner (Proxy) | [\`${recoveryAddr}\`](https://basescan.org/address/${recoveryAddr}) |
-
-### Security
-- ✅ Slither static analysis passed
-- ✅ Storage layout verified (upgrade-safe)
-- ✅ UUPS proxy pattern (upgradable)
-- ✅ Access control: Ownable2Step
-
-### Next Steps
-1. Transfer ownership to multisig
-2. Configure gateway URLs
-3. Update SDK with contract addresses`;
-
+            const tag = 'contracts-v' + new Date().toISOString().slice(0,10).replace(/-/g, '');
+            const body = [
+              '## 🎉 Villa Contracts - Base Mainnet',
+              '',
+              '### Deployed Contracts',
+              `- VillaNicknameResolver (Proxy): [${nicknameAddr}](https://basescan.org/address/${nicknameAddr})`,
+              `- BiometricRecoverySigner (Proxy): [${recoveryAddr}](https://basescan.org/address/${recoveryAddr})`,
+              '',
+              '### Security',
+              '- Slither static analysis passed',
+              '- Storage layout verified (upgrade-safe)',
+              '- UUPS proxy pattern (upgradable)',
+              '- Access control via Ownable2Step'
+            ].join('\n');
             await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: tag,
-              name: `Contracts ${tag}`,
+              name: 'Contracts ' + tag,
               body,
               draft: false,
               prerelease: false
