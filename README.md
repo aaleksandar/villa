@@ -89,10 +89,10 @@ See [developers.villa.cash](https://developers.villa.cash) for full documentatio
 ## Development
 
 ```bash
-pnpm install          # Install dependencies
-pnpm dev              # Local development
-pnpm dev:https        # Passkey testing (requires mkcert)
-pnpm verify           # Run before every push (typecheck + build + E2E)
+bun install          # Install dependencies
+bun dev              # Local development
+bun dev:https        # Passkey testing (requires mkcert)
+bun verify           # Run before every push (typecheck + build + E2E)
 ```
 
 ## Contract Addresses (Base Sepolia)
@@ -131,9 +131,9 @@ returned        (passkeys)          (alice.villa.eth)
 ```bash
 git clone https://github.com/rockfridrich/villa.git
 cd villa
-pnpm install
-pnpm dev
-pnpm verify  # Before every commit
+bun install
+bun dev
+bun verify  # Before every commit
 ```
 
 See `.claude/CLAUDE.md` for AI-assisted development workflow.

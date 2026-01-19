@@ -275,7 +275,7 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-    command: pnpm test
+    command: bun test
     networks:
       - villa-net
 
@@ -297,7 +297,7 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-    command: pnpm test:e2e:chromium
+    command: bun test:e2e:chromium
     depends_on:
       postgres-test:
         condition: service_healthy

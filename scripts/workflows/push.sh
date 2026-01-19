@@ -12,7 +12,7 @@ echo "========================="
 # Step 1: Pre-push verification
 echo ""
 echo "1️⃣  Running pre-push verification..."
-pnpm verify || { echo "❌ Verification failed - fix before pushing"; exit 1; }
+bun run verify || { echo "❌ Verification failed - fix before pushing"; exit 1; }
 
 # Step 2: Push
 echo ""

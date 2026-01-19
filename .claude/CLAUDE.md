@@ -7,6 +7,33 @@ Privacy-first passkey authentication on **Base** network. Porto SDK + Villa them
 
 ---
 
+## Critical: Local Development with Passkeys
+
+**Passkeys/WebAuthn require HTTPS.** For any local development involving authentication:
+
+```bash
+# Option 1: Native HTTPS (requires mkcert setup)
+pnpm dev:https
+
+# Option 2: Docker with HTTPS proxy (recommended)
+pnpm docker:https   # Start Caddy HTTPS proxy
+pnpm dev            # Run Next.js natively
+# Access at: https://local.villa.cash
+```
+
+**Why:** WebAuthn (passkeys) requires a "secure context" - either HTTPS or localhost. The `localhost` exception doesn't work reliably for passkey APIs, especially with cross-origin iframes (Porto SDK). Always use HTTPS.
+
+**Setup for docker:https:**
+
+1. Add to `/etc/hosts`: `127.0.0.1 local.villa.cash local-key.villa.cash`
+2. Run `pnpm docker:https` to start Caddy with self-signed certs
+3. Run `pnpm dev` to start Next.js
+4. Access at `https://local.villa.cash`
+
+**Hot reload:** Both options support hot reload. Docker only runs the HTTPS proxy (Caddy) - Next.js runs natively for instant HMR.
+
+---
+
 ## Context Loading (RAG)
 
 **Orchestrator Identity:** Read [SYSTEM_PROMPT.md](SYSTEM_PROMPT.md) for partnership model
@@ -48,12 +75,12 @@ bd show <id>         # Task details
 
 ### Cost-Optimized Agents (see [agents/INDEX.md](agents/INDEX.md))
 
-| Tier | Model | Agents | Use For |
-|------|-------|--------|---------|
-| Workers | haiku | @explore, @test, @ops | Search, test, deploy |
-| Specialists | sonnet | @build, @design, @review | Implementation |
-| Quality | sonnet | @quality-gate | Auto-validation |
-| Architects | opus | @spec, @architect | Architecture only |
+| Tier        | Model  | Agents                   | Use For              |
+| ----------- | ------ | ------------------------ | -------------------- |
+| Workers     | haiku  | @explore, @test, @ops    | Search, test, deploy |
+| Specialists | sonnet | @build, @design, @review | Implementation       |
+| Quality     | sonnet | @quality-gate            | Auto-validation      |
+| Architects  | opus   | @spec, @architect        | Architecture only    |
 
 **Routing:** @router (haiku) classifies → appropriate tier → @quality-gate validates
 
@@ -75,31 +102,36 @@ bd show <id>         # Task details
 ## Collaboration Protocol
 
 ### Session Start
+
 Confirm with human: **Goal** (specific outcome), **Scope** (minimal or comprehensive), **Handoff** (testing participation?)
 
 ### CI Time-Box (ENFORCED)
+
 - 1st failure: Fix and push
 - 2nd same failure: **STOP** → Ask user for direction
 - Never >3 attempts without explicit approval
 
 ### Human Testing Handoff
+
 When user offers to test:
+
 1. Push current state (even imperfect)
 2. Provide: URL, steps, expected behavior
 3. **WAIT** — do NOT continue "fixing"
 
 ### Clean Exit
+
 Before ending: `git status` clean, `pnpm verify` passes, summary of done/pending/blocked
 
 ---
 
 ## Domain Architecture
 
-| Domain | Environment | Trigger |
-|--------|-------------|---------|
-| `villa.cash` | Production | Tag `v*` |
-| `beta.villa.cash` | Staging | Push to `main` |
-| `dev-1/2.villa.cash` | Preview | PR |
+| Domain               | Environment | Trigger        |
+| -------------------- | ----------- | -------------- |
+| `villa.cash`         | Production  | Tag `v*`       |
+| `beta.villa.cash`    | Staging     | Push to `main` |
+| `dev-1/2.villa.cash` | Preview     | PR             |
 
 ---
 
@@ -119,6 +151,7 @@ Before ending: `git status` clean, `pnpm verify` passes, summary of done/pending
 ## Debugging Principles
 
 **Two-Strike Rule:** Same CI failure twice? STOP. Check deployment first:
+
 ```bash
 curl -s https://beta.villa.cash/api/health | jq .timestamp
 # Old timestamp = deploy issue, not code issue → delegate to @ops
@@ -172,22 +205,22 @@ specs/             # active/, reference/
 
 ## Language Guidelines
 
-| Internal | User-Facing |
-|----------|-------------|
-| Porto account | Villa ID |
-| wallet address | (hidden) |
-| SDK names | Never shown |
+| Internal       | User-Facing |
+| -------------- | ----------- |
+| Porto account  | Villa ID    |
+| wallet address | (hidden)    |
+| SDK names      | Never shown |
 
 ---
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| Blank page | Clear `.next/` cache: `rm -rf apps/web/.next && pnpm dev` |
-| Port in use | `pkill -f "next dev"` |
-| Passkeys fail | Use HTTPS: `mkcert -install && pnpm dev` then open https://localhost:3000 |
-| Tests fail | Run `pnpm verify` locally first! |
+| Problem       | Fix                                                                                                                                   |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Blank page    | Clear `.next/` cache: `rm -rf apps/web/.next && pnpm dev`                                                                             |
+| Port in use   | `pkill -f "next dev"`                                                                                                                 |
+| Passkeys fail | Use HTTPS: `pnpm docker:https && pnpm dev` then open https://local.villa.cash (see "Critical: Local Development with Passkeys" above) |
+| Tests fail    | Run `pnpm verify` locally first!                                                                                                      |
 
 ---
 
@@ -203,6 +236,7 @@ specs/             # active/, reference/
 ## Orchestration Model
 
 Human + Claude Code partnership:
+
 1. **Human** — sets direction (specs, priorities)
 2. **Claude** — orchestrates agents in parallel terminals
 3. **Agents** — execute domains (@build, @design, @test)
@@ -219,4 +253,4 @@ bd ready                        # Find tasks with no blockers
 
 ---
 
-*Keep this file under 200 lines. Move details to specific docs.*
+_Keep this file under 200 lines. Move details to specific docs._

@@ -2,8 +2,8 @@
 
 Cost-optimized agent routing with quality guarantees.
 
-> **OpenCode Integration:** See [.opencode/OPENCODE.md](.opencode/OPENCODE.md) for OpenCode-specific guidance.
-> **Claude Code:** See [.claude/CLAUDE.md](.claude/CLAUDE.md) for Claude Code context.
+> **Primary:** [.opencode/OPENCODE.md](.opencode/OPENCODE.md) - OpenCode agent protocols (enforced)
+> **Legacy:** [.claude/CLAUDE.md](.claude/CLAUDE.md) - Claude Code context
 
 ## Quick Reference
 

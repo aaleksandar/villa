@@ -60,12 +60,12 @@ else
     check_fail "Node.js not installed"
 fi
 
-# 2. pnpm
-if command -v pnpm &> /dev/null; then
-    PNPM_VERSION=$(pnpm --version)
-    check_pass "pnpm $PNPM_VERSION"
+# 2. bun
+if command -v bun &> /dev/null; then
+    BUN_VERSION=$(bun --version)
+    check_pass "bun $BUN_VERSION"
 else
-    check_fail "pnpm not installed"
+    check_fail "bun not installed (curl -fsSL https://bun.sh/install | bash)"
 fi
 
 # 3. Git
@@ -121,14 +121,14 @@ echo -e "${BOLD}Dependencies${NC}"
 if [ -d "node_modules" ]; then
     check_pass "node_modules exists"
 
-    # Check if pnpm-lock.yaml matches
-    if [ -f "pnpm-lock.yaml" ]; then
-        check_pass "pnpm-lock.yaml exists"
+    # Check if bun.lock exists
+    if [ -f "bun.lock" ]; then
+        check_pass "bun.lock exists"
     else
-        check_warn "pnpm-lock.yaml missing"
+        check_warn "bun.lock missing"
     fi
 else
-    check_fail "node_modules missing (run: pnpm install)"
+    check_fail "node_modules missing (run: bun install)"
 fi
 
 echo ""
@@ -138,7 +138,7 @@ echo -e "${BOLD}Build${NC}"
 if [ -d "apps/hub/.next" ]; then
     check_pass "apps/hub/.next exists (hub app built)"
 else
-    check_warn "apps/hub/.next missing (run: pnpm build)"
+    check_warn "apps/hub/.next missing (run: bun run build)"
 fi
 
 echo ""
@@ -186,8 +186,12 @@ fi
 
 echo ""
 
-# 8. Claude Code (if applicable)
+# 8. AI Agent Context
 echo -e "${BOLD}AI Assistance${NC}"
+if [ -f ".opencode/OPENCODE.md" ]; then
+    check_pass "OpenCode context exists (primary)"
+fi
+
 if [ -f ".claude/CLAUDE.md" ]; then
     check_pass "Claude Code context exists"
 fi
@@ -197,6 +201,28 @@ if [ -f ".claude/local/preferences.json" ]; then
 else
     check_warn "Claude preferences not configured"
     check_info "  Copy: .claude/local/preferences.template.json"
+fi
+
+echo ""
+
+# 9. HTTPS/Passkey Readiness
+echo -e "${BOLD}Passkey Environment${NC}"
+if grep -q "local.villa.cash" /etc/hosts 2>/dev/null; then
+    check_pass "local.villa.cash in /etc/hosts"
+else
+    check_warn "local.villa.cash not in /etc/hosts"
+    check_info "  Run: sudo ./scripts/setup-hosts.sh"
+fi
+
+if docker ps 2>/dev/null | grep -q "villa-https\|caddy"; then
+    check_pass "HTTPS proxy container running"
+    if curl -sk https://local.villa.cash/caddy-health 2>/dev/null | grep -q "OK"; then
+        check_pass "HTTPS accessible at local.villa.cash"
+    else
+        check_warn "HTTPS proxy running but not accessible"
+    fi
+else
+    check_info "HTTPS proxy not running (start with: bun dev:local)"
 fi
 
 echo ""

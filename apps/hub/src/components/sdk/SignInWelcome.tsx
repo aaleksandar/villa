@@ -1,19 +1,19 @@
-'use client'
+"use client";
 
-import { useRef } from 'react'
-import { motion } from 'framer-motion'
-import { Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui'
+import { useRef } from "react";
+import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui";
 
 interface SignInWelcomeProps {
   /** Callback when user taps Sign In */
-  onSignIn: () => void
+  onSignIn: () => void;
   /** Callback when user taps Create Villa ID */
-  onCreateAccount: () => void
+  onCreateAccount: () => void;
   /** Loading state */
-  isLoading?: boolean
+  isLoading?: boolean;
   /** Which action is loading ('signin' | 'create') */
-  loadingAction?: 'signin' | 'create'
+  loadingAction?: "signin" | "create";
 }
 
 /**
@@ -28,10 +28,10 @@ export function SignInWelcome({
 }: SignInWelcomeProps) {
   // Check for reduced motion preference
   const prefersReducedMotion = useRef(
-    typeof window !== 'undefined'
-      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      : false
-  ).current
+    typeof window !== "undefined"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      : false,
+  ).current;
 
   // Animation variants for entrance
   const containerVariants = prefersReducedMotion
@@ -41,11 +41,11 @@ export function SignInWelcome({
         visible: {
           opacity: 1,
           transition: {
-            duration: 0.3,
-            staggerChildren: 0.1,
+            duration: 0.15,
+            staggerChildren: 0.05,
           },
         },
-      }
+      };
 
   const itemVariants = prefersReducedMotion
     ? undefined
@@ -54,9 +54,9 @@ export function SignInWelcome({
         visible: {
           opacity: 1,
           y: 0,
-          transition: { duration: 0.3 },
+          transition: { duration: 0.15 },
         },
-      }
+      };
 
   return (
     <motion.div
@@ -73,7 +73,7 @@ export function SignInWelcome({
         {/* Headline */}
         <motion.div variants={itemVariants} className="text-center space-y-2">
           <h1 className="text-3xl font-serif text-ink">
-            Your identity. No passwords.
+            Your identity, secured by you.
           </h1>
         </motion.div>
 
@@ -91,13 +91,13 @@ export function SignInWelcome({
               disabled={isLoading}
               className="w-full"
             >
-              {isLoading && loadingAction === 'signin' ? (
+              {isLoading && loadingAction === "signin" ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Signing in...
                 </span>
               ) : (
-                'Sign In'
+                "Sign In"
               )}
             </Button>
           </motion.div>
@@ -114,13 +114,13 @@ export function SignInWelcome({
               disabled={isLoading}
               className="w-full"
             >
-              {isLoading && loadingAction === 'create' ? (
+              {isLoading && loadingAction === "create" ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Creating...
                 </span>
               ) : (
-                'Create Villa ID'
+                "Get Started"
               )}
             </Button>
           </motion.div>
@@ -134,5 +134,5 @@ export function SignInWelcome({
         </p>
       </motion.div>
     </motion.div>
-  )
+  );
 }
