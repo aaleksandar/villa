@@ -198,7 +198,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run unit tests
-        run: bun --filter @villa/hub test:unit
+        run: cd apps/hub && bun run test:unit
 
   coverage:
     name: Code Coverage
@@ -222,11 +222,11 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run coverage for hub
-        run: bun --filter @villa/hub test:unit --coverage
+        run: cd apps/hub && bun run test:unit --coverage
         continue-on-error: true
 
       - name: Run coverage for SDK
-        run: bun --filter @rockfridrich/villa-sdk test:coverage
+        run: cd packages/sdk && bun run test:coverage
         continue-on-error: true
 
       - name: Upload coverage to Codecov (hub)
@@ -264,7 +264,7 @@ jobs:
           playwright-browser: "chromium"
 
       - name: Run E2E tests (shard ${{ matrix.shard }}/4)
-        run: bun --filter @villa/hub exec playwright test --project=chromium --shard=${{ matrix.shard }}/4
+        run: cd apps/hub && npx playwright test --project=chromium --shard=${{ matrix.shard }}/4
         env:
           CI: true
           NEXT_PUBLIC_GLIDE_PROJECT_ID: villa-dev
@@ -304,7 +304,7 @@ jobs:
 
       - name: Merge Playwright reports
         run: |
-          bun --filter @villa/hub exec playwright merge-reports --reporter html ./all-reports/playwright-report-shard-*
+          cd apps/hub && npx playwright merge-reports --reporter html ../../all-reports/playwright-report-shard-*
         continue-on-error: true
 
       - name: Upload merged report

@@ -55,9 +55,9 @@ runs:
     - name: Install Playwright browsers (full)
       if: inputs.install-playwright == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
       shell: bash
-      run: bun --filter @villa/hub exec playwright install --with-deps ${{ inputs.playwright-browser }}
+      run: cd apps/hub && npx playwright install --with-deps ${{ inputs.playwright-browser }}
 
     - name: Install Playwright browser dependencies
       if: inputs.install-playwright == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
       shell: bash
-      run: bun --filter @villa/hub exec playwright install-deps ${{ inputs.playwright-browser }}
+      run: cd apps/hub && npx playwright install-deps ${{ inputs.playwright-browser }}

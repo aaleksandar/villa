@@ -56,7 +56,7 @@ jobs:
         run: bun run typecheck && bun run lint
 
       # Skip unit tests temporarily - jest-dom matchers issue in CI
-      # - run: bun --filter @villa/hub exec vitest run --config vitest.config.unit.ts
+      # - run: cd apps/hub && bun run vitest run --config vitest.config.unit.ts
 
       - name: Assign dev slot (1 or 2)
         id: slot
@@ -105,7 +105,7 @@ jobs:
           playwright-browser: "chromium"
 
       - name: Run E2E tests (shard ${{ matrix.shard }}/4)
-        run: bun --filter @villa/hub exec playwright test --project=chromium --shard=${{ matrix.shard }}/4
+        run: cd apps/hub && npx playwright test --project=chromium --shard=${{ matrix.shard }}/4
         env:
           CI: true
 
@@ -115,9 +115,9 @@ jobs:
         with:
           name: e2e-report-shard-${{ matrix.shard }}
           path: |
-            playwright-report/
-            test-results/
-            test-results.json
+            apps/hub/playwright-report/
+            apps/hub/test-results/
+            apps/hub/test-results.json
           retention-days: 7
           include-hidden-files: true
 
@@ -148,7 +148,7 @@ jobs:
       - name: Merge Playwright reports
         run: |
           # Merge all shard reports into single HTML report
-          bun --filter @villa/hub exec playwright merge-reports --reporter html ./all-reports/e2e-report-shard-*
+          cd apps/hub && npx playwright merge-reports --reporter html ../../all-reports/e2e-report-shard-*
         continue-on-error: true
 
       - name: Upload merged report
@@ -479,10 +479,10 @@ jobs:
         run: bun run typecheck & bun run lint & wait
 
       # Skip unit tests temporarily - jest-dom matchers issue in CI
-      # - run: bun --filter @villa/hub exec vitest run --config vitest.config.unit.ts
+      # - run: cd apps/hub && bun run vitest run --config vitest.config.unit.ts
 
       - name: Run E2E tests
-        run: bun --filter @villa/hub exec playwright test --project=chromium
+        run: cd apps/hub && npx playwright test --project=chromium
         env:
           CI: true
           # Note: DATABASE_URL intentionally NOT set - CI can't reach VPC database
@@ -721,10 +721,10 @@ jobs:
         run: bun run typecheck & bun run lint & wait
 
       # Skip unit tests temporarily - jest-dom matchers issue in CI
-      # - run: bun --filter @villa/hub exec vitest run --config vitest.config.unit.ts
+      # - run: cd apps/hub && bun run vitest run --config vitest.config.unit.ts
 
       - name: Run E2E tests
-        run: bun --filter @villa/hub exec playwright test --project=chromium
+        run: cd apps/hub && npx playwright test --project=chromium
         env:
           CI: true
           # Note: DATABASE_URL intentionally NOT set - CI can't reach VPC database
