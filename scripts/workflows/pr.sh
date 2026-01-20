@@ -23,7 +23,7 @@ echo "✅ On branch: $CURRENT_BRANCH"
 # Step 2: Run full verification
 echo ""
 echo "2️⃣  Running full verification..."
-pnpm verify || { echo "❌ Verification failed"; exit 1; }
+bun run verify || { echo "❌ Verification failed"; exit 1; }
 
 # Step 3: Check for unpushed commits
 echo ""

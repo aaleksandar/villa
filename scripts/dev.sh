@@ -5,8 +5,8 @@
 # Fallback: Native Next.js only (HTTP, no passkeys)
 #
 # Usage:
-#   pnpm dev:local       # Hybrid mode (passkeys work)
-#   pnpm dev             # Native only (fast, no passkeys)
+#   bun dev:local        # Hybrid mode (passkeys work)
+#   bun dev              # Native only (fast, no passkeys)
 
 set -e
 
@@ -42,9 +42,9 @@ check_prereqs() {
         fi
     fi
 
-    # pnpm
-    if ! command -v pnpm &> /dev/null; then
-        echo -e "${RED}✗ pnpm not found. Run: npm i -g pnpm${NC}"
+    # bun
+    if ! command -v bun &> /dev/null; then
+        echo -e "${RED}✗ bun not found. Run: curl -fsSL https://bun.sh/install | bash${NC}"
         errors=$((errors + 1))
     fi
 
@@ -85,7 +85,7 @@ start_hybrid() {
     fi
 
     echo -e "${GREEN}✓${NC} Node.js $(node -v)"
-    echo -e "${GREEN}✓${NC} pnpm $(pnpm -v)"
+    echo -e "${GREEN}✓${NC} bun $(bun -v)"
     echo -e "${GREEN}✓${NC} Docker ready"
 
     # Check /etc/hosts
@@ -101,7 +101,7 @@ start_hybrid() {
     # Install deps if needed
     if [ ! -d "node_modules" ]; then
         echo -e "${YELLOW}Installing dependencies...${NC}"
-        pnpm install
+        bun install
         echo ""
     fi
 
@@ -132,7 +132,7 @@ start_hybrid() {
 
     # Start Next.js
     cd apps/hub
-    pnpm dev
+    bun dev
 }
 
 # ─────────────────────────────────────────
@@ -150,22 +150,22 @@ start_native() {
     fi
 
     echo -e "${GREEN}✓${NC} Node.js $(node -v)"
-    echo -e "${GREEN}✓${NC} pnpm $(pnpm -v)"
+    echo -e "${GREEN}✓${NC} bun $(bun -v)"
     echo ""
 
     if [ ! -d "node_modules" ]; then
         echo -e "${YELLOW}Installing dependencies...${NC}"
-        pnpm install
+        bun install
         echo ""
     fi
 
     echo -e "App: ${GREEN}http://localhost:3000${NC}"
-    echo -e "${YELLOW}Note: Passkeys require HTTPS. Use 'pnpm dev:local' for passkey testing${NC}"
+    echo -e "${YELLOW}Note: Passkeys require HTTPS. Use 'bun dev:local' for passkey testing${NC}"
     echo -e "${BLUE}────────────────────────────────────────${NC}"
     echo ""
 
     cd apps/hub
-    pnpm dev
+    bun dev
 }
 
 # ─────────────────────────────────────────

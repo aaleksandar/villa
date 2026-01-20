@@ -10,7 +10,7 @@ echo "=========================="
 # Step 1: Quality gate
 echo ""
 echo "1️⃣  Running quality gate..."
-pnpm typecheck || { echo "❌ Type check failed"; exit 1; }
+bun run typecheck || { echo "❌ Type check failed"; exit 1; }
 
 # Step 2: Check for uncommitted changes
 echo ""

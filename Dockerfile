@@ -1,26 +1,24 @@
 # syntax=docker/dockerfile:1.4
-# Production Dockerfile for Villa Monorepo - Optimized for Turborepo
+# Production Dockerfile for Villa Monorepo - Optimized for Turborepo + Bun
 
-# Stage 1: Dependencies with pnpm
-FROM node:20-alpine AS deps
+# Stage 1: Dependencies with bun
+FROM oven/bun:1-alpine AS deps
 RUN apk add --no-cache libc6-compat
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
 
 # Copy package files for all workspaces
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json bun.lock ./
 COPY apps/hub/package.json ./apps/hub/
 COPY packages/sdk/package.json ./packages/sdk/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/config/package.json ./packages/config/
 
 # Install dependencies
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
 # Stage 2: Build with Turborepo
-FROM node:20-alpine AS builder
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+FROM oven/bun:1-alpine AS builder
+RUN apk add --no-cache nodejs npm
 WORKDIR /app
 
 # Copy all installed deps from deps stage
@@ -37,8 +35,7 @@ ARG NEXT_PUBLIC_CHAIN_ID=84532
 ENV NEXT_PUBLIC_CHAIN_ID=$NEXT_PUBLIC_CHAIN_ID
 
 # Build with Turborepo (builds all dependencies first)
-RUN --mount=type=cache,target=/app/apps/hub/.next/cache \
-    pnpm --filter @villa/hub build
+RUN bun --filter @villa/hub run build
 
 # Stage 3: Production-optimized runner
 FROM node:20-alpine AS runner
@@ -53,8 +50,7 @@ ENV HOSTNAME="0.0.0.0"
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy entire standalone directory to preserve pnpm symlink structure
-# In monorepo, standalone has: /apps/hub/ with symlinks to /node_modules/.pnpm/
+# Copy entire standalone directory to preserve symlink structure
 COPY --from=builder --chown=nextjs:nodejs /app/apps/hub/.next/standalone ./
 
 # Copy static assets and public files into the correct location

@@ -5,7 +5,7 @@
 # Fast checks (~30s): typecheck + lint
 # Slow checks (CI): E2E tests, security scans
 #
-# For full local verification: pnpm verify
+# For full local verification: bun run verify
 
 set -e
 
@@ -20,7 +20,7 @@ fi
 
 # Fast verification: typecheck + lint only
 # This catches 80% of issues in 20% of the time
-if pnpm typecheck && pnpm lint; then
+if bun run typecheck && bun run lint; then
     echo ""
     echo "✅ Fast checks passed. Pushing..."
     echo "📊 Full E2E tests will run in CI"
@@ -29,8 +29,6 @@ if pnpm typecheck && pnpm lint; then
     # Start background CI monitor (non-blocking)
     if [ -x "./scripts/ci-monitor.sh" ]; then
         echo "🔄 CI monitor will track status in background..."
-        # Note: This runs after push completes
-        # To enable: nohup ./scripts/ci-monitor.sh --watch >> .claude/ci-status.log 2>&1 &
     fi
 
     exit 0
@@ -38,7 +36,7 @@ else
     echo ""
     echo "❌ Fast verification failed. Fix issues before pushing."
     echo ""
-    echo "Run 'pnpm typecheck' and 'pnpm lint' to see errors"
+    echo "Run 'bun run typecheck' and 'bun run lint' to see errors"
     echo "To bypass (not recommended): git push --no-verify"
     exit 1
 fi

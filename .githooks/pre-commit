@@ -1,8 +1,5 @@
 #!/bin/bash
-# Pre-commit hook: Verify pnpm-lock.yaml is in sync
-#
-# Catches the most common contributor error: modifying package.json
-# without running `pnpm install` to update the lock file.
+# Pre-commit hook: Verify bun.lock is in sync
 
 set -e
 
@@ -11,14 +8,14 @@ if ! git diff --cached --name-only | grep -qE 'package\.json$'; then
   exit 0
 fi
 
-echo "📦 Checking pnpm-lock.yaml sync..."
+echo "📦 Checking bun.lock sync..."
 
-# Check if pnpm-lock.yaml is also staged when package.json changes
-if ! git diff --cached --name-only | grep -q 'pnpm-lock.yaml'; then
+# Check if bun.lock is also staged when package.json changes
+if ! git diff --cached --name-only | grep -q 'bun.lock'; then
   echo ""
-  echo "⚠️  package.json changed but pnpm-lock.yaml not staged!"
+  echo "⚠️  package.json changed but bun.lock not staged!"
   echo ""
-  echo "Run: pnpm install && git add pnpm-lock.yaml"
+  echo "Run: bun install && git add bun.lock"
   echo ""
   echo "This ensures the lock file stays in sync with dependencies."
   echo "To bypass (not recommended): git commit --no-verify"
@@ -26,11 +23,11 @@ if ! git diff --cached --name-only | grep -q 'pnpm-lock.yaml'; then
 fi
 
 # Verify lock file is actually in sync
-if ! pnpm install --frozen-lockfile --ignore-scripts > /dev/null 2>&1; then
+if ! bun install --frozen-lockfile > /dev/null 2>&1; then
   echo ""
-  echo "❌ pnpm-lock.yaml is out of sync with package.json files!"
+  echo "❌ bun.lock is out of sync with package.json files!"
   echo ""
-  echo "Run: pnpm install && git add pnpm-lock.yaml"
+  echo "Run: bun install && git add bun.lock"
   echo ""
   exit 1
 fi

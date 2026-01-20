@@ -1,49 +1,48 @@
-name: 'Setup Test Environment'
-description: 'Reusable composite action for test environment setup with caching'
+name: "Setup Test Environment"
+description: "Reusable composite action for test environment setup with caching"
 inputs:
   install-playwright:
-    description: 'Whether to install Playwright browsers'
+    description: "Whether to install Playwright browsers"
     required: false
-    default: 'true'
+    default: "true"
   playwright-browser:
-    description: 'Which Playwright browser to install (chromium, firefox, webkit, or all)'
+    description: "Which Playwright browser to install (chromium, firefox, webkit, or all)"
     required: false
-    default: 'chromium'
+    default: "chromium"
   node-version:
-    description: 'Node.js version to use'
+    description: "Node.js version to use"
     required: false
-    default: '20'
+    default: "20"
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v4
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
-        cache: 'pnpm'
 
     - name: Cache Next.js build
       uses: actions/cache@v4
       with:
-        path: apps/web/.next/cache
-        key: nextjs-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.ts', '**/*.tsx') }}
+        path: apps/hub/.next/cache
+        key: nextjs-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}-${{ hashFiles('**/*.ts', '**/*.tsx') }}
         restore-keys: |
-          nextjs-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-
+          nextjs-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}-
           nextjs-${{ runner.os }}-
 
     - name: Install dependencies
       shell: bash
-      run: pnpm install --frozen-lockfile
+      run: bun install --frozen-lockfile
 
     - name: Build workspace packages
       shell: bash
-      run: pnpm run build
-      # Build all packages (SDK, UI, etc.) so imports resolve correctly
-      # The Next.js app imports from @rockfridrich/villa-sdk which needs dist/
+      run: bun run build
 
     - name: Cache Playwright browsers
       if: inputs.install-playwright == 'true'
@@ -51,14 +50,14 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ inputs.playwright-browser }}
+        key: playwright-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}-${{ inputs.playwright-browser }}
 
     - name: Install Playwright browsers (full)
       if: inputs.install-playwright == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
       shell: bash
-      run: pnpm --filter @villa/web exec playwright install --with-deps ${{ inputs.playwright-browser }}
+      run: cd apps/hub && npx playwright install --with-deps ${{ inputs.playwright-browser }}
 
     - name: Install Playwright browser dependencies
       if: inputs.install-playwright == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
       shell: bash
-      run: pnpm --filter @villa/web exec playwright install-deps ${{ inputs.playwright-browser }}
+      run: cd apps/hub && npx playwright install-deps ${{ inputs.playwright-browser }}
