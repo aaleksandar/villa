@@ -18,7 +18,7 @@ COPY packages/config/package.json ./packages/config/
 COPY apps/api/package.json ./apps/api/
 COPY apps/relay/package.json ./apps/relay/
 COPY contracts/package.json ./contracts/
-COPY examples/nextjs-villa/package.json ./examples/nextjs-villa/
+COPY examples/nextjs-app/package.json ./examples/nextjs-app/
 
 # Install dependencies
 RUN bun install --frozen-lockfile
