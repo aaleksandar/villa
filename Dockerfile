@@ -15,8 +15,8 @@ COPY packages/sdk/package.json ./packages/sdk/
 COPY packages/sdk-react/package.json ./packages/sdk-react/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/config/package.json ./packages/config/
-COPY packages/api/package.json ./packages/api/
-COPY packages/relay/package.json ./packages/relay/
+COPY apps/api/package.json ./apps/api/
+COPY apps/relay/package.json ./apps/relay/
 COPY contracts/package.json ./contracts/
 COPY examples/nextjs-villa/package.json ./examples/nextjs-villa/
 
