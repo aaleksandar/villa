@@ -7,11 +7,18 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy package files for all workspaces
-COPY package.json bun.lock ./
+COPY package.json bun.lock turbo.json ./
 COPY apps/hub/package.json ./apps/hub/
+COPY apps/key/package.json ./apps/key/
+COPY apps/developers/package.json ./apps/developers/
 COPY packages/sdk/package.json ./packages/sdk/
+COPY packages/sdk-react/package.json ./packages/sdk-react/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/config/package.json ./packages/config/
+COPY packages/api/package.json ./packages/api/
+COPY packages/relay/package.json ./packages/relay/
+COPY contracts/package.json ./contracts/
+COPY examples/nextjs-villa/package.json ./examples/nextjs-villa/
 
 # Install dependencies
 RUN bun install --frozen-lockfile
