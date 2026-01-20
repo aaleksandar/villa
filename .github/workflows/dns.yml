@@ -1,0 +1,92 @@
+name: DNS Management
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Action to perform"
+        required: true
+        type: choice
+        options:
+          - add
+          - list
+      name:
+        description: "DNS record name (e.g., beta-key)"
+        required: false
+        type: string
+      target:
+        description: "CNAME target (e.g., villa-staging-25mrj.ondigitalocean.app)"
+        required: false
+        type: string
+      proxied:
+        description: "CloudFlare proxy enabled"
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  dns:
+    runs-on: ubuntu-latest
+    steps:
+      - name: List DNS Records
+        if: inputs.action == 'list'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        run: |
+          echo "Fetching DNS records for villa.cash..."
+          curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/dns_records" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" | \
+            jq -r '.result[] | "\(.type)\t\(.name)\t\(.content)\t\(if .proxied then "proxied" else "dns-only" end)"' | \
+            sort | column -t
+
+      - name: Add/Update DNS Record
+        if: inputs.action == 'add'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        run: |
+          NAME="${{ inputs.name }}"
+          TARGET="${{ inputs.target }}"
+          PROXIED="${{ inputs.proxied }}"
+
+          if [ -z "$NAME" ] || [ -z "$TARGET" ]; then
+            echo "Error: name and target are required for add action"
+            exit 1
+          fi
+
+          FULL_NAME="${NAME}.villa.cash"
+
+          echo "Checking for existing record: ${FULL_NAME}"
+          EXISTING=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/dns_records?type=CNAME&name=${FULL_NAME}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json")
+
+          RECORD_ID=$(echo "$EXISTING" | jq -r '.result[0].id // empty')
+
+          if [ -n "$RECORD_ID" ]; then
+            echo "Updating existing record (ID: $RECORD_ID)..."
+            RESULT=$(curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/dns_records/${RECORD_ID}" \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data "{\"type\":\"CNAME\",\"name\":\"${FULL_NAME}\",\"content\":\"${TARGET}\",\"proxied\":${PROXIED}}")
+          else
+            echo "Creating new record..."
+            RESULT=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/dns_records" \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data "{\"type\":\"CNAME\",\"name\":\"${FULL_NAME}\",\"content\":\"${TARGET}\",\"proxied\":${PROXIED},\"ttl\":1}")
+          fi
+
+          if echo "$RESULT" | jq -e '.success' > /dev/null; then
+            echo ""
+            echo "✓ DNS record configured successfully!"
+            echo "  Name:    ${FULL_NAME}"
+            echo "  Target:  ${TARGET}"
+            echo "  Proxied: ${PROXIED}"
+          else
+            echo "✗ Failed to configure DNS"
+            echo "$RESULT" | jq '.errors'
+            exit 1
+          fi
