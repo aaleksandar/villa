@@ -5,53 +5,56 @@
  * CRITICAL: Never trust postMessage without origin validation.
  */
 
-import { z } from 'zod'
-import type { VillaMessage, ParentMessage, VillaErrorCode } from './types'
+import { z } from "zod";
+import type { VillaMessage, ParentMessage, VillaErrorCode } from "./types";
 
 /**
  * Allowed origins for Villa auth
  * HTTPS-only in production - passkeys require secure context
  */
 export const ALLOWED_ORIGINS = [
-  'https://villa.cash',
-  'https://www.villa.cash',
-  'https://beta.villa.cash',
-  'https://dev-1.villa.cash',
-  'https://dev-2.villa.cash',
-  'https://key.villa.cash',
-  'https://beta-key.villa.cash',
-] as const
+  "https://villa.cash",
+  "https://www.villa.cash",
+  "https://beta.villa.cash",
+  "https://dev-1.villa.cash",
+  "https://dev-2.villa.cash",
+  "https://key.villa.cash",
+  "https://beta-key.villa.cash",
+] as const;
 
 /**
  * Development origins (only active when NODE_ENV === 'development')
  */
 export const DEV_ORIGINS = [
-  'https://local.villa.cash',
-  'https://localhost',
-  'https://localhost:3000',
-  'https://localhost:3001',
-  'https://localhost:443',
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://127.0.0.1:3000',
-  'http://127.0.0.1:3001',
-] as const
+  "https://local.villa.cash",
+  "https://localhost",
+  "https://localhost:3000",
+  "https://localhost:3001",
+  "https://localhost:443",
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3001",
+] as const;
 
 /**
  * Check if we're in development mode
  */
 export function isDevelopment(): boolean {
-  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-    return true
+  if (
+    typeof process !== "undefined" &&
+    process.env?.NODE_ENV === "development"
+  ) {
+    return true;
   }
   // Browser environment check
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return (
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1'
-    )
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+    );
   }
-  return false
+  return false;
 }
 
 /**
@@ -59,9 +62,9 @@ export function isDevelopment(): boolean {
  */
 export function getValidOrigins(): readonly string[] {
   if (isDevelopment()) {
-    return [...ALLOWED_ORIGINS, ...DEV_ORIGINS]
+    return [...ALLOWED_ORIGINS, ...DEV_ORIGINS];
   }
-  return ALLOWED_ORIGINS
+  return ALLOWED_ORIGINS;
 }
 
 /**
@@ -71,8 +74,8 @@ export function getValidOrigins(): readonly string[] {
  * @returns true if origin is in allowlist
  */
 export function validateOrigin(origin: string): boolean {
-  const validOrigins = getValidOrigins()
-  return validOrigins.includes(origin as typeof validOrigins[number])
+  const validOrigins = getValidOrigins();
+  return validOrigins.includes(origin as (typeof validOrigins)[number]);
 }
 
 /**
@@ -81,72 +84,74 @@ export function validateOrigin(origin: string): boolean {
  */
 const IdentitySchema = z.object({
   address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
-  nickname: z.string().max(50).optional().or(z.literal('')),
-  avatar: z.object({
-    style: z.string(), // Allow any style (lorelei, adventurer, etc.)
-    seed: z.string(),
-    gender: z.enum(['male', 'female', 'other']).optional(),
-  }).optional(),
-})
+  nickname: z.string().max(50).optional().or(z.literal("")),
+  avatar: z
+    .object({
+      style: z.enum(["lorelei", "adventurer", "avataaars", "bottts", "thumbs"]),
+      seed: z.string(),
+      gender: z.enum(["male", "female", "other"]).optional(),
+    })
+    .optional(),
+});
 
 /**
  * Villa error codes
  */
 const ErrorCodeSchema = z.enum([
-  'CANCELLED',
-  'TIMEOUT',
-  'NETWORK_ERROR',
-  'INVALID_ORIGIN',
-  'INVALID_CONFIG',
-  'AUTH_FAILED',
-  'PASSKEY_ERROR',
-  'CONSENT_REQUIRED',
-])
+  "CANCELLED",
+  "TIMEOUT",
+  "NETWORK_ERROR",
+  "INVALID_ORIGIN",
+  "INVALID_CONFIG",
+  "AUTH_FAILED",
+  "PASSKEY_ERROR",
+  "CONSENT_REQUIRED",
+]);
 
 /**
  * Villa message schemas
  */
-const VillaMessageSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('VILLA_READY') }),
+const VillaMessageSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("VILLA_READY") }),
   z.object({
-    type: z.literal('VILLA_AUTH_SUCCESS'),
+    type: z.literal("VILLA_AUTH_SUCCESS"),
     payload: z.object({ identity: IdentitySchema }),
   }),
-  z.object({ type: z.literal('VILLA_AUTH_CANCEL') }),
+  z.object({ type: z.literal("VILLA_AUTH_CANCEL") }),
   z.object({
-    type: z.literal('VILLA_AUTH_ERROR'),
+    type: z.literal("VILLA_AUTH_ERROR"),
     payload: z.object({
       error: z.string(),
       code: ErrorCodeSchema.optional(),
     }),
   }),
   z.object({
-    type: z.literal('VILLA_CONSENT_GRANTED'),
+    type: z.literal("VILLA_CONSENT_GRANTED"),
     payload: z.object({
       appId: z.string(),
       scopes: z.array(z.string()),
     }),
   }),
   z.object({
-    type: z.literal('VILLA_CONSENT_DENIED'),
+    type: z.literal("VILLA_CONSENT_DENIED"),
     payload: z.object({ appId: z.string() }),
   }),
-])
+]);
 
 /**
  * Parent message schemas
  */
-const ParentMessageSchema = z.discriminatedUnion('type', [
+const ParentMessageSchema = z.discriminatedUnion("type", [
   z.object({
-    type: z.literal('PARENT_INIT'),
+    type: z.literal("PARENT_INIT"),
     payload: z.object({
       appId: z.string(),
       scopes: z.array(z.string()).optional(),
       origin: z.string(),
     }),
   }),
-  z.object({ type: z.literal('PARENT_CLOSE') }),
-])
+  z.object({ type: z.literal("PARENT_CLOSE") }),
+]);
 
 /**
  * Validate and parse a Villa message
@@ -156,13 +161,13 @@ const ParentMessageSchema = z.discriminatedUnion('type', [
  */
 export function parseVillaMessage(data: unknown): VillaMessage | null {
   try {
-    const result = VillaMessageSchema.safeParse(data)
+    const result = VillaMessageSchema.safeParse(data);
     if (!result.success) {
-      return null
+      return null;
     }
     // Cast address to branded type after validation
-    const message = result.data
-    if (message.type === 'VILLA_AUTH_SUCCESS') {
+    const message = result.data;
+    if (message.type === "VILLA_AUTH_SUCCESS") {
       return {
         ...message,
         payload: {
@@ -171,11 +176,11 @@ export function parseVillaMessage(data: unknown): VillaMessage | null {
             address: message.payload.identity.address as `0x${string}`,
           },
         },
-      }
+      };
     }
-    return message as VillaMessage
+    return message as VillaMessage;
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -187,10 +192,10 @@ export function parseVillaMessage(data: unknown): VillaMessage | null {
  */
 export function parseParentMessage(data: unknown): ParentMessage | null {
   try {
-    const result = ParentMessageSchema.safeParse(data)
-    return result.success ? (result.data as ParentMessage) : null
+    const result = ParentMessageSchema.safeParse(data);
+    return result.success ? (result.data as ParentMessage) : null;
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -199,11 +204,11 @@ export function parseParentMessage(data: unknown): ParentMessage | null {
  */
 export function createVillaError(
   error: string,
-  code?: string
+  code?: string,
 ): { error: string; code?: VillaErrorCode } {
-  const validCode = ErrorCodeSchema.safeParse(code)
+  const validCode = ErrorCodeSchema.safeParse(code);
   return {
     error,
     code: validCode.success ? validCode.data : undefined,
-  }
+  };
 }

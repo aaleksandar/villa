@@ -1,12 +1,34 @@
-'use client'
+"use client";
 
-import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { LogOut, Copy, Check, Pencil, X, Settings, ExternalLink, Compass, Globe } from 'lucide-react'
-import { Button, Card, CardContent, Avatar, Input, Spinner } from '@/components/ui'
-import { useIdentityStore } from '@/lib/store'
-import { disconnectPorto } from '@/lib/porto'
-import { displayNameSchema } from '@/lib/validation'
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import {
+  LogOut,
+  Copy,
+  Check,
+  Pencil,
+  X,
+  Settings,
+  ExternalLink,
+  Compass,
+  Globe,
+} from "lucide-react";
+import {
+  Button,
+  Card,
+  CardContent,
+  Avatar,
+  Input,
+  Spinner,
+} from "@/components/ui";
+import {
+  ProfileSettings,
+  type ProfileData,
+  type ProfileUpdate,
+} from "@/components/sdk";
+import { useIdentityStore } from "@/lib/store";
+import { disconnectPorto } from "@/lib/porto";
+import { displayNameSchema } from "@/lib/validation";
 import {
   authenticateTinyCloud,
   syncToTinyCloud,
@@ -14,207 +36,330 @@ import {
   getRecentApps,
   trackAppUsage,
   type RecentApp,
-} from '@/lib/storage/tinycloud-client'
-import { AddFundsButton } from '@/components/funding'
+} from "@/lib/storage/tinycloud-client";
+import type { CustomAvatar } from "@/lib/storage/tinycloud";
+import { AddFundsButton } from "@/components/funding";
+import type { AvatarConfig } from "@/types";
 
 // Featured ecosystem apps
 const ECOSYSTEM_APPS = [
   {
-    appId: 'residents',
-    name: 'Residents',
-    url: 'https://residents.proofofretreat.me/',
-    description: 'Community directory',
+    appId: "residents",
+    name: "Residents",
+    url: "https://residents.proofofretreat.me/",
+    description: "Community directory",
   },
   {
-    appId: 'map',
-    name: 'Map',
-    url: 'https://map.proofofretreat.me/',
-    description: 'Village explorer',
+    appId: "map",
+    name: "Map",
+    url: "https://map.proofofretreat.me/",
+    description: "Village explorer",
   },
-]
+];
 
 export default function HomePage() {
-  const router = useRouter()
-  const { identity, clearIdentity, updateProfile } = useIdentityStore()
-  const [copied, setCopied] = useState(false)
-  const [ensNameCopied, setEnsNameCopied] = useState(false)
+  const router = useRouter();
+  const { identity, clearIdentity, updateProfile } = useIdentityStore();
+  const [copied, setCopied] = useState(false);
+  const [ensNameCopied, setEnsNameCopied] = useState(false);
 
   // Nickname editing state
-  const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState('')
-  const [editError, setEditError] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Recent apps state
-  const [recentApps, setRecentApps] = useState<RecentApp[]>([])
+  const [recentApps, setRecentApps] = useState<RecentApp[]>([]);
+
+  // Settings modal state
+  const [showSettings, setShowSettings] = useState(false);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
   // Ref for tracking timeout to prevent memory leaks
-  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const ensCopyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const ensCopyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (copyTimeoutRef.current) {
-        clearTimeout(copyTimeoutRef.current)
+        clearTimeout(copyTimeoutRef.current);
       }
       if (ensCopyTimeoutRef.current) {
-        clearTimeout(ensCopyTimeoutRef.current)
+        clearTimeout(ensCopyTimeoutRef.current);
       }
-    }
-  }, [])
+    };
+  }, []);
 
   useEffect(() => {
     if (!identity) {
-      router.replace('/onboarding')
+      router.replace("/onboarding");
     }
-  }, [identity, router])
+  }, [identity, router]);
 
   // Authenticate TinyCloud on mount for returning users on new devices
   useEffect(() => {
-    if (!identity?.address) return
+    if (!identity?.address) return;
 
     // Load recent apps immediately from localStorage
-    getRecentApps().then(setRecentApps).catch(console.warn)
+    getRecentApps().then(setRecentApps).catch(console.warn);
 
     // Check if TinyCloud is already authenticated for this address
-    if (isTinyCloudAuthenticatedFor(identity.address)) return
+    if (isTinyCloudAuthenticatedFor(identity.address)) return;
 
     // Trigger background authentication
     authenticateTinyCloud(identity.address)
-      .then(success => {
+      .then((success) => {
         if (success) {
-          syncToTinyCloud().catch(console.warn)
+          syncToTinyCloud().catch(console.warn);
           // Reload recent apps after sync (may have newer data from TinyCloud)
-          getRecentApps().then(setRecentApps).catch(console.warn)
+          getRecentApps().then(setRecentApps).catch(console.warn);
         }
       })
-      .catch(console.warn)
-  }, [identity?.address])
+      .catch(console.warn);
+  }, [identity?.address]);
 
   if (!identity) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-cream-50">
         <div className="animate-spin w-8 h-8 border-4 border-accent-yellow border-t-transparent rounded-full" />
       </main>
-    )
+    );
   }
 
   const handleLogout = async () => {
-    await disconnectPorto()
-    clearIdentity()
-    router.replace('/onboarding')
-  }
+    await disconnectPorto();
+    clearIdentity();
+    router.replace("/onboarding");
+  };
 
   const handleCopyAddress = async () => {
     try {
-      await navigator.clipboard.writeText(identity.address)
-      setCopied(true)
+      await navigator.clipboard.writeText(identity.address);
+      setCopied(true);
       // Clear any existing timeout before setting a new one
       if (copyTimeoutRef.current) {
-        clearTimeout(copyTimeoutRef.current)
+        clearTimeout(copyTimeoutRef.current);
       }
-      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000)
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       // Clipboard API can fail if permissions are denied or page doesn't have focus
-      console.error('Failed to copy address:', err)
+      console.error("Failed to copy address:", err);
     }
-  }
+  };
 
   const handleCopyEnsName = async () => {
-    const ensName = `${identity.displayName}.villa.cash`
+    const ensName = `${identity.displayName}.villa.cash`;
     try {
-      await navigator.clipboard.writeText(ensName)
-      setEnsNameCopied(true)
+      await navigator.clipboard.writeText(ensName);
+      setEnsNameCopied(true);
       if (ensCopyTimeoutRef.current) {
-        clearTimeout(ensCopyTimeoutRef.current)
+        clearTimeout(ensCopyTimeoutRef.current);
       }
-      ensCopyTimeoutRef.current = setTimeout(() => setEnsNameCopied(false), 2000)
+      ensCopyTimeoutRef.current = setTimeout(
+        () => setEnsNameCopied(false),
+        2000,
+      );
     } catch (err) {
-      console.error('Failed to copy ENS name:', err)
+      console.error("Failed to copy ENS name:", err);
     }
-  }
+  };
 
   const handleStartEdit = () => {
-    setEditValue(identity.displayName)
-    setEditError(null)
-    setIsEditing(true)
+    setEditValue(identity.displayName);
+    setEditError(null);
+    setIsEditing(true);
     // Focus input after render
-    setTimeout(() => inputRef.current?.focus(), 0)
-  }
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
 
   const handleCancelEdit = () => {
-    setIsEditing(false)
-    setEditValue('')
-    setEditError(null)
-  }
+    setIsEditing(false);
+    setEditValue("");
+    setEditError(null);
+  };
 
   const handleSaveEdit = async () => {
     // Remove @ prefix if user typed it
-    const cleanValue = editValue.startsWith('@') ? editValue.slice(1) : editValue
+    const cleanValue = editValue.startsWith("@")
+      ? editValue.slice(1)
+      : editValue;
 
     // Validate
-    const result = displayNameSchema.safeParse(cleanValue)
+    const result = displayNameSchema.safeParse(cleanValue);
     if (!result.success) {
-      setEditError(result.error.errors[0]?.message || 'Invalid nickname')
-      return
+      setEditError(result.error.errors[0]?.message || "Invalid nickname");
+      return;
     }
 
     // Check if actually changed
     if (result.data === identity.displayName) {
-      setIsEditing(false)
-      return
+      setIsEditing(false);
+      return;
     }
 
-    setIsSaving(true)
-    setEditError(null)
+    setIsSaving(true);
+    setEditError(null);
 
     // Update via store
-    const success = updateProfile(result.data)
+    const success = updateProfile(result.data);
 
     if (success) {
-      setIsEditing(false)
-      setEditValue('')
+      setIsEditing(false);
+      setEditValue("");
     } else {
-      setEditError('Failed to update nickname')
+      setEditError("Failed to update nickname");
     }
-    setIsSaving(false)
-  }
+    setIsSaving(false);
+  };
 
   const handleEditKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSaveEdit()
-    } else if (e.key === 'Escape') {
-      handleCancelEdit()
+    if (e.key === "Enter") {
+      handleSaveEdit();
+    } else if (e.key === "Escape") {
+      handleCancelEdit();
     }
-  }
+  };
 
-  const handleVisitApp = async (app: typeof ECOSYSTEM_APPS[0]) => {
+  const handleOpenSettings = async () => {
+    if (!identity?.address) return;
+
+    setShowSettings(true);
+    setLoadingProfile(true);
+
+    try {
+      const res = await fetch(`/api/profile/${identity.address}`);
+      const data = await res.json();
+
+      let avatarConfig: AvatarConfig | CustomAvatar;
+      if (!identity.avatar || typeof identity.avatar === "string") {
+        avatarConfig = {
+          style: "avataaars" as const,
+          selection: "other" as const,
+          variant: 0,
+        };
+      } else {
+        avatarConfig = identity.avatar;
+      }
+
+      setProfileData({
+        address: identity.address,
+        nickname: data.nickname,
+        displayName: identity.displayName || data.nickname || "",
+        avatar: avatarConfig,
+        canChangeNickname: data.canChangeNickname ?? true,
+        nicknameChangeCount: data.nicknameChangeCount ?? 0,
+      });
+    } catch (err) {
+      console.error("Failed to fetch profile:", err);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  const handleProfileUpdate = async (updates: ProfileUpdate) => {
+    if (!identity) return;
+
+    try {
+      if (updates.nickname) {
+        await fetch("/api/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            address: identity.address,
+            newNickname: updates.nickname,
+          }),
+        });
+      }
+
+      if (updates.displayName !== undefined || updates.avatar !== undefined) {
+        let avatarForStore:
+          | string
+          | {
+              style: "avataaars" | "bottts";
+              selection: "male" | "female" | "other";
+              variant: number;
+            }
+          | undefined;
+
+        if (updates.avatar) {
+          const isCustom =
+            "type" in updates.avatar && updates.avatar.type === "custom";
+          if (isCustom) {
+            avatarForStore = (updates.avatar as CustomAvatar).dataUrl;
+          } else {
+            const config = updates.avatar as AvatarConfig;
+            avatarForStore = {
+              style: config.style,
+              selection: config.selection,
+              variant: config.variant,
+            };
+          }
+        }
+
+        updateProfile(
+          updates.displayName ?? identity.displayName,
+          avatarForStore,
+        );
+      }
+
+      const res = await fetch(`/api/profile/${identity.address}`);
+      const data = await res.json();
+
+      const avatarSource = updates.avatar ?? identity.avatar;
+      let avatarConfig: AvatarConfig | CustomAvatar;
+      if (!avatarSource || typeof avatarSource === "string") {
+        avatarConfig = {
+          style: "avataaars" as const,
+          selection: "other" as const,
+          variant: 0,
+        };
+      } else {
+        avatarConfig = avatarSource;
+      }
+
+      setProfileData({
+        address: identity.address,
+        nickname: data.nickname,
+        displayName: updates.displayName ?? identity.displayName,
+        avatar: avatarConfig,
+        canChangeNickname: data.canChangeNickname ?? true,
+        nicknameChangeCount: data.nicknameChangeCount ?? 0,
+      });
+    } catch (err) {
+      console.error("Failed to update profile:", err);
+      throw err;
+    }
+  };
+
+  const handleVisitApp = async (app: (typeof ECOSYSTEM_APPS)[0]) => {
     // Track usage before navigating
     await trackAppUsage({
       appId: app.appId,
       name: app.name,
       url: app.url,
-    })
+    });
     // Refresh recent apps list
-    const updated = await getRecentApps()
-    setRecentApps(updated)
+    const updated = await getRecentApps();
+    setRecentApps(updated);
     // Open in new tab
-    window.open(app.url, '_blank', 'noopener,noreferrer')
-  }
+    window.open(app.url, "_blank", "noopener,noreferrer");
+  };
 
   const truncateAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`
-  }
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
-  }
+    return new Date(timestamp).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   return (
     <main className="min-h-screen p-6 bg-cream-50">
@@ -222,10 +367,20 @@ export default function HomePage() {
         <header className="flex items-center justify-between">
           <h1 className="text-2xl font-serif text-ink">Villa</h1>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="lg" onClick={() => router.push('/settings')} aria-label="Settings">
+            <Button
+              variant="ghost"
+              size="lg"
+              onClick={handleOpenSettings}
+              aria-label="Settings"
+            >
               <Settings className="w-6 h-6" />
             </Button>
-            <Button variant="ghost" size="lg" onClick={handleLogout} aria-label="Sign out">
+            <Button
+              variant="ghost"
+              size="lg"
+              onClick={handleLogout}
+              aria-label="Sign out"
+            >
               <LogOut className="w-6 h-6" />
             </Button>
           </div>
@@ -243,11 +398,19 @@ export default function HomePage() {
               {isEditing ? (
                 <div className="space-y-2">
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink text-base">@</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink text-base">
+                      @
+                    </span>
                     <Input
                       ref={inputRef}
                       value={editValue}
-                      onChange={(e) => setEditValue(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
+                      onChange={(e) =>
+                        setEditValue(
+                          e.target.value
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]/g, ""),
+                        )
+                      }
                       onKeyDown={handleEditKeyDown}
                       className="pl-8 pr-10 text-center"
                       maxLength={30}
@@ -270,7 +433,7 @@ export default function HomePage() {
                     disabled={isSaving || !editValue}
                     className="w-full"
                   >
-                    {isSaving ? <Spinner className="w-4 h-4" /> : 'Save'}
+                    {isSaving ? <Spinner className="w-4 h-4" /> : "Save"}
                   </Button>
                 </div>
               ) : (
@@ -300,7 +463,9 @@ export default function HomePage() {
                 onClick={handleCopyAddress}
                 className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink transition-colors"
               >
-                <span className="font-mono">{truncateAddress(identity.address)}</span>
+                <span className="font-mono">
+                  {truncateAddress(identity.address)}
+                </span>
                 {copied ? (
                   <Check className="w-4 h-4 text-accent-green" />
                 ) : (
@@ -340,12 +505,21 @@ export default function HomePage() {
             {/* Recent Apps (if any) */}
             {recentApps.length > 0 && (
               <div className="space-y-2">
-                <span className="text-xs text-ink-muted uppercase tracking-wide">Recent</span>
+                <span className="text-xs text-ink-muted uppercase tracking-wide">
+                  Recent
+                </span>
                 <div className="space-y-1">
                   {recentApps.slice(0, 3).map((app) => (
                     <button
                       key={app.appId}
-                      onClick={() => handleVisitApp({ appId: app.appId, name: app.name, url: app.url, description: '' })}
+                      onClick={() =>
+                        handleVisitApp({
+                          appId: app.appId,
+                          name: app.name,
+                          url: app.url,
+                          description: "",
+                        })
+                      }
                       className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-cream-100 transition-colors text-left"
                     >
                       <span className="text-sm text-ink">{app.name}</span>
@@ -359,7 +533,7 @@ export default function HomePage() {
             {/* Featured Apps */}
             <div className="space-y-2">
               <span className="text-xs text-ink-muted uppercase tracking-wide">
-                {recentApps.length > 0 ? 'All Apps' : 'Apps'}
+                {recentApps.length > 0 ? "All Apps" : "Apps"}
               </span>
               <div className="space-y-1">
                 {ECOSYSTEM_APPS.map((app) => (
@@ -370,7 +544,9 @@ export default function HomePage() {
                   >
                     <div>
                       <span className="text-sm text-ink">{app.name}</span>
-                      <p className="text-xs text-ink-muted">{app.description}</p>
+                      <p className="text-xs text-ink-muted">
+                        {app.description}
+                      </p>
                     </div>
                     <ExternalLink className="w-4 h-4 text-ink-muted" />
                   </button>
@@ -381,11 +557,7 @@ export default function HomePage() {
         </Card>
 
         <div className="pt-4 space-y-2">
-          <Button
-            variant="secondary"
-            className="w-full"
-            onClick={handleLogout}
-          >
+          <Button variant="secondary" className="w-full" onClick={handleLogout}>
             <LogOut className="w-5 h-5 mr-2" />
             Switch Account
           </Button>
@@ -394,6 +566,22 @@ export default function HomePage() {
           </p>
         </div>
       </div>
+
+      {showSettings &&
+        (loadingProfile ? (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <div className="bg-cream rounded-lg p-6">
+              <Spinner size="lg" />
+            </div>
+          </div>
+        ) : profileData ? (
+          <ProfileSettings
+            profile={profileData}
+            onUpdate={handleProfileUpdate}
+            onClose={() => setShowSettings(false)}
+            asModal={true}
+          />
+        ) : null)}
     </main>
-  )
+  );
 }

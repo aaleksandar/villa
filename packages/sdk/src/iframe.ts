@@ -77,7 +77,7 @@ const IdentitySchema = z.object({
     .transform((val) => val as `0x${string}`),
   nickname: z.string().min(1),
   avatar: z.object({
-    style: z.enum(["adventurer", "avataaars", "bottts", "thumbs"]),
+    style: z.enum(["lorelei", "adventurer", "avataaars", "bottts", "thumbs"]),
     seed: z.string(),
     gender: z.enum(["male", "female", "other"]).optional(),
   }),

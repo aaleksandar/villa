@@ -1,15 +1,15 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Play, ChevronDown, Copy, Check } from 'lucide-react'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism'
+import { useState } from "react";
+import { Play, ChevronDown, Copy, Check } from "lucide-react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 
 // Pre-built examples
 const EXAMPLES = {
-  'sign-in': {
-    title: 'Sign In User',
-    description: 'Basic authentication flow',
+  "sign-in": {
+    title: "Sign In User",
+    description: "Basic authentication flow",
     code: `import { Villa } from '@rockfridrich/villa-sdk'
 
 const villa = new Villa({
@@ -29,9 +29,9 @@ if (result.success) {
   console.error('Error:', result.error)
 }`,
   },
-  'get-profile': {
-    title: 'Get User Profile',
-    description: 'Retrieve authenticated user information',
+  "get-profile": {
+    title: "Get User Profile",
+    description: "Retrieve authenticated user information",
     code: `import { Villa } from '@rockfridrich/villa-sdk'
 
 const villa = new Villa({
@@ -49,9 +49,9 @@ if (villa.isAuthenticated()) {
   console.log('Not authenticated')
 }`,
   },
-  'resolve-ens': {
-    title: 'Resolve ENS Name',
-    description: 'Look up nickname to address',
+  "resolve-ens": {
+    title: "Resolve ENS Name",
+    description: "Look up nickname to address",
     code: `import { Villa } from '@rockfridrich/villa-sdk'
 
 const villa = new Villa({
@@ -76,18 +76,18 @@ if (nickname) {
   console.log('Address nickname:', nickname)
 }`,
   },
-}
+};
 
-type ExampleKey = keyof typeof EXAMPLES
+type ExampleKey = keyof typeof EXAMPLES;
 
 function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <button
@@ -101,42 +101,42 @@ function CopyButton({ text }: { text: string }) {
         <Copy className="w-4 h-4 text-cream-100/60 hover:text-cream-100 transition-colors" />
       )}
     </button>
-  )
+  );
 }
 
 export default function PlaygroundPage() {
-  const [selectedExample, setSelectedExample] = useState<ExampleKey>('sign-in')
-  const [code, setCode] = useState(EXAMPLES['sign-in'].code)
-  const [output, setOutput] = useState<string[]>([])
-  const [isRunning, setIsRunning] = useState(false)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [selectedExample, setSelectedExample] = useState<ExampleKey>("sign-in");
+  const [code, setCode] = useState(EXAMPLES["sign-in"].code);
+  const [output, setOutput] = useState<string[]>([]);
+  const [isRunning, setIsRunning] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const handleExampleChange = (key: ExampleKey) => {
-    setSelectedExample(key)
-    setCode(EXAMPLES[key].code)
-    setOutput([])
-    setDropdownOpen(false)
-  }
+    setSelectedExample(key);
+    setCode(EXAMPLES[key].code);
+    setOutput([]);
+    setDropdownOpen(false);
+  };
 
   const handleRun = () => {
-    setIsRunning(true)
+    setIsRunning(true);
     setOutput([
-      '[Playground] Running code in sandbox...',
-      '',
-      '[Note] This is a demo playground. Real execution requires integration with beta.villa.cash.',
-      '',
-      'To test live:',
-      '1. Install SDK: npm install @rockfridrich/villa-sdk',
-      '2. Use beta.villa.cash for authentication',
-      '3. Follow the quickstart guide in Documentation',
-    ])
+      "[Playground] Running code in sandbox...",
+      "",
+      "[Note] This is a demo playground. Real execution requires integration with beta.villa.cash.",
+      "",
+      "To test live:",
+      "1. Install SDK: npm install @rockfridrich/villa-sdk",
+      "2. Use beta.villa.cash for authentication",
+      "3. Follow the quickstart guide in Documentation",
+    ]);
 
     setTimeout(() => {
-      setIsRunning(false)
-    }, 1000)
-  }
+      setIsRunning(false);
+    }, 1000);
+  };
 
-  const currentExample = EXAMPLES[selectedExample]
+  const currentExample = EXAMPLES[selectedExample];
 
   return (
     <div className="min-h-screen">
@@ -147,27 +147,63 @@ export default function PlaygroundPage() {
             Playground
           </h1>
           <p className="text-lg text-ink-muted max-w-2xl">
-            Interactive code sandbox to test Villa SDK. Try pre-built examples or write your own code.
+            Interactive code sandbox to test Villa SDK. Try pre-built examples
+            or explore the live demo.
           </p>
-          <div className="bg-accent-yellow/10 border border-accent-yellow/20 rounded-lg p-4 text-sm">
-            <strong>Note:</strong> Connect to{' '}
-            <a
-              href="https://beta.villa.cash"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent-yellow hover:underline"
-            >
-              beta.villa.cash
-            </a>
-            {' '}for live testing. This playground demonstrates SDK usage patterns.
-          </div>
         </div>
       </section>
 
-      {/* Main Playground */}
+      {/* Live Demo Embed */}
+      <section className="pb-12">
+        <div className="max-w-6xl mx-auto space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-serif">Live Interactive Demo</h2>
+            <a
+              href="https://beta.villa.cash/sdk-demo"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-accent-yellow hover:underline flex items-center gap-1"
+            >
+              Open in new tab
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
+              </svg>
+            </a>
+          </div>
+          <p className="text-ink-muted text-sm">
+            Try the full SDK integration below. Authentication uses real
+            passkeys on Base Sepolia testnet.
+          </p>
+          <div className="border border-ink/10 rounded-xl overflow-hidden bg-cream-50">
+            <iframe
+              src="https://beta.villa.cash/sdk-demo"
+              className="w-full h-[700px] border-0"
+              title="Villa SDK Live Demo"
+              allow="publickey-credentials-get *; publickey-credentials-create *"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+            />
+          </div>
+          <p className="text-xs text-ink-muted text-center">
+            Demo powered by beta.villa.cash • Passkeys stored securely on your
+            device
+          </p>
+        </div>
+      </section>
+
+      {/* Code Examples */}
       <section className="pb-20">
         <div className="max-w-6xl mx-auto">
-          {/* Example Selector */}
+          <h2 className="text-2xl font-serif mb-6">Code Examples</h2>
           <div className="mb-6">
             <label className="block text-sm font-medium text-ink-muted mb-2">
               Select Example
@@ -179,12 +215,16 @@ export default function PlaygroundPage() {
                 aria-expanded={dropdownOpen}
               >
                 <div className="text-left">
-                  <div className="font-medium text-ink">{currentExample.title}</div>
-                  <div className="text-xs text-ink-muted">{currentExample.description}</div>
+                  <div className="font-medium text-ink">
+                    {currentExample.title}
+                  </div>
+                  <div className="text-xs text-ink-muted">
+                    {currentExample.description}
+                  </div>
                 </div>
                 <ChevronDown
                   className={`w-4 h-4 text-ink-muted transition-transform ${
-                    dropdownOpen ? 'rotate-180' : ''
+                    dropdownOpen ? "rotate-180" : ""
                   }`}
                 />
               </button>
@@ -204,11 +244,15 @@ export default function PlaygroundPage() {
                         key={key}
                         onClick={() => handleExampleChange(key as ExampleKey)}
                         className={`w-full text-left px-4 py-3 hover:bg-cream-100 transition-colors first:rounded-t-lg last:rounded-b-lg border-b border-ink/5 last:border-b-0 ${
-                          selectedExample === key ? 'bg-accent-yellow/10' : ''
+                          selectedExample === key ? "bg-accent-yellow/10" : ""
                         }`}
                       >
-                        <div className="font-medium text-ink">{example.title}</div>
-                        <div className="text-xs text-ink-muted">{example.description}</div>
+                        <div className="font-medium text-ink">
+                          {example.title}
+                        </div>
+                        <div className="text-xs text-ink-muted">
+                          {example.description}
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -222,14 +266,16 @@ export default function PlaygroundPage() {
             {/* Code Editor */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-ink-muted">Code Editor</h2>
+                <h2 className="text-sm font-medium text-ink-muted">
+                  Code Editor
+                </h2>
                 <button
                   onClick={handleRun}
                   disabled={isRunning}
                   className="flex items-center gap-2 bg-accent-yellow text-ink font-medium px-4 py-2 rounded-lg hover:bg-accent-yellow/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-11"
                 >
                   <Play className="w-4 h-4" />
-                  {isRunning ? 'Running...' : 'Run Code'}
+                  {isRunning ? "Running..." : "Run Code"}
                 </button>
               </div>
 
@@ -243,11 +289,11 @@ export default function PlaygroundPage() {
                     style={oneDark}
                     customStyle={{
                       margin: 0,
-                      padding: '1.5rem',
-                      fontSize: '0.875rem',
-                      lineHeight: '1.6',
-                      backgroundColor: 'transparent',
-                      minHeight: '400px',
+                      padding: "1.5rem",
+                      fontSize: "0.875rem",
+                      lineHeight: "1.6",
+                      backgroundColor: "transparent",
+                      minHeight: "400px",
                     }}
                     showLineNumbers={true}
                     wrapLines={true}
@@ -260,7 +306,9 @@ export default function PlaygroundPage() {
 
             {/* Preview/Output */}
             <div className="space-y-3">
-              <h2 className="text-sm font-medium text-ink-muted">Console Output</h2>
+              <h2 className="text-sm font-medium text-ink-muted">
+                Console Output
+              </h2>
               <div className="bg-ink text-cream-100 rounded-lg p-6 font-mono text-sm min-h-[400px] border border-ink/20">
                 {output.length === 0 ? (
                   <div className="text-ink-muted">
@@ -271,7 +319,9 @@ export default function PlaygroundPage() {
                     {output.map((line, index) => (
                       <div
                         key={index}
-                        className={line.startsWith('[') ? 'text-accent-yellow' : ''}
+                        className={
+                          line.startsWith("[") ? "text-accent-yellow" : ""
+                        }
                       >
                         {line}
                       </div>
@@ -332,14 +382,12 @@ export default function PlaygroundPage() {
                 >
                   Report Issues
                 </a>
-                <p className="text-ink-muted mt-1">
-                  Found a bug? Let us know
-                </p>
+                <p className="text-ink-muted mt-1">Found a bug? Let us know</p>
               </div>
             </div>
           </div>
         </div>
       </section>
     </div>
-  )
+  );
 }

@@ -115,6 +115,7 @@ export type {
 // Types - all shared types for the ecosystem
 export type {
   Identity,
+  AvatarStyle,
   AvatarConfig,
   Profile,
   NicknameCheckResult,
