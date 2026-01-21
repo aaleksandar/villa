@@ -1,51 +1,51 @@
-'use client'
+"use client";
 
-import { useState, useCallback } from 'react'
-import { X, Lock, Camera, ArrowLeft } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import * as Dialog from '@radix-ui/react-dialog'
-import { Button } from '@/components/ui'
-import { AvatarPreview } from './AvatarPreview'
-import { AvatarSelection } from './AvatarSelection'
-import { AvatarUpload } from './AvatarUpload'
-import { ProfileSection, EditableField } from './profile'
-import { displayNameSchema, nicknameSchema } from '@/lib/validation'
-import { avatarStorage, type CustomAvatar } from '@/lib/storage/tinycloud'
-import type { AvatarConfig } from '@/types'
+import { useState, useCallback } from "react";
+import { X, Lock, Camera, ArrowLeft } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Button } from "@/components/ui";
+import { AvatarPreview } from "./AvatarPreview";
+import { AvatarSelection } from "./AvatarSelection";
+import { AvatarUpload } from "./AvatarUpload";
+import { ProfileSection, EditableField } from "./profile";
+import { nicknameSchema } from "@/lib/validation";
+import { avatarStorage, type CustomAvatar } from "@/lib/storage/tinycloud";
+import type { AvatarConfig } from "@/types";
 
 /** Profile data structure */
 export interface ProfileData {
-  address: string
-  nickname: string | null
-  displayName: string
-  avatar: AvatarConfig | CustomAvatar
+  address: string;
+  nickname: string | null;
+  displayName: string;
+  avatar: AvatarConfig | CustomAvatar;
   /** Whether user can change their nickname (limited changes allowed) */
-  canChangeNickname?: boolean
+  canChangeNickname?: boolean;
   /** Number of times nickname has been changed */
-  nicknameChangeCount?: number
+  nicknameChangeCount?: number;
 }
 
 /** Profile update payload */
 export interface ProfileUpdate {
-  displayName?: string
-  avatar?: AvatarConfig | CustomAvatar
-  nickname?: string
+  displayName?: string;
+  avatar?: AvatarConfig | CustomAvatar;
+  nickname?: string;
 }
 
 export interface ProfileSettingsProps {
   /** User's current profile */
-  profile: ProfileData
+  profile: ProfileData;
   /** Callback when profile is updated */
-  onUpdate: (updates: ProfileUpdate) => Promise<void>
+  onUpdate: (updates: ProfileUpdate) => Promise<void>;
   /** Optional: close handler */
-  onClose?: () => void
+  onClose?: () => void;
   /** Feature flag: enable avatar upload */
-  allowAvatarUpload?: boolean
+  allowAvatarUpload?: boolean;
   /** Feature flag: show as modal or inline */
-  asModal?: boolean
+  asModal?: boolean;
 }
 
-type SettingsView = 'overview' | 'edit-avatar' | 'upload-avatar'
+type SettingsView = "overview" | "edit-avatar" | "upload-avatar";
 
 /**
  * Profile settings component
@@ -58,43 +58,44 @@ export function ProfileSettings({
   allowAvatarUpload = true,
   asModal = true,
 }: ProfileSettingsProps) {
-  const [view, setView] = useState<SettingsView>('overview')
+  const [view, setView] = useState<SettingsView>("overview");
 
   // Check if avatar is custom uploaded
-  const isCustomAvatar = profile.avatar && 'type' in profile.avatar && profile.avatar.type === 'custom'
-  const customAvatar = isCustomAvatar ? (profile.avatar as CustomAvatar) : null
-  const generatedAvatar = !isCustomAvatar ? (profile.avatar as AvatarConfig) : null
-
-  const handleDisplayNameSave = async (newName: string) => {
-    await onUpdate({ displayName: newName })
-  }
+  const isCustomAvatar =
+    profile.avatar &&
+    "type" in profile.avatar &&
+    profile.avatar.type === "custom";
+  const customAvatar = isCustomAvatar ? (profile.avatar as CustomAvatar) : null;
+  const generatedAvatar = !isCustomAvatar
+    ? (profile.avatar as AvatarConfig)
+    : null;
 
   const handleNicknameSave = async (newNickname: string) => {
-    await onUpdate({ nickname: newNickname })
-  }
+    await onUpdate({ nickname: newNickname });
+  };
 
   const handleAvatarSelect = async (config: AvatarConfig) => {
     // Clear custom avatar if switching to generated
-    await avatarStorage.delete()
-    await onUpdate({ avatar: config })
-    setView('overview')
-  }
+    await avatarStorage.delete();
+    await onUpdate({ avatar: config });
+    setView("overview");
+  };
 
   const handleAvatarUpload = async (avatar: CustomAvatar) => {
     // Save to storage
-    await avatarStorage.save(avatar)
-    await onUpdate({ avatar })
-    setView('overview')
-  }
+    await avatarStorage.save(avatar);
+    await onUpdate({ avatar });
+    setView("overview");
+  };
 
   const handleBack = useCallback(() => {
-    setView('overview')
-  }, [])
+    setView("overview");
+  }, []);
 
   // Content based on view
   const renderContent = () => {
     // Avatar selection view
-    if (view === 'edit-avatar') {
+    if (view === "edit-avatar") {
       return (
         <div className="space-y-4">
           <button
@@ -122,7 +123,7 @@ export function ProfileSettings({
               <Button
                 variant="secondary"
                 className="w-full"
-                onClick={() => setView('upload-avatar')}
+                onClick={() => setView("upload-avatar")}
               >
                 <Camera className="w-4 h-4 mr-2" />
                 Upload Your Own Photo
@@ -130,11 +131,11 @@ export function ProfileSettings({
             </>
           )}
         </div>
-      )
+      );
     }
 
     // Avatar upload view
-    if (view === 'upload-avatar') {
+    if (view === "upload-avatar") {
       return (
         <div className="space-y-4">
           <button
@@ -145,12 +146,9 @@ export function ProfileSettings({
             Back
           </button>
 
-          <AvatarUpload
-            onUpload={handleAvatarUpload}
-            onCancel={handleBack}
-          />
+          <AvatarUpload onUpload={handleAvatarUpload} onCancel={handleBack} />
         </div>
-      )
+      );
     }
 
     // Overview view (default)
@@ -183,7 +181,7 @@ export function ProfileSettings({
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => setView('edit-avatar')}
+            onClick={() => setView("edit-avatar")}
           >
             <Camera className="w-4 h-4 mr-2" />
             Change Avatar
@@ -204,7 +202,7 @@ export function ProfileSettings({
         >
           {profile.canChangeNickname ? (
             <EditableField
-              value={profile.nickname || ''}
+              value={profile.nickname || ""}
               onSave={handleNicknameSave}
               schema={nicknameSchema}
               placeholder="Enter your nickname"
@@ -213,42 +211,17 @@ export function ProfileSettings({
           ) : (
             <div className="flex items-center justify-between">
               <span className="text-ink font-medium">
-                {profile.nickname || <span className="text-ink-muted italic">Not set</span>}
+                {profile.nickname || (
+                  <span className="text-ink-muted italic">Not set</span>
+                )}
               </span>
               <Lock className="w-4 h-4 text-ink-muted" />
             </div>
           )}
         </ProfileSection>
-
-        {/* Display name section (editable) */}
-        <ProfileSection label="Display Name">
-          <EditableField
-            value={profile.displayName}
-            onSave={handleDisplayNameSave}
-            schema={displayNameSchema}
-            placeholder="Enter your name"
-            maxLength={50}
-          />
-        </ProfileSection>
-
-        <div className="h-px bg-cream-200" />
-
-        {/* Wallet address (read-only info) */}
-        <ProfileSection
-          label="Wallet Address"
-          helperText="Your unique identifier on the blockchain"
-          disabled
-        >
-          <div className="flex items-center justify-between">
-            <code className="text-xs text-ink-muted font-mono truncate max-w-[200px]">
-              {profile.address}
-            </code>
-            <Lock className="w-4 h-4 text-ink-muted" />
-          </div>
-        </ProfileSection>
       </div>
-    )
-  }
+    );
+  };
 
   // Modal wrapper
   if (asModal) {
@@ -268,17 +241,17 @@ export function ProfileSettings({
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ type: 'spring', duration: 0.3 }}
+              transition={{ type: "spring", duration: 0.3 }}
               className="fixed inset-x-4 top-[10%] bottom-auto md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-md md:w-full bg-cream rounded-2xl shadow-xl z-50 max-h-[80vh] overflow-y-auto"
             >
               {/* Header */}
               <div className="sticky top-0 bg-cream border-b border-cream-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
                 <Dialog.Title className="text-lg font-serif text-ink">
-                  {view === 'overview'
-                    ? 'Profile Settings'
-                    : view === 'edit-avatar'
-                      ? 'Change Avatar'
-                      : 'Upload Photo'}
+                  {view === "overview"
+                    ? "Profile Settings"
+                    : view === "edit-avatar"
+                      ? "Change Avatar"
+                      : "Upload Photo"}
                 </Dialog.Title>
                 <Dialog.Close asChild>
                   <button
@@ -295,9 +268,9 @@ export function ProfileSettings({
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={view}
-                    initial={{ opacity: 0, x: view === 'overview' ? -20 : 20 }}
+                    initial={{ opacity: 0, x: view === "overview" ? -20 : 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: view === 'overview' ? 20 : -20 }}
+                    exit={{ opacity: 0, x: view === "overview" ? 20 : -20 }}
                     transition={{ duration: 0.15 }}
                   >
                     {renderContent()}
@@ -308,7 +281,7 @@ export function ProfileSettings({
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-    )
+    );
   }
 
   // Inline mode (no modal wrapper)
@@ -316,11 +289,11 @@ export function ProfileSettings({
     <div className="bg-cream rounded-2xl border border-cream-200 overflow-hidden">
       <div className="border-b border-cream-200 px-6 py-4 flex items-center justify-between">
         <h2 className="text-lg font-serif text-ink">
-          {view === 'overview'
-            ? 'Profile Settings'
-            : view === 'edit-avatar'
-              ? 'Change Avatar'
-              : 'Upload Photo'}
+          {view === "overview"
+            ? "Profile Settings"
+            : view === "edit-avatar"
+              ? "Change Avatar"
+              : "Upload Photo"}
         </h2>
         {onClose && (
           <button
@@ -336,9 +309,9 @@ export function ProfileSettings({
         <AnimatePresence mode="wait">
           <motion.div
             key={view}
-            initial={{ opacity: 0, x: view === 'overview' ? -20 : 20 }}
+            initial={{ opacity: 0, x: view === "overview" ? -20 : 20 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: view === 'overview' ? 20 : -20 }}
+            exit={{ opacity: 0, x: view === "overview" ? 20 : -20 }}
             transition={{ duration: 0.15 }}
           >
             {renderContent()}
@@ -346,5 +319,5 @@ export function ProfileSettings({
         </AnimatePresence>
       </div>
     </div>
-  )
+  );
 }

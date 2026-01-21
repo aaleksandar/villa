@@ -1,38 +1,41 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { AlertCircle, ExternalLink, Copy, CheckCircle2 } from 'lucide-react'
-import { Button, Input, Spinner, SuccessCelebration } from '@/components/ui'
-import { AvatarSelection } from '@/components/sdk'
-import { VillaBridge } from '@rockfridrich/villa-sdk'
-import { useIdentityStore } from '@/lib/store'
-import { displayNameSchema } from '@/lib/validation'
-import type { AvatarConfig } from '@/types'
-import {
-  isPortoSupported,
-} from '@/lib/porto'
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AlertCircle, ExternalLink, Copy, CheckCircle2 } from "lucide-react";
+import { Button, Input, Spinner, SuccessCelebration } from "@/components/ui";
+import { AvatarSelection } from "@/components/sdk";
+import { VillaBridge } from "@rockfridrich/villa-sdk";
+import { useIdentityStore } from "@/lib/store";
+import { displayNameSchema } from "@/lib/validation";
+import { createAvatarConfig } from "@/lib/avatar";
+import type { AvatarConfig } from "@/types";
+import { isPortoSupported } from "@/lib/porto";
 import {
   detectInAppBrowser,
   getAppDisplayName,
   getCurrentUrl,
   type InAppBrowserInfo,
-} from '@/lib/browser'
-import { authenticateTinyCloud, syncToTinyCloud, avatarStore } from '@/lib/storage/tinycloud-client'
+} from "@/lib/browser";
+import {
+  authenticateTinyCloud,
+  syncToTinyCloud,
+  avatarStore,
+} from "@/lib/storage/tinycloud-client";
 
 type Step =
-  | 'inapp-browser'
-  | 'welcome'
-  | 'connecting'
-  | 'success'
-  | 'welcome-back'  // Returning user on new device (has nickname, needs avatar)
-  | 'profile'
-  | 'avatar'
-  | 'error'
+  | "inapp-browser"
+  | "welcome"
+  | "connecting"
+  | "success"
+  | "welcome-back" // Returning user on new device (has nickname, needs avatar)
+  | "profile"
+  | "avatar"
+  | "error";
 
 interface ErrorState {
-  message: string
-  retry: () => void
+  message: string;
+  retry: () => void;
 }
 
 export default function OnboardingPage() {
@@ -40,7 +43,7 @@ export default function OnboardingPage() {
     <Suspense fallback={<OnboardingLoading />}>
       <OnboardingContent />
     </Suspense>
-  )
+  );
 }
 
 function OnboardingLoading() {
@@ -50,232 +53,237 @@ function OnboardingLoading() {
         <Spinner size="lg" />
       </div>
     </main>
-  )
+  );
 }
 
 function OnboardingContent() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const { identity, setIdentity } = useIdentityStore()
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { identity, setIdentity } = useIdentityStore();
 
   // Read URL params (available after hydration)
-  const testStep = searchParams.get('step') as Step | null
-  const testAddress = searchParams.get('address')
-  const testDisplayName = searchParams.get('displayName')
-  const isTestMode = Boolean(testStep && testAddress)
+  const testStep = searchParams.get("step") as Step | null;
+  const testAddress = searchParams.get("address");
+  const testDisplayName = searchParams.get("displayName");
+  const isTestMode = Boolean(testStep && testAddress);
 
   // State - initialized to defaults, synced from URL params after hydration
-  const [step, setStep] = useState<Step>('welcome')
-  const [displayName, setDisplayName] = useState('')
-  const [nameError, setNameError] = useState<string>()
-  const [error, setError] = useState<ErrorState | null>(null)
-  const [address, setAddress] = useState<string | null>(null)
-  const [isSupported, setIsSupported] = useState(true)
-  const [inAppBrowser, setInAppBrowser] = useState<InAppBrowserInfo | null>(null)
-  const [paramsLoaded, setParamsLoaded] = useState(false)
+  const [step, setStep] = useState<Step>("welcome");
+  const [displayName, setDisplayName] = useState("");
+  const [nameError, setNameError] = useState<string>();
+  const [error, setError] = useState<ErrorState | null>(null);
+  const [address, setAddress] = useState<string | null>(null);
+  const [isSupported, setIsSupported] = useState(true);
+  const [inAppBrowser, setInAppBrowser] = useState<InAppBrowserInfo | null>(
+    null,
+  );
+  const [paramsLoaded, setParamsLoaded] = useState(false);
 
   // Sync state from URL params after hydration (searchParams is empty during SSR)
   useEffect(() => {
     if (testStep && testAddress) {
-      setStep(testStep)
-      setAddress(testAddress)
+      setStep(testStep);
+      setAddress(testAddress);
       if (testDisplayName) {
-        setDisplayName(testDisplayName)
+        setDisplayName(testDisplayName);
       }
     }
-    setParamsLoaded(true)
-  }, [testStep, testAddress, testDisplayName])
+    setParamsLoaded(true);
+  }, [testStep, testAddress, testDisplayName]);
 
   // Ref for tracking timeouts to prevent memory leaks
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current)
+        clearTimeout(timeoutRef.current);
       }
-    }
-  }, [])
+    };
+  }, []);
 
   // Check for in-app browser and Porto support on mount
   useEffect(() => {
     // Skip browser checks in test mode
     if (isTestMode) {
-      return
+      return;
     }
 
     // First check for in-app browser
-    const browserInfo = detectInAppBrowser()
+    const browserInfo = detectInAppBrowser();
     if (browserInfo.isInApp) {
-      setInAppBrowser(browserInfo)
-      setStep('inapp-browser')
-      return
+      setInAppBrowser(browserInfo);
+      setStep("inapp-browser");
+      return;
     }
 
     // Then check Porto support
     if (!isPortoSupported()) {
-      setIsSupported(false)
+      setIsSupported(false);
       setError({
         message:
-          'Your browser does not support passkeys. Please use a modern browser like Safari, Chrome, or Edge.',
+          "Your browser does not support passkeys. Please use a modern browser like Safari, Chrome, or Edge.",
         retry: () => {
-          window.location.reload()
+          window.location.reload();
         },
-      })
-      setStep('error')
+      });
+      setStep("error");
     }
-  }, [isTestMode])
+  }, [isTestMode]);
 
   // Redirect if already has identity (skip in test mode)
   useEffect(() => {
     if (identity && !isTestMode) {
-      router.replace('/home')
+      router.replace("/home");
     }
-  }, [identity, router, isTestMode])
+  }, [identity, router, isTestMode]);
 
   // VillaBridge reference for SDK iframe/popup auth
-  const bridgeRef = useRef<VillaBridge | null>(null)
+  const bridgeRef = useRef<VillaBridge | null>(null);
 
   // Check if user has existing profile
   const checkExistingProfile = useCallback(async (addr: string) => {
     try {
-      const response = await fetch(`/api/nicknames/reverse/${addr}`)
+      const response = await fetch(`/api/nicknames/reverse/${addr}`);
       if (response.ok) {
-        const data = await response.json()
-        return data.nickname || null
+        const data = await response.json();
+        return data.nickname || null;
       }
     } catch {
       // Continue to profile creation
     }
-    return null
-  }, [])
+    return null;
+  }, []);
 
   // Handle SDK auth success
   // VillaBridge opens iframe with auth flow (passkey + optional nickname)
-  const handleAuthSuccess = useCallback(async (bridgeIdentity: { address: string; nickname?: string }) => {
-    const { address: authAddress, nickname: authNickname } = bridgeIdentity
+  const handleAuthSuccess = useCallback(
+    async (bridgeIdentity: { address: string; nickname?: string }) => {
+      const { address: authAddress, nickname: authNickname } = bridgeIdentity;
 
-    // Update local state with address
-    setAddress(authAddress)
+      // Update local state with address
+      setAddress(authAddress);
 
-    // If nickname provided from auth flow, use it
-    if (authNickname) {
-      setDisplayName(authNickname)
-      setStep('avatar')
-      return
-    }
+      // If nickname provided from auth flow, use it
+      if (authNickname) {
+        setDisplayName(authNickname);
+        setStep("avatar");
+        return;
+      }
 
-    // Otherwise check for existing profile (returning user)
-    const existingNickname = await checkExistingProfile(authAddress)
-    if (existingNickname) {
-      setDisplayName(existingNickname)
-      setStep('welcome-back')
-    } else {
-      // Fallback - shouldn't happen as nickname is now in auth modal
-      setStep('profile')
-    }
-  }, [checkExistingProfile])
+      // Otherwise check for existing profile (returning user)
+      const existingNickname = await checkExistingProfile(authAddress);
+      if (existingNickname) {
+        setDisplayName(existingNickname);
+        setStep("welcome-back");
+      } else {
+        // Fallback - shouldn't happen as nickname is now in auth modal
+        setStep("profile");
+      }
+    },
+    [checkExistingProfile],
+  );
 
   // Open SDK auth (iframe to key.villa.cash)
   const openAuth = useCallback(async () => {
-    setStep('connecting')
+    setStep("connecting");
 
     // Determine network based on chain ID
-    const chainId = process.env.NEXT_PUBLIC_CHAIN_ID
-    const network = chainId === '84532' ? 'base-sepolia' : 'base'
+    const chainId = process.env.NEXT_PUBLIC_CHAIN_ID;
+    const network = chainId === "84532" ? "base-sepolia" : "base";
 
     // Create VillaBridge to open auth iframe
     // In development, the SDK auto-detects localhost and uses the current origin
     const bridge = new VillaBridge({
-      appId: 'villa-web',
+      appId: "villa-web",
       network,
-      debug: process.env.NODE_ENV === 'development',
-    })
-    bridgeRef.current = bridge
+      debug: process.env.NODE_ENV === "development",
+    });
+    bridgeRef.current = bridge;
 
     // Set up event handlers
-    bridge.on('success', (bridgeIdentity) => {
+    bridge.on("success", (bridgeIdentity) => {
       // Pass full identity (address + nickname) to handler
       handleAuthSuccess({
         address: bridgeIdentity.address,
         nickname: bridgeIdentity.nickname,
-      })
-      bridge.close()
-    })
+      });
+      bridge.close();
+    });
 
-    bridge.on('cancel', () => {
-      setStep('welcome')
-      bridge.close()
-    })
+    bridge.on("cancel", () => {
+      setStep("welcome");
+      bridge.close();
+    });
 
-    bridge.on('error', (errorMsg) => {
+    bridge.on("error", (errorMsg) => {
       setError({
-        message: errorMsg || 'Authentication failed',
+        message: errorMsg || "Authentication failed",
         retry: () => {
-          setError(null)
-          setStep('welcome')
+          setError(null);
+          setStep("welcome");
         },
-      })
-      setStep('error')
-      bridge.close()
-    })
+      });
+      setStep("error");
+      bridge.close();
+    });
 
     // Open the auth iframe/popup
     try {
-      await bridge.open()
+      await bridge.open();
     } catch (err) {
-      console.error('Failed to open auth:', err)
+      console.error("Failed to open auth:", err);
       setError({
-        message: 'Failed to open authentication. Please try again.',
+        message: "Failed to open authentication. Please try again.",
         retry: () => {
-          setError(null)
-          setStep('welcome')
+          setError(null);
+          setStep("welcome");
         },
-      })
-      setStep('error')
+      });
+      setStep("error");
     }
-  }, [handleAuthSuccess])
+  }, [handleAuthSuccess]);
 
   // Cleanup bridge on unmount
   useEffect(() => {
     return () => {
-      bridgeRef.current?.close()
-    }
-  }, [])
+      bridgeRef.current?.close();
+    };
+  }, []);
 
   const handleSubmitProfile = () => {
-    const result = displayNameSchema.safeParse(displayName)
+    const result = displayNameSchema.safeParse(displayName);
     if (!result.success) {
-      setNameError(result.error.errors[0]?.message ?? 'Invalid name')
-      return
+      setNameError(result.error.errors[0]?.message ?? "Invalid name");
+      return;
     }
 
     if (!address) {
       setError({
-        message: 'No address found. Please try again.',
+        message: "No address found. Please try again.",
         retry: () => {
-          setError(null)
-          setStep('welcome')
+          setError(null);
+          setStep("welcome");
         },
-      })
-      setStep('error')
-      return
+      });
+      setStep("error");
+      return;
     }
 
     // Store validated display name and proceed to avatar
-    setStep('avatar')
-  }
+    setStep("avatar");
+  };
 
   const saveProfile = async (
     address: string,
     nickname: string,
-    avatar: AvatarConfig
+    avatar: AvatarConfig,
   ) => {
     try {
-      const response = await fetch('/api/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           address,
           nickname,
@@ -285,60 +293,91 @@ function OnboardingContent() {
             variant: avatar.variant,
           },
         }),
-      })
+      });
 
       if (!response.ok) {
-        console.error('Failed to save profile:', await response.text())
+        console.error("Failed to save profile:", await response.text());
       }
     } catch (error) {
-      console.error('Error saving profile:', error)
+      console.error("Error saving profile:", error);
     }
-  }
+  };
 
   const handleAvatarSelected = (config: AvatarConfig) => {
     if (!address) {
       setError({
-        message: 'No address found. Please try again.',
+        message: "No address found. Please try again.",
         retry: () => {
-          setError(null)
-          setStep('welcome')
+          setError(null);
+          setStep("welcome");
         },
-      })
-      setStep('error')
-      return
+      });
+      setStep("error");
+      return;
     }
 
-    const result = displayNameSchema.safeParse(displayName)
-    if (!result.success) {
-      setStep('profile')
-      return
-    }
+    const finalName = displayName.trim() || formatAddressAsName(address);
 
-    // Save complete identity with avatar
     setIdentity({
       address,
-      displayName: result.data,
+      displayName: finalName,
       avatar: config,
       createdAt: Date.now(),
-    })
+    });
 
-    // Save avatar to TinyCloud for cross-device sync
-    avatarStore.save({
-      type: 'generated',
-      style: config.style,
-      selection: config.selection,
-      variant: config.variant,
-      createdAt: Date.now(),
-    }).catch(console.warn)
+    avatarStore
+      .save({
+        type: "generated",
+        style: config.style,
+        selection: config.selection,
+        variant: config.variant,
+        createdAt: Date.now(),
+      })
+      .catch(console.warn);
 
-    // Fire and forget - persist to API, authenticate TinyCloud, and sync
-    saveProfile(address, result.data, config)
+    saveProfile(address, finalName, config);
     authenticateTinyCloud(address)
       .then(() => syncToTinyCloud())
-      .catch(console.warn)
+      .catch(console.warn);
 
-    router.replace('/home')
-  }
+    router.replace("/home");
+  };
+
+  const skipToHome = () => {
+    if (!address) {
+      setError({
+        message: "No address found. Please try again.",
+        retry: () => {
+          setError(null);
+          setStep("welcome");
+        },
+      });
+      setStep("error");
+      return;
+    }
+
+    const defaultName = formatAddressAsName(address);
+    const defaultAvatar = createAvatarConfig("other", 0);
+
+    setIdentity({
+      address,
+      displayName: defaultName,
+      avatar: defaultAvatar,
+      createdAt: Date.now(),
+    });
+
+    saveProfile(address, defaultName, defaultAvatar);
+    authenticateTinyCloud(address)
+      .then(() => syncToTinyCloud())
+      .catch(console.warn);
+
+    router.replace("/home");
+  };
+
+  const formatAddressAsName = (addr: string): string => {
+    if (!addr || addr.length < 10) return "User";
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
 
   if (!isSupported) {
     return (
@@ -347,7 +386,7 @@ function OnboardingContent() {
           {error && <ErrorStep message={error.message} onRetry={error.retry} />}
         </div>
       </main>
-    )
+    );
   }
 
   // Show loading until params are loaded
@@ -359,87 +398,110 @@ function OnboardingContent() {
           <Spinner size="lg" />
         </div>
       </main>
-    )
+    );
   }
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-cream-50">
       <div className="w-full max-w-md">
-        {step === 'inapp-browser' && inAppBrowser && (
+        {step === "inapp-browser" && inAppBrowser && (
           <InAppBrowserStep browserInfo={inAppBrowser} />
         )}
 
-        {(step === 'welcome' || step === 'connecting') && (
+        {(step === "welcome" || step === "connecting") && (
           <WelcomeStep
             onGetStarted={openAuth}
-            isLoading={step === 'connecting'}
+            isLoading={step === "connecting"}
           />
         )}
 
-        {step === 'success' && <SuccessStep />}
+        {step === "success" && <SuccessStep />}
 
-        {step === 'welcome-back' && displayName && (
+        {step === "welcome-back" && displayName && (
           <WelcomeBackStep
             nickname={displayName}
-            onContinue={() => setStep('avatar')}
+            onContinue={() => setStep("avatar")}
           />
         )}
 
-        {step === 'profile' && (
+        {step === "profile" && (
           <ProfileStep
             displayName={displayName}
             onDisplayNameChange={(value) => {
-              setDisplayName(value)
-              setNameError(undefined)
+              setDisplayName(value);
+              setNameError(undefined);
             }}
             error={nameError}
             onSubmit={handleSubmitProfile}
+            onSkip={() => setStep("avatar")}
             isPending={false}
           />
         )}
 
-        {step === 'avatar' && address && (
-          <AvatarSelection
+        {step === "avatar" && address && (
+          <AvatarSelectionWithSkip
             walletAddress={address}
             onSelect={handleAvatarSelected}
-            timerDuration={30}
+            onSkip={skipToHome}
           />
         )}
 
-        {step === 'error' && error && (
+        {step === "error" && error && (
           <ErrorStep message={error.message} onRetry={error.retry} />
         )}
       </div>
     </main>
-  )
+  );
 }
 
-function InAppBrowserStep({
-  browserInfo,
+function AvatarSelectionWithSkip({
+  walletAddress,
+  onSelect,
+  onSkip,
 }: {
-  browserInfo: InAppBrowserInfo
+  walletAddress: string;
+  onSelect: (config: AvatarConfig) => void;
+  onSkip: () => void;
 }) {
-  const [copied, setCopied] = useState(false)
-  const appName = getAppDisplayName(browserInfo.app)
-  const url = getCurrentUrl()
+  return (
+    <div className="space-y-4">
+      <AvatarSelection
+        walletAddress={walletAddress}
+        onSelect={onSelect}
+        timerDuration={0}
+      />
+      <button
+        onClick={onSkip}
+        className="w-full py-3 text-sm text-ink-muted hover:text-ink transition-colors min-h-11"
+      >
+        Skip for now
+      </button>
+    </div>
+  );
+}
+
+function InAppBrowserStep({ browserInfo }: { browserInfo: InAppBrowserInfo }) {
+  const [copied, setCopied] = useState(false);
+  const appName = getAppDisplayName(browserInfo.app);
+  const url = getCurrentUrl();
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback: select text for manual copy
-      const input = document.createElement('input')
-      input.value = url
-      document.body.appendChild(input)
-      input.select()
-      document.execCommand('copy')
-      document.body.removeChild(input)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      const input = document.createElement("input");
+      input.value = url;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
-  }
+  };
 
   return (
     <div className="text-center space-y-6">
@@ -451,27 +513,19 @@ function InAppBrowserStep({
           Open in Browser
         </h1>
         <p className="text-ink-muted">
-          For security, passkeys only work in{' '}
-          <span className="font-medium text-ink">Safari</span> or{' '}
+          For security, passkeys only work in{" "}
+          <span className="font-medium text-ink">Safari</span> or{" "}
           <span className="font-medium text-ink">Chrome</span>.
         </p>
       </div>
 
       <div className="bg-cream-100 rounded-xl p-4 space-y-3">
-        <p className="text-sm font-medium text-ink">
-          You&apos;re in {appName}
-        </p>
-        <p className="text-sm text-ink-muted">
-          {browserInfo.instructions}
-        </p>
+        <p className="text-sm font-medium text-ink">You&apos;re in {appName}</p>
+        <p className="text-sm text-ink-muted">{browserInfo.instructions}</p>
       </div>
 
       <div className="space-y-3">
-        <Button
-          size="lg"
-          className="w-full"
-          onClick={handleCopy}
-        >
+        <Button size="lg" className="w-full" onClick={handleCopy}>
           {copied ? (
             <>
               <CheckCircle2 className="w-5 h-5 mr-2" />
@@ -484,19 +538,17 @@ function InAppBrowserStep({
             </>
           )}
         </Button>
-        <p className="text-xs text-ink-muted">
-          Then paste in Safari or Chrome
-        </p>
+        <p className="text-xs text-ink-muted">Then paste in Safari or Chrome</p>
       </div>
 
       <div className="pt-4 border-t border-neutral-100">
         <p className="text-xs text-ink-muted">
-          Why? In-app browsers can&apos;t securely store passkeys.
-          Opening in a real browser keeps your identity safe.
+          Why? In-app browsers can&apos;t securely store passkeys. Opening in a
+          real browser keeps your identity safe.
         </p>
       </div>
     </div>
-  )
+  );
 }
 
 function SuccessStep() {
@@ -507,20 +559,18 @@ function SuccessStep() {
       </div>
       <div className="space-y-2">
         <h2 className="text-2xl font-serif text-ink">Connected!</h2>
-        <p className="text-ink-muted">
-          Your secure identity is ready
-        </p>
+        <p className="text-ink-muted">Your secure identity is ready</p>
       </div>
     </div>
-  )
+  );
 }
 
 function WelcomeStep({
   onGetStarted,
   isLoading,
 }: {
-  onGetStarted: () => void
-  isLoading: boolean
+  onGetStarted: () => void;
+  isLoading: boolean;
 }) {
   return (
     <div className="text-center space-y-8">
@@ -549,7 +599,7 @@ function WelcomeStep({
               Opening...
             </>
           ) : (
-            'Get Started'
+            "Get Started"
           )}
         </Button>
         <p className="text-xs text-ink-muted">
@@ -559,25 +609,26 @@ function WelcomeStep({
 
       <div className="pt-4 border-t border-neutral-100">
         <p className="text-xs text-ink-muted">
-          Works with 1Password, iCloud Keychain, Google Password Manager, and hardware keys
+          Works with 1Password, iCloud Keychain, Google Password Manager, and
+          hardware keys
         </p>
       </div>
     </div>
-  )
+  );
 }
 
 function WelcomeBackStep({
   nickname,
   onContinue,
 }: {
-  nickname: string
-  onContinue: () => void
+  nickname: string;
+  onContinue: () => void;
 }) {
   // Auto-advance after 2 seconds
   useEffect(() => {
-    const timer = setTimeout(onContinue, 2000)
-    return () => clearTimeout(timer)
-  }, [onContinue])
+    const timer = setTimeout(onContinue, 2000);
+    return () => clearTimeout(timer);
+  }, [onContinue]);
 
   return (
     <div className="text-center space-y-6">
@@ -593,7 +644,7 @@ function WelcomeBackStep({
         </p>
       </div>
     </div>
-  )
+  );
 }
 
 function ProfileStep({
@@ -601,21 +652,21 @@ function ProfileStep({
   onDisplayNameChange,
   error,
   onSubmit,
+  onSkip,
   isPending,
 }: {
-  displayName: string
-  onDisplayNameChange: (value: string) => void
-  error?: string
-  onSubmit: () => void
-  isPending: boolean
+  displayName: string;
+  onDisplayNameChange: (value: string) => void;
+  error?: string;
+  onSubmit: () => void;
+  onSkip: () => void;
+  isPending: boolean;
 }) {
   return (
     <div className="space-y-8">
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-serif text-ink">Choose your @handle</h2>
-        <p className="text-ink-muted">
-          This is how others will find you
-        </p>
+        <p className="text-ink-muted">This is how others will find you</p>
       </div>
       <div className="space-y-4">
         <div className="relative">
@@ -639,19 +690,29 @@ function ProfileStep({
           onClick={onSubmit}
           disabled={!displayName.trim() || isPending}
         >
-          {isPending ? <Spinner size="sm" /> : `Claim @${displayName || 'handle'}`}
+          {isPending ? (
+            <Spinner size="sm" />
+          ) : (
+            `Claim @${displayName || "handle"}`
+          )}
         </Button>
+        <button
+          onClick={onSkip}
+          className="w-full py-3 text-sm text-ink-muted hover:text-ink transition-colors min-h-11"
+        >
+          Skip for now
+        </button>
       </div>
     </div>
-  )
+  );
 }
 
 function ErrorStep({
   message,
   onRetry,
 }: {
-  message: string
-  onRetry: () => void
+  message: string;
+  onRetry: () => void;
 }) {
   return (
     <div className="text-center space-y-6">
@@ -666,42 +727,42 @@ function ErrorStep({
         Try Again
       </Button>
     </div>
-  )
+  );
 }
 
 // Error message helper - kept for future error handling improvements
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function _getErrorMessage(error: Error): string {
-  const message = error.message.toLowerCase()
+  const message = error.message.toLowerCase();
 
   if (
-    message.includes('rejected') ||
-    message.includes('cancelled') ||
-    message.includes('denied') ||
-    message.includes('abort') ||
-    message.includes('user cancel')
+    message.includes("rejected") ||
+    message.includes("cancelled") ||
+    message.includes("denied") ||
+    message.includes("abort") ||
+    message.includes("user cancel")
   ) {
-    return 'You cancelled the request. Try again when ready.'
+    return "You cancelled the request. Try again when ready.";
   }
   if (
-    message.includes('biometric') ||
-    message.includes('authentication failed') ||
-    message.includes('verification')
+    message.includes("biometric") ||
+    message.includes("authentication failed") ||
+    message.includes("verification")
   ) {
-    return 'Biometric authentication failed. Please try again.'
+    return "Biometric authentication failed. Please try again.";
   }
-  if (message.includes('network') || message.includes('fetch')) {
-    return 'Network error. Check your connection and try again.'
+  if (message.includes("network") || message.includes("fetch")) {
+    return "Network error. Check your connection and try again.";
   }
-  if (message.includes('timeout')) {
-    return 'Request timed out. Please try again.'
+  if (message.includes("timeout")) {
+    return "Request timed out. Please try again.";
   }
-  if (message.includes('not supported')) {
-    return 'Your browser does not support passkeys. Please use Safari, Chrome, or Edge.'
+  if (message.includes("not supported")) {
+    return "Your browser does not support passkeys. Please use Safari, Chrome, or Edge.";
   }
-  if (message.includes('not available')) {
-    return 'Biometric authentication is not available on this device.'
+  if (message.includes("not available")) {
+    return "Biometric authentication is not available on this device.";
   }
 
-  return 'An error occurred. Please try again.'
+  return "An error occurred. Please try again.";
 }
