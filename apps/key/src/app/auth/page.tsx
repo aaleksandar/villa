@@ -14,6 +14,71 @@ import { Loader2, ShieldCheck } from "lucide-react";
 import { createAccount, signIn, isPortoSupported } from "@/lib/porto";
 import { generateNickname } from "@/lib/nickname";
 
+const HUB_API_URL =
+  process.env.NEXT_PUBLIC_HUB_API_URL || "https://beta.villa.cash";
+
+async function persistProfile(
+  address: string,
+  nickname: string,
+  maxRetries = 3,
+): Promise<{ nickname: string; persisted: boolean }> {
+  let currentNickname = nickname;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(`${HUB_API_URL}/api/profile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address,
+          nickname: currentNickname,
+          avatar: { style: "lorelei", selection: address, variant: 0 },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return { nickname: data.nickname || currentNickname, persisted: true };
+      }
+
+      const isNicknameCollision = response.status === 409;
+      if (isNicknameCollision) {
+        const suffix = Math.floor(Math.random() * 1000);
+        currentNickname = `${nickname}${suffix}`;
+        continue;
+      }
+
+      const isDatabaseUnavailable = response.status === 503;
+      if (isDatabaseUnavailable) {
+        return { nickname, persisted: false };
+      }
+
+      return { nickname, persisted: false };
+    } catch {
+      return { nickname, persisted: false };
+    }
+  }
+
+  return { nickname: currentNickname, persisted: false };
+}
+
+async function fetchProfile(
+  address: string,
+): Promise<{ nickname: string } | null> {
+  try {
+    const response = await fetch(
+      `${HUB_API_URL}/api/profile/${address.toLowerCase()}`,
+    );
+    if (response.ok) {
+      const data = await response.json();
+      return { nickname: data.nickname || "" };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 const VILLA_ORIGINS = [
   "https://villa.cash",
   "https://www.villa.cash",
@@ -150,7 +215,20 @@ function AuthPageContent() {
 
   const handleSuccess = useCallback(
     async (address: string, isNewAccount: boolean = false) => {
-      const nickname = isNewAccount ? generateNickname(address) : "";
+      let nickname = "";
+
+      if (isNewAccount) {
+        const generatedNickname = generateNickname(address);
+        const { nickname: persistedNickname } = await persistProfile(
+          address,
+          generatedNickname,
+        );
+        nickname = persistedNickname;
+      } else {
+        const profile = await fetchProfile(address);
+        nickname = profile?.nickname || "";
+      }
+
       const identity = {
         address,
         nickname,
