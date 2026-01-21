@@ -1,18 +1,18 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Copy, Check, ExternalLink, ChevronRight } from 'lucide-react'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism'
+import { useState } from "react";
+import { Copy, Check, ExternalLink, ChevronRight } from "lucide-react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 
 function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <button
@@ -26,11 +26,17 @@ function CopyButton({ text }: { text: string }) {
         <Copy className="w-4 h-4 text-cream-100/60 hover:text-cream-100 transition-colors" />
       )}
     </button>
-  )
+  );
 }
 
-function CodeBlock({ code, language = 'tsx' }: { code: string; language?: string }) {
-  const lineCount = code.split('\n').length
+function CodeBlock({
+  code,
+  language = "tsx",
+}: {
+  code: string;
+  language?: string;
+}) {
+  const lineCount = code.split("\n").length;
 
   return (
     <div className="relative group rounded-lg overflow-hidden">
@@ -45,12 +51,12 @@ function CodeBlock({ code, language = 'tsx' }: { code: string; language?: string
         style={oneDark}
         customStyle={{
           margin: 0,
-          borderRadius: '0.5rem',
-          padding: '1.5rem',
-          paddingTop: '3.5rem',
-          fontSize: '0.875rem',
-          lineHeight: '1.6',
-          border: '1px solid rgba(255, 252, 248, 0.05)',
+          borderRadius: "0.5rem",
+          padding: "1.5rem",
+          paddingTop: "3.5rem",
+          fontSize: "0.875rem",
+          lineHeight: "1.6",
+          border: "1px solid rgba(255, 252, 248, 0.05)",
         }}
         showLineNumbers={lineCount > 10}
         wrapLines={true}
@@ -59,7 +65,7 @@ function CodeBlock({ code, language = 'tsx' }: { code: string; language?: string
         {code}
       </SyntaxHighlighter>
     </div>
-  )
+  );
 }
 
 export default function DevelopersPage() {
@@ -110,16 +116,17 @@ export default function DevelopersPage() {
         <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-6">
           {[
             {
-              title: 'Privacy-first',
-              description: 'Passkeys stay on device. We never see private keys.',
+              title: "Privacy-first",
+              description:
+                "Passkeys stay on device. We never see private keys.",
             },
             {
-              title: 'One prompt',
-              description: 'Full auth flow in a single signIn() call.',
+              title: "One prompt",
+              description: "Full auth flow in a single signIn() call.",
             },
             {
-              title: 'ENS compatible',
-              description: 'Nicknames resolve like ENS. alice.villa.eth',
+              title: "ENS compatible",
+              description: "Nicknames resolve like ENS. alice.villa.cash",
             },
           ].map((feature) => (
             <div
@@ -149,7 +156,10 @@ export default function DevelopersPage() {
               </span>
               <h3 className="font-medium">Install</h3>
             </div>
-            <CodeBlock code="npm install @rockfridrich/villa-sdk viem zod" language="bash" />
+            <CodeBlock
+              code="npm install @rockfridrich/villa-sdk viem zod"
+              language="bash"
+            />
           </div>
 
           {/* Step 2 */}
@@ -258,8 +268,8 @@ await villa.reverseEns(addr)  // address -> name`}
       success: true
       identity: {
         address: \`0x\${string}\`     // Ethereum address
-        nickname: string            // User's chosen name
-        avatar: AvatarConfig        // Avatar config
+        nickname?: string           // User's name (optional initially)
+        avatar?: AvatarConfig       // Avatar (optional initially)
       }
     }
   | {
@@ -281,9 +291,7 @@ type SignInErrorCode =
           {/* Identity Type */}
           <div className="space-y-4">
             <h3 className="font-mono text-lg">Identity</h3>
-            <p className="text-ink-muted text-sm">
-              User&apos;s Villa identity
-            </p>
+            <p className="text-ink-muted text-sm">User&apos;s Villa identity</p>
             <CodeBlock
               code={`interface Identity {
   /** Ethereum address derived from passkey */
@@ -352,7 +360,8 @@ bridge.isOpen()    // boolean`}
           <div className="space-y-4">
             <h3 className="font-mono text-lg">VillaAuth</h3>
             <p className="text-ink-muted text-sm">
-              Complete auth flow in one component. Handles welcome, passkey, nickname, and avatar selection.
+              Complete auth flow in one component. Handles welcome, passkey,
+              nickname, and avatar selection.
             </p>
             <CodeBlock
               code={`import { VillaAuth } from '@rockfridrich/villa-sdk-react'
@@ -377,13 +386,16 @@ function LoginPage() {
               <h4 className="font-medium text-sm">Props</h4>
               <ul className="text-sm text-ink-muted space-y-1">
                 <li>
-                  <code className="code-inline">onComplete</code> - Called when auth completes (success or error)
+                  <code className="code-inline">onComplete</code> - Called when
+                  auth completes (success or error)
                 </li>
                 <li>
-                  <code className="code-inline">appName?</code> - Your app name for consent screen
+                  <code className="code-inline">appName?</code> - Your app name
+                  for consent screen
                 </li>
                 <li>
-                  <code className="code-inline">initialStep?</code> - Skip to step (for testing)
+                  <code className="code-inline">initialStep?</code> - Skip to
+                  step (for testing)
                 </li>
               </ul>
             </div>
@@ -411,7 +423,10 @@ function LoginPage() {
       </section>
 
       {/* AI Integration */}
-      <section id="ai" className="py-20 bg-accent-yellow/5 border-y border-accent-yellow/20">
+      <section
+        id="ai"
+        className="py-20 bg-accent-yellow/5 border-y border-accent-yellow/20"
+      >
         <div className="max-w-3xl mx-auto space-y-12">
           <div className="text-center space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-accent-yellow/20 rounded-full text-sm font-medium">
@@ -419,7 +434,8 @@ function LoginPage() {
             </div>
             <h2 className="font-serif text-3xl">AI Integration</h2>
             <p className="text-ink-muted">
-              One prompt to authenticate. Works with Claude Code, Cursor, Lovable, and more.
+              One prompt to authenticate. Works with Claude Code, Cursor,
+              Lovable, and more.
             </p>
           </div>
 
@@ -441,9 +457,10 @@ function LoginPage() {
           <div className="space-y-4">
             <h3 className="font-medium text-lg">How It Works</h3>
             <p className="text-ink-muted text-sm">
-              Villa SDK ships with <code className="code-inline">CLAUDE.txt</code> and{' '}
-              <code className="code-inline">llms.txt</code> files that give AI assistants
-              complete context for integration.
+              Villa SDK ships with{" "}
+              <code className="code-inline">CLAUDE.txt</code> and{" "}
+              <code className="code-inline">llms.txt</code> files that give AI
+              assistants complete context for integration.
             </p>
             <CodeBlock
               code={`# After installing, copy to your project:
@@ -514,16 +531,20 @@ function App() {
             <h3 className="font-serif text-lg">The Villa Manifesto</h3>
             <div className="text-ink-muted text-sm space-y-3">
               <p>
-                <strong>Privacy is not a feature, it&apos;s the foundation.</strong>{' '}
-                Passkeys never leave your device. We don&apos;t see your keys, we don&apos;t want them.
+                <strong>
+                  Privacy is not a feature, it&apos;s the foundation.
+                </strong>{" "}
+                Passkeys never leave your device. We don&apos;t see your keys,
+                we don&apos;t want them.
               </p>
               <p>
-                <strong>One identity, everywhere.</strong>{' '}
-                Your Villa ID works across all pop-up village apps. Same nickname, same avatar, no re-registration.
+                <strong>One identity, everywhere.</strong> Your Villa ID works
+                across all pop-up village apps. Same nickname, same avatar, no
+                re-registration.
               </p>
               <p>
-                <strong>AI-native by design.</strong>{' '}
-                Integration should be a conversation, not a documentation scavenger hunt.
+                <strong>AI-native by design.</strong> Integration should be a
+                conversation, not a documentation scavenger hunt.
               </p>
             </div>
           </div>
@@ -535,7 +556,9 @@ function App() {
         <div className="max-w-3xl mx-auto space-y-12">
           <div className="text-center space-y-4">
             <h2 className="font-serif text-3xl">Authentication Flow</h2>
-            <p className="text-ink-muted">How Villa SDK handles passkey authentication</p>
+            <p className="text-ink-muted">
+              How Villa SDK handles passkey authentication
+            </p>
           </div>
 
           {/* Flow Diagram */}
@@ -543,52 +566,81 @@ function App() {
             <h3 className="font-medium text-lg">Step-by-Step Flow</h3>
             <div className="bg-cream-50 border border-ink/5 rounded-lg p-6 space-y-4">
               <div className="flex gap-4">
-                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">1</div>
+                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">
+                  1
+                </div>
                 <div>
                   <h4 className="font-medium">App calls signIn()</h4>
-                  <p className="text-ink-muted text-sm">SDK creates fullscreen iframe with Villa auth UI</p>
+                  <p className="text-ink-muted text-sm">
+                    SDK creates fullscreen iframe with Villa auth UI
+                  </p>
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">2</div>
+                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">
+                  2
+                </div>
                 <div>
                   <h4 className="font-medium">User creates/uses passkey</h4>
-                  <p className="text-ink-muted text-sm">WebAuthn handles biometric or security key authentication</p>
+                  <p className="text-ink-muted text-sm">
+                    WebAuthn handles biometric or security key authentication
+                  </p>
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">3</div>
+                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">
+                  3
+                </div>
                 <div>
                   <h4 className="font-medium">Choose identity</h4>
-                  <p className="text-ink-muted text-sm">User selects nickname and avatar to customize their Villa ID</p>
+                  <p className="text-ink-muted text-sm">
+                    User selects nickname and avatar to customize their Villa ID
+                  </p>
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">4</div>
+                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">
+                  4
+                </div>
                 <div>
                   <h4 className="font-medium">Sign message</h4>
-                  <p className="text-ink-muted text-sm">Passkey signs message proving ownership (private key never leaves device)</p>
+                  <p className="text-ink-muted text-sm">
+                    Passkey signs message proving ownership (private key never
+                    leaves device)
+                  </p>
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">5</div>
+                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">
+                  5
+                </div>
                 <div>
                   <h4 className="font-medium">Derive address</h4>
-                  <p className="text-ink-muted text-sm">Deterministic Ethereum address calculated from signature</p>
+                  <p className="text-ink-muted text-sm">
+                    Deterministic Ethereum address calculated from signature
+                  </p>
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">6</div>
+                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">
+                  6
+                </div>
                 <div>
                   <h4 className="font-medium">Send identity</h4>
-                  <p className="text-ink-muted text-sm">Iframe sends address + nickname via secure postMessage</p>
+                  <p className="text-ink-muted text-sm">
+                    Iframe sends address + nickname via secure postMessage
+                  </p>
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">7</div>
+                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">
+                  7
+                </div>
                 <div>
                   <h4 className="font-medium">Save session</h4>
-                  <p className="text-ink-muted text-sm">App stores identity in localStorage (7-day expiry)</p>
+                  <p className="text-ink-muted text-sm">
+                    App stores identity in localStorage (7-day expiry)
+                  </p>
                 </div>
               </div>
             </div>
@@ -601,19 +653,38 @@ function App() {
               <div className="bg-cream-50 border border-ink/5 rounded-lg p-4 space-y-3">
                 <h4 className="font-medium">Iframe (Recommended)</h4>
                 <ul className="text-ink-muted text-sm space-y-1">
-                  <li className="flex gap-2"><span className="text-accent-green">✓</span> Fullscreen modal</li>
-                  <li className="flex gap-2"><span className="text-accent-green">✓</span> No popup blockers</li>
-                  <li className="flex gap-2"><span className="text-accent-green">✓</span> Seamless UX</li>
-                  <li className="flex gap-2"><span className="text-accent-green">✓</span> Best for all apps</li>
+                  <li className="flex gap-2">
+                    <span className="text-accent-green">✓</span> Fullscreen
+                    modal
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-accent-green">✓</span> No popup
+                    blockers
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-accent-green">✓</span> Seamless UX
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-accent-green">✓</span> Best for all
+                    apps
+                  </li>
                 </ul>
               </div>
               <div className="bg-cream-50 border border-ink/5 rounded-lg p-4 space-y-3">
                 <h4 className="font-medium">Popup (Advanced)</h4>
                 <ul className="text-ink-muted text-sm space-y-1">
-                  <li className="flex gap-2"><span>Opens in new window</span></li>
-                  <li className="flex gap-2"><span>Subject to popup blockers</span></li>
-                  <li className="flex gap-2"><span>Use if iframe blocked by CSP</span></li>
-                  <li className="flex gap-2"><span>Requires parent window open</span></li>
+                  <li className="flex gap-2">
+                    <span>Opens in new window</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span>Subject to popup blockers</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span>Use if iframe blocked by CSP</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span>Requires parent window open</span>
+                  </li>
                 </ul>
               </div>
             </div>
@@ -778,7 +849,9 @@ bridge.on('consent_denied', (appId) => {
         <div className="max-w-3xl mx-auto space-y-12">
           <div className="text-center space-y-4">
             <h2 className="font-serif text-3xl">Theming & Customization</h2>
-            <p className="text-ink-muted">Customize the authentication experience</p>
+            <p className="text-ink-muted">
+              Customize the authentication experience
+            </p>
           </div>
 
           {/* Avatar Styles */}
@@ -856,8 +929,12 @@ import { VillaAuth } from '@rockfridrich/villa-sdk-react'
       <section id="troubleshooting" className="py-20 bg-ink/[0.02]">
         <div className="max-w-3xl mx-auto space-y-12">
           <div className="text-center space-y-4">
-            <h2 className="font-serif text-3xl">Error Handling & Troubleshooting</h2>
-            <p className="text-ink-muted">Common issues and how to solve them</p>
+            <h2 className="font-serif text-3xl">
+              Error Handling & Troubleshooting
+            </h2>
+            <p className="text-ink-muted">
+              Common issues and how to solve them
+            </p>
           </div>
 
           {/* Error Codes Reference */}
@@ -874,27 +951,37 @@ import { VillaAuth } from '@rockfridrich/villa-sdk-react'
                 </thead>
                 <tbody>
                   <tr className="border-b border-ink/5">
-                    <td className="p-3 font-mono text-accent-yellow">CANCELLED</td>
+                    <td className="p-3 font-mono text-accent-yellow">
+                      CANCELLED
+                    </td>
                     <td className="p-3">User closed auth</td>
                     <td className="p-3">Expected - handle gracefully</td>
                   </tr>
                   <tr className="border-b border-ink/5">
-                    <td className="p-3 font-mono text-accent-yellow">TIMEOUT</td>
+                    <td className="p-3 font-mono text-accent-yellow">
+                      TIMEOUT
+                    </td>
                     <td className="p-3">Auth took too long</td>
                     <td className="p-3">Increase timeout or check network</td>
                   </tr>
                   <tr className="border-b border-ink/5">
-                    <td className="p-3 font-mono text-accent-yellow">NETWORK_ERROR</td>
+                    <td className="p-3 font-mono text-accent-yellow">
+                      NETWORK_ERROR
+                    </td>
                     <td className="p-3">Failed to load auth</td>
                     <td className="p-3">Check internet connection</td>
                   </tr>
                   <tr className="border-b border-ink/5">
-                    <td className="p-3 font-mono text-accent-yellow">INVALID_CONFIG</td>
+                    <td className="p-3 font-mono text-accent-yellow">
+                      INVALID_CONFIG
+                    </td>
                     <td className="p-3">Bad SDK config</td>
                     <td className="p-3">Check appId and scopes</td>
                   </tr>
                   <tr>
-                    <td className="p-3 font-mono text-accent-yellow">AUTH_ERROR</td>
+                    <td className="p-3 font-mono text-accent-yellow">
+                      AUTH_ERROR
+                    </td>
                     <td className="p-3">Auth failed (passkey)</td>
                     <td className="p-3">Check device passkey support</td>
                   </tr>
@@ -998,23 +1085,29 @@ const bridge = new VillaBridge({
         <div className="max-w-3xl mx-auto space-y-12">
           <div className="text-center space-y-4">
             <h2 className="font-serif text-3xl">Smart Contracts</h2>
-            <p className="text-ink-muted">On-chain infrastructure for nicknames and recovery</p>
+            <p className="text-ink-muted">
+              On-chain infrastructure for nicknames and recovery
+            </p>
           </div>
 
           {/* Overview */}
           <div className="space-y-4">
             <p className="text-ink-muted text-sm">
-              Villa uses smart contracts on Base to enable ENS-compatible nickname resolution
-              and biometric wallet recovery. While most interactions happen off-chain for speed,
-              the contracts provide a trustless fallback and enable future on-chain features.
+              Villa uses smart contracts on Base to enable ENS-compatible
+              nickname resolution and biometric wallet recovery. While most
+              interactions happen off-chain for speed, the contracts provide a
+              trustless fallback and enable future on-chain features.
             </p>
           </div>
 
           {/* Deployed Contracts */}
           <div className="space-y-4">
-            <h3 className="font-mono text-lg">Deployed Contracts (Base Sepolia)</h3>
+            <h3 className="font-mono text-lg">
+              Deployed Contracts (Base Sepolia)
+            </h3>
             <p className="text-ink-muted text-sm">
-              Current deployments on Base Sepolia testnet. Mainnet deployments coming soon.
+              Current deployments on Base Sepolia testnet. Mainnet deployments
+              coming soon.
             </p>
             <div className="bg-cream-50 border border-ink/5 rounded-lg overflow-hidden">
               <table className="w-full text-sm">
@@ -1028,20 +1121,24 @@ const bridge = new VillaBridge({
                   <tr className="border-b border-ink/5">
                     <td className="p-3">VillaNicknameResolver</td>
                     <td className="p-3 font-mono text-xs">
-                      <code className="code-inline">0xf4648423aC6b3f6328018c49B2102f4E9bA6D800</code>
+                      <code className="code-inline">
+                        0xf4648423aC6b3f6328018c49B2102f4E9bA6D800
+                      </code>
                     </td>
                   </tr>
                   <tr>
                     <td className="p-3">BiometricRecoverySigner</td>
                     <td className="p-3 font-mono text-xs">
-                      <code className="code-inline">0xdFb55a363bdF549EE5C2e77D0aAaC39276ED5836</code>
+                      <code className="code-inline">
+                        0xdFb55a363bdF549EE5C2e77D0aAaC39276ED5836
+                      </code>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <p className="text-ink-muted text-xs">
-              View on{' '}
+              View on{" "}
               <a
                 href="https://sepolia.basescan.org/address/0xf4648423aC6b3f6328018c49B2102f4E9bA6D800"
                 target="_blank"
@@ -1081,8 +1178,9 @@ const resolverAddress = getNicknameResolverAddress(84532)
           <div className="space-y-4">
             <h3 className="font-mono text-lg">ENS Resolution (CCIP-Read)</h3>
             <p className="text-ink-muted text-sm">
-              Villa uses CCIP-Read to resolve nicknames off-chain while maintaining ENS compatibility.
-              When you query <code className="code-inline">alice.villa.cash</code> through ENS,
+              Villa uses CCIP-Read to resolve nicknames off-chain while
+              maintaining ENS compatibility. When you query{" "}
+              <code className="code-inline">alice.villa.cash</code> through ENS,
               the resolver contract makes a CCIP-Read callback to our API.
             </p>
             <CodeBlock
@@ -1116,9 +1214,15 @@ const address = await villa.resolveEns('alice.villa.cash')`}
             <div className="bg-cream-100/50 border border-ink/5 rounded-lg p-4 space-y-2">
               <h4 className="font-medium text-sm">Why CCIP-Read?</h4>
               <ul className="text-sm text-ink-muted space-y-1">
-                <li>• <strong>Fast:</strong> Off-chain lookups (no gas costs)</li>
-                <li>• <strong>Compatible:</strong> Works with all ENS clients</li>
-                <li>• <strong>Future-proof:</strong> Can migrate to on-chain later</li>
+                <li>
+                  • <strong>Fast:</strong> Off-chain lookups (no gas costs)
+                </li>
+                <li>
+                  • <strong>Compatible:</strong> Works with all ENS clients
+                </li>
+                <li>
+                  • <strong>Future-proof:</strong> Can migrate to on-chain later
+                </li>
               </ul>
             </div>
           </div>
@@ -1127,8 +1231,9 @@ const address = await villa.resolveEns('alice.villa.cash')`}
           <div className="space-y-4">
             <h3 className="font-mono text-lg">How to Claim a Nickname</h3>
             <p className="text-ink-muted text-sm">
-              Nicknames are currently <strong>free</strong> and stored in the database.
-              Future versions will support paid on-chain claims via smart contract.
+              Nicknames are currently <strong>free</strong> and stored in the
+              database. Future versions will support paid on-chain claims via
+              smart contract.
             </p>
             <div className="grid md:grid-cols-2 gap-4">
               <div className="bg-cream-50 border border-ink/5 rounded-lg p-4 space-y-3">
@@ -1184,45 +1289,69 @@ await tx.wait()`}
             <h3 className="font-mono text-lg">Resolution Architecture</h3>
             <div className="bg-cream-50 border border-ink/5 rounded-lg p-6 space-y-4">
               <div className="flex gap-4">
-                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">1</div>
+                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">
+                  1
+                </div>
                 <div>
                   <h4 className="font-medium">ENS query</h4>
-                  <p className="text-ink-muted text-sm">Client queries alice.villa.cash via ENS protocol</p>
+                  <p className="text-ink-muted text-sm">
+                    Client queries alice.villa.cash via ENS protocol
+                  </p>
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">2</div>
+                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">
+                  2
+                </div>
                 <div>
                   <h4 className="font-medium">Contract receives query</h4>
-                  <p className="text-ink-muted text-sm">VillaNicknameResolver on Base Sepolia</p>
+                  <p className="text-ink-muted text-sm">
+                    VillaNicknameResolver on Base Sepolia
+                  </p>
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">3</div>
+                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">
+                  3
+                </div>
                 <div>
                   <h4 className="font-medium">CCIP-Read callback</h4>
-                  <p className="text-ink-muted text-sm">Contract calls https://villa.cash/api/ens/resolve</p>
+                  <p className="text-ink-muted text-sm">
+                    Contract calls https://villa.cash/api/ens/resolve
+                  </p>
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">4</div>
+                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">
+                  4
+                </div>
                 <div>
                   <h4 className="font-medium">Database lookup</h4>
-                  <p className="text-ink-muted text-sm">API queries profiles table for nickname</p>
+                  <p className="text-ink-muted text-sm">
+                    API queries profiles table for nickname
+                  </p>
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">5</div>
+                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">
+                  5
+                </div>
                 <div>
                   <h4 className="font-medium">Return address</h4>
-                  <p className="text-ink-muted text-sm">API returns ABI-encoded address to contract</p>
+                  <p className="text-ink-muted text-sm">
+                    API returns ABI-encoded address to contract
+                  </p>
                 </div>
               </div>
               <div className="flex gap-4">
-                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">6</div>
+                <div className="w-8 h-8 bg-accent-yellow rounded-full flex items-center justify-center font-mono text-sm font-medium flex-shrink-0">
+                  6
+                </div>
                 <div>
                   <h4 className="font-medium">Client receives result</h4>
-                  <p className="text-ink-muted text-sm">ENS client gets resolved address</p>
+                  <p className="text-ink-muted text-sm">
+                    ENS client gets resolved address
+                  </p>
                 </div>
               </div>
             </div>
@@ -1232,8 +1361,8 @@ await tx.wait()`}
           <div className="space-y-4">
             <h3 className="font-mono text-lg">BiometricRecoverySigner</h3>
             <p className="text-ink-muted text-sm">
-              Enables face-based wallet recovery using WebAuthn and smart contract verification.
-              (Feature coming soon)
+              Enables face-based wallet recovery using WebAuthn and smart
+              contract verification. (Feature coming soon)
             </p>
             <CodeBlock
               code={`// Recovery flow (coming soon)
@@ -1257,13 +1386,37 @@ if (result.success) {
             <h3 className="font-medium text-lg">Learn More</h3>
             <ul className="text-ink-muted text-sm space-y-2">
               <li>
-                • <a href="https://docs.ens.domains/resolvers/ccip-read" target="_blank" rel="noopener noreferrer" className="text-accent-yellow hover:underline">CCIP-Read specification</a>
+                •{" "}
+                <a
+                  href="https://docs.ens.domains/resolvers/ccip-read"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent-yellow hover:underline"
+                >
+                  CCIP-Read specification
+                </a>
               </li>
               <li>
-                • <a href="https://github.com/rockfridrich/villa/tree/main/contracts" target="_blank" rel="noopener noreferrer" className="text-accent-yellow hover:underline">Villa contracts source code</a>
+                •{" "}
+                <a
+                  href="https://github.com/rockfridrich/villa/tree/main/contracts"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent-yellow hover:underline"
+                >
+                  Villa contracts source code
+                </a>
               </li>
               <li>
-                • <a href="https://base.org" target="_blank" rel="noopener noreferrer" className="text-accent-yellow hover:underline">Base network documentation</a>
+                •{" "}
+                <a
+                  href="https://base.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent-yellow hover:underline"
+                >
+                  Base network documentation
+                </a>
               </li>
             </ul>
           </div>
@@ -1275,7 +1428,9 @@ if (result.success) {
         <div className="max-w-3xl mx-auto space-y-8">
           <div className="text-center space-y-4">
             <h2 className="font-serif text-3xl">Full Example</h2>
-            <p className="text-ink-muted">Complete integration in under 30 lines</p>
+            <p className="text-ink-muted">
+              Complete integration in under 30 lines
+            </p>
           </div>
 
           <CodeBlock
@@ -1331,7 +1486,10 @@ export default function App() {
       <footer className="py-12 border-t border-ink/5">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-sm text-ink-muted">
-            <a href="https://villa.cash" className="hover:text-ink transition-colors">
+            <a
+              href="https://villa.cash"
+              className="hover:text-ink transition-colors"
+            >
               villa.cash
             </a>
             <span>|</span>
@@ -1342,11 +1500,9 @@ export default function App() {
               GitHub
             </a>
           </div>
-          <p className="text-sm text-ink-muted">
-            Built for pop-up villages
-          </p>
+          <p className="text-sm text-ink-muted">Built for pop-up villages</p>
         </div>
       </footer>
     </div>
-  )
+  );
 }

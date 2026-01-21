@@ -110,6 +110,7 @@ export default function PlaygroundPage() {
   const [output, setOutput] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
 
   const handleExampleChange = (key: ExampleKey) => {
     setSelectedExample(key);
@@ -184,13 +185,24 @@ export default function PlaygroundPage() {
             Try the full SDK integration below. Authentication uses real
             passkeys on Base Sepolia testnet.
           </p>
-          <div className="border border-ink/10 rounded-xl overflow-hidden bg-cream-50">
+          <div className="border border-ink/10 rounded-lg sm:rounded-xl overflow-hidden bg-cream-50 relative">
+            {!iframeLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center bg-cream-50 z-10">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-8 h-8 border-4 border-accent-yellow border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm text-ink-muted">
+                    Loading demo...
+                  </span>
+                </div>
+              </div>
+            )}
             <iframe
               src="https://beta.villa.cash/sdk-demo"
-              className="w-full h-[700px] border-0"
-              title="Villa SDK Live Demo"
+              className="w-full h-[500px] sm:h-[600px] lg:h-[700px] border-0"
+              title="Villa SDK Live Demo - Interactive passkey authentication"
               allow="publickey-credentials-get *; publickey-credentials-create *"
               sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+              onLoad={() => setIframeLoaded(true)}
             />
           </div>
           <p className="text-xs text-ink-muted text-center">

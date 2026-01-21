@@ -1,145 +1,159 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { Send, LogOut, Loader2, CheckCircle, AlertCircle, User } from 'lucide-react'
-import { Button, Input } from '@/components/ui'
-import { VillaAuth } from '@/components/sdk/VillaAuth'
-import { AvatarImage } from '@/components/sdk/AvatarImage'
-import { useIdentityStore } from '@/lib/store'
-import { disconnectPorto, sendTransaction } from '@/lib/porto'
-import { parseEther } from 'viem'
+import { useState, useEffect } from "react";
+import {
+  Send,
+  LogOut,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  User,
+} from "lucide-react";
+import { Button, Input } from "@/components/ui";
+import { VillaAuth } from "@/components/sdk/VillaAuth";
+import { AvatarImage } from "@/components/sdk/AvatarImage";
+import { useIdentityStore } from "@/lib/store";
+import { disconnectPorto, sendTransaction } from "@/lib/porto";
+import { parseEther } from "viem";
 import {
   addTipToHistory,
   getTippingHistory,
   getTippingHistoryLocal,
   type TipRecord,
-} from '@/lib/storage/tinycloud-client'
+} from "@/lib/storage/tinycloud-client";
 
-type TipStatus = 'idle' | 'resolving' | 'confirming' | 'sending' | 'success' | 'error'
+type TipStatus =
+  | "idle"
+  | "resolving"
+  | "confirming"
+  | "sending"
+  | "success"
+  | "error";
 
 export default function TippingPage() {
-  const { identity, clearIdentity } = useIdentityStore()
-  const [recipient, setRecipient] = useState('')
-  const [amount, setAmount] = useState('')
-  const [history, setHistory] = useState<TipRecord[]>([])
-  const [showAuth, setShowAuth] = useState(false)
-  const [status, setStatus] = useState<TipStatus>('idle')
-  const [error, setError] = useState<string | null>(null)
+  const { identity, clearIdentity } = useIdentityStore();
+  const [recipient, setRecipient] = useState("");
+  const [amount, setAmount] = useState("");
+  const [history, setHistory] = useState<TipRecord[]>([]);
+  const [showAuth, setShowAuth] = useState(false);
+  const [status, setStatus] = useState<TipStatus>("idle");
+  const [error, setError] = useState<string | null>(null);
 
   // Load history from storage (localStorage first for instant load, then TinyCloud)
   useEffect(() => {
     // Instant load from localStorage
-    const localHistory = getTippingHistoryLocal()
+    const localHistory = getTippingHistoryLocal();
     if (localHistory.length > 0) {
-      setHistory(localHistory)
+      setHistory(localHistory);
     }
 
     // Then try to load from TinyCloud (may have newer data from other devices)
     getTippingHistory().then((cloudHistory) => {
       if (cloudHistory.length > 0) {
-        setHistory(cloudHistory)
+        setHistory(cloudHistory);
       }
-    })
-  }, [])
-
+    });
+  }, []);
 
   // Resolve nickname to address
   const resolveNickname = async (nickname: string): Promise<string | null> => {
-    const cleanNickname = nickname.replace('@', '').trim()
-    if (!cleanNickname) return null
+    const cleanNickname = nickname.replace("@", "").trim();
+    if (!cleanNickname) return null;
 
     try {
-      const response = await fetch(`/api/nicknames/reverse/${cleanNickname}`)
+      const response = await fetch(`/api/nicknames/reverse/${cleanNickname}`);
       if (response.ok) {
-        const data = await response.json()
-        return data.address
+        const data = await response.json();
+        return data.address;
       }
       // Try ENS-style resolution
-      const ensResponse = await fetch(`/api/ens/resolve?name=${cleanNickname}.villa.eth`)
+      const ensResponse = await fetch(
+        `/api/ens/resolve?name=${cleanNickname}.villa.cash`,
+      );
       if (ensResponse.ok) {
-        const data = await ensResponse.json()
-        return data.address
+        const data = await ensResponse.json();
+        return data.address;
       }
-      return null
+      return null;
     } catch {
-      return null
+      return null;
     }
-  }
+  };
 
   const handleSendTip = async () => {
-    if (!identity || !recipient || !amount) return
+    if (!identity || !recipient || !amount) return;
 
-    setError(null)
-    setStatus('resolving')
+    setError(null);
+    setStatus("resolving");
 
     try {
       // Resolve nickname to address
-      const toAddress = await resolveNickname(recipient)
+      const toAddress = await resolveNickname(recipient);
       if (!toAddress) {
-        setError(`Could not find @${recipient.replace('@', '')}`)
-        setStatus('error')
-        return
+        setError(`Could not find @${recipient.replace("@", "")}`);
+        setStatus("error");
+        return;
       }
       // Validate amount
-      const amountWei = parseEther(amount)
+      const amountWei = parseEther(amount);
       if (amountWei <= 0n) {
-        setError('Amount must be greater than 0')
-        setStatus('error')
-        return
+        setError("Amount must be greater than 0");
+        setStatus("error");
+        return;
       }
 
-      setStatus('confirming')
+      setStatus("confirming");
 
       // Send transaction using Porto
       const txHash = await sendTransaction({
         to: toAddress as `0x${string}`,
         value: amountWei,
-      })
+      });
 
-      setStatus('success')
+      setStatus("success");
 
       // Record the tip (saves to localStorage + TinyCloud if connected)
       const record: TipRecord = {
         id: crypto.randomUUID(),
         fromNickname: identity.displayName,
         fromAddress: identity.address,
-        toNickname: recipient.replace('@', ''),
+        toNickname: recipient.replace("@", ""),
         toAddress,
         amount,
         timestamp: Date.now(),
         txHash,
-      }
+      };
 
-      await addTipToHistory(record)
-      setHistory((prev) => [record, ...prev].slice(0, 50))
+      await addTipToHistory(record);
+      setHistory((prev) => [record, ...prev].slice(0, 50));
 
       // Reset form
-      setRecipient('')
-      setAmount('')
+      setRecipient("");
+      setAmount("");
 
       // Reset status after delay
-      setTimeout(() => setStatus('idle'), 3000)
+      setTimeout(() => setStatus("idle"), 3000);
     } catch (err) {
-      console.error('Tip failed:', err)
-      setError(err instanceof Error ? err.message : 'Failed to send tip')
-      setStatus('error')
+      console.error("Tip failed:", err);
+      setError(err instanceof Error ? err.message : "Failed to send tip");
+      setStatus("error");
     }
-  }
+  };
 
   const handleLogout = async () => {
-    await disconnectPorto()
-    clearIdentity()
-    setShowAuth(false)
-  }
+    await disconnectPorto();
+    clearIdentity();
+    setShowAuth(false);
+  };
 
   const statusMessages: Record<TipStatus, string> = {
-    idle: '',
-    resolving: 'Finding recipient...',
-    confirming: 'Confirm in your wallet...',
-    sending: 'Sending tip...',
-    success: 'Tip sent!',
-    error: error || 'Something went wrong',
-  }
+    idle: "",
+    resolving: "Finding recipient...",
+    confirming: "Confirm in your wallet...",
+    sending: "Sending tip...",
+    success: "Tip sent!",
+    error: error || "Something went wrong",
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
@@ -155,11 +169,20 @@ export default function TippingPage() {
             {/* Logged in user */}
             <div className="flex items-center justify-between bg-cream-100 rounded-xl p-4">
               <div className="flex items-center gap-3">
-                <AvatarImage avatar={typeof identity.avatar === 'string' ? null : (identity.avatar || null)} walletAddress={identity.address} size={40} />
+                <AvatarImage
+                  avatar={
+                    typeof identity.avatar === "string"
+                      ? null
+                      : identity.avatar || null
+                  }
+                  walletAddress={identity.address}
+                  size={40}
+                />
                 <div>
                   <p className="font-medium">@{identity.displayName}</p>
                   <p className="text-xs text-ink-muted">
-                    {identity.address.slice(0, 6)}...{identity.address.slice(-4)}
+                    {identity.address.slice(0, 6)}...
+                    {identity.address.slice(-4)}
                   </p>
                 </div>
               </div>
@@ -179,7 +202,7 @@ export default function TippingPage() {
                     onChange={(e) => setRecipient(e.target.value)}
                     placeholder="@nickname"
                     className="pl-10"
-                    disabled={status !== 'idle' && status !== 'error'}
+                    disabled={status !== "idle" && status !== "error"}
                   />
                 </div>
               </div>
@@ -193,24 +216,24 @@ export default function TippingPage() {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.01"
-                  disabled={status !== 'idle' && status !== 'error'}
+                  disabled={status !== "idle" && status !== "error"}
                 />
               </div>
 
               {/* Status display */}
-              {status !== 'idle' && (
+              {status !== "idle" && (
                 <div
                   className={`flex items-center gap-2 p-3 rounded-lg ${
-                    status === 'success'
-                      ? 'bg-accent-green/10 text-accent-green'
-                      : status === 'error'
-                        ? 'bg-red-50 text-red-600'
-                        : 'bg-accent-yellow/10 text-accent-yellow'
+                    status === "success"
+                      ? "bg-accent-green/10 text-accent-green"
+                      : status === "error"
+                        ? "bg-red-50 text-red-600"
+                        : "bg-accent-yellow/10 text-accent-yellow"
                   }`}
                 >
-                  {status === 'success' ? (
+                  {status === "success" ? (
                     <CheckCircle className="w-4 h-4" />
-                  ) : status === 'error' ? (
+                  ) : status === "error" ? (
                     <AlertCircle className="w-4 h-4" />
                   ) : (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -222,9 +245,13 @@ export default function TippingPage() {
               <Button
                 onClick={handleSendTip}
                 className="w-full"
-                disabled={!recipient || !amount || (status !== 'idle' && status !== 'error')}
+                disabled={
+                  !recipient ||
+                  !amount ||
+                  (status !== "idle" && status !== "error")
+                }
               >
-                {status === 'idle' || status === 'error' ? (
+                {status === "idle" || status === "error" ? (
                   <>
                     <Send className="w-4 h-4 mr-2" />
                     Send Tip
@@ -241,7 +268,9 @@ export default function TippingPage() {
             {/* History */}
             {history.length > 0 && (
               <div className="space-y-3">
-                <h2 className="font-medium text-sm text-ink-muted">Recent Tips</h2>
+                <h2 className="font-medium text-sm text-ink-muted">
+                  Recent Tips
+                </h2>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {history.slice(0, 10).map((tip) => (
                     <div
@@ -289,7 +318,7 @@ export default function TippingPage() {
                   <VillaAuth
                     onComplete={(result) => {
                       if (result.success) {
-                        setShowAuth(false)
+                        setShowAuth(false);
                       }
                     }}
                   />
@@ -301,7 +330,7 @@ export default function TippingPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-ink-muted">
-          Tips are sent on Base Sepolia testnet.{' '}
+          Tips are sent on Base Sepolia testnet.{" "}
           <a
             href="https://www.alchemy.com/faucets/base-sepolia"
             target="_blank"
@@ -313,5 +342,5 @@ export default function TippingPage() {
         </p>
       </div>
     </div>
-  )
+  );
 }

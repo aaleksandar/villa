@@ -126,7 +126,7 @@ Villa SDK     -->   Fullscreen  --> Smart Contracts
     |                 |                   |
     v                 v                   v
 Identity        Porto SDK           ENS resolver
-returned        (passkeys)          (alice.villa.eth)
+returned        (passkeys)          (alice.villa.cash)
 ```
 
 **Privacy model:**

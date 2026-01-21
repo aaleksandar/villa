@@ -1,18 +1,26 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Copy, Check, ExternalLink, Package, BookOpen, Code2, Zap } from 'lucide-react'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism'
+import { useState } from "react";
+import {
+  Copy,
+  Check,
+  ExternalLink,
+  Package,
+  BookOpen,
+  Code2,
+  Zap,
+} from "lucide-react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 
 function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <button
@@ -26,11 +34,17 @@ function CopyButton({ text }: { text: string }) {
         <Copy className="w-4 h-4 text-cream-100/60 hover:text-cream-100 transition-colors" />
       )}
     </button>
-  )
+  );
 }
 
-function CodeBlock({ code, language = 'tsx' }: { code: string; language?: string }) {
-  const lineCount = code.split('\n').length
+function CodeBlock({
+  code,
+  language = "tsx",
+}: {
+  code: string;
+  language?: string;
+}) {
+  const lineCount = code.split("\n").length;
 
   return (
     <div className="relative group rounded-lg overflow-hidden">
@@ -45,12 +59,12 @@ function CodeBlock({ code, language = 'tsx' }: { code: string; language?: string
         style={oneDark}
         customStyle={{
           margin: 0,
-          borderRadius: '0.5rem',
-          padding: '1.5rem',
-          paddingTop: '3.5rem',
-          fontSize: '0.875rem',
-          lineHeight: '1.6',
-          border: '1px solid rgba(255, 252, 248, 0.05)',
+          borderRadius: "0.5rem",
+          padding: "1.5rem",
+          paddingTop: "3.5rem",
+          fontSize: "0.875rem",
+          lineHeight: "1.6",
+          border: "1px solid rgba(255, 252, 248, 0.05)",
         }}
         showLineNumbers={lineCount > 10}
         wrapLines={true}
@@ -59,19 +73,19 @@ function CodeBlock({ code, language = 'tsx' }: { code: string; language?: string
         {code}
       </SyntaxHighlighter>
     </div>
-  )
+  );
 }
 
 interface TypeReference {
-  name: string
-  description: string
-  code: string
+  name: string;
+  description: string;
+  code: string;
 }
 
 const typeReferences: TypeReference[] = [
   {
-    name: 'SignInResult',
-    description: 'Returned from villa.signIn()',
+    name: "SignInResult",
+    description: "Returned from villa.signIn()",
     code: `type SignInResult =
   | {
       success: true
@@ -91,28 +105,28 @@ type SignInErrorCode =
   | 'AUTH_ERROR'     // Auth failed`,
   },
   {
-    name: 'Identity',
+    name: "Identity",
     description: "User's Villa identity",
     code: `interface Identity {
   /** Ethereum address derived from passkey */
   address: \`0x\${string}\`
 
-  /** User's chosen nickname (unique) */
-  nickname: string
+  /** User's chosen nickname (optional during initial auth) */
+  nickname?: string
 
-  /** Avatar configuration */
-  avatar: AvatarConfig
+  /** Avatar configuration (optional during initial auth) */
+  avatar?: AvatarConfig
 }
 
 interface AvatarConfig {
-  style: 'adventurer' | 'avataaars' | 'bottts' | 'thumbs'
+  style: 'lorelei' | 'adventurer' | 'avataaars' | 'bottts' | 'thumbs'
   seed: string          // Address or nickname
   gender?: 'male' | 'female' | 'other'
 }`,
   },
   {
-    name: 'VillaConfig',
-    description: 'Configuration for Villa SDK instance',
+    name: "VillaConfig",
+    description: "Configuration for Villa SDK instance",
     code: `interface VillaConfig {
   /** Your application ID */
   appId: string
@@ -127,34 +141,35 @@ interface AvatarConfig {
   debug?: boolean
 }`,
   },
-]
+];
 
 interface ComponentAPI {
-  name: string
-  description: string
-  props: Array<{ name: string; type: string; description: string }>
-  example: string
+  name: string;
+  description: string;
+  props: Array<{ name: string; type: string; description: string }>;
+  example: string;
 }
 
 const componentAPIs: ComponentAPI[] = [
   {
-    name: 'VillaAuth',
-    description: 'Complete auth flow in one component. Handles welcome, passkey, nickname, and avatar selection.',
+    name: "VillaAuth",
+    description:
+      "Complete auth flow in one component. Handles welcome, passkey, nickname, and avatar selection.",
     props: [
       {
-        name: 'onComplete',
-        type: '(result: SignInResult) => void',
-        description: 'Called when auth completes (success or error)',
+        name: "onComplete",
+        type: "(result: SignInResult) => void",
+        description: "Called when auth completes (success or error)",
       },
       {
-        name: 'appName',
-        type: 'string',
-        description: 'Your app name for consent screen (optional)',
+        name: "appName",
+        type: "string",
+        description: "Your app name for consent screen (optional)",
       },
       {
-        name: 'initialStep',
-        type: 'string',
-        description: 'Skip to step for testing (optional)',
+        name: "initialStep",
+        type: "string",
+        description: "Skip to step for testing (optional)",
       },
     ],
     example: `import { VillaAuth } from '@rockfridrich/villa-sdk-react'
@@ -173,28 +188,28 @@ function LoginPage() {
 }`,
   },
   {
-    name: 'AvatarPreview',
+    name: "AvatarPreview",
     description: "Display a user's avatar from their configuration.",
     props: [
       {
-        name: 'walletAddress',
-        type: 'string',
+        name: "walletAddress",
+        type: "string",
         description: "User's wallet address",
       },
       {
-        name: 'selection',
-        type: 'AvatarStyle',
-        description: 'Avatar style selection',
+        name: "selection",
+        type: "AvatarStyle",
+        description: "Avatar style selection",
       },
       {
-        name: 'variant',
-        type: 'AvatarVariant',
-        description: 'Avatar variant options',
+        name: "variant",
+        type: "AvatarVariant",
+        description: "Avatar variant options",
       },
       {
-        name: 'size',
-        type: 'number',
-        description: 'Avatar size in pixels',
+        name: "size",
+        type: "number",
+        description: "Avatar size in pixels",
       },
     ],
     example: `import { AvatarPreview } from '@rockfridrich/villa-sdk-react'
@@ -206,7 +221,7 @@ function LoginPage() {
   size={48}
 />`,
   },
-]
+];
 
 export default function SDKPage() {
   return (
@@ -222,8 +237,8 @@ export default function SDKPage() {
             Villa SDK
           </h1>
           <p className="text-xl text-ink-muted max-w-xl mx-auto">
-            Complete API reference for the Villa authentication SDK.
-            All exports, types, and usage examples.
+            Complete API reference for the Villa authentication SDK. All
+            exports, types, and usage examples.
           </p>
 
           {/* Install command */}
@@ -259,7 +274,9 @@ export default function SDKPage() {
         <div className="max-w-3xl mx-auto space-y-8">
           <div className="text-center space-y-4">
             <h2 className="font-serif text-3xl">Packages</h2>
-            <p className="text-ink-muted">Choose the right package for your stack</p>
+            <p className="text-ink-muted">
+              Choose the right package for your stack
+            </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
@@ -272,7 +289,8 @@ export default function SDKPage() {
                 </div>
               </div>
               <p className="text-ink-muted text-sm">
-                Framework-agnostic JavaScript/TypeScript SDK. Works with vanilla JS, Vue, Svelte, or any framework.
+                Framework-agnostic JavaScript/TypeScript SDK. Works with vanilla
+                JS, Vue, Svelte, or any framework.
               </p>
               <CodeBlock
                 code="npm install @rockfridrich/villa-sdk viem zod"
@@ -289,12 +307,15 @@ export default function SDKPage() {
               <div className="flex items-center gap-3">
                 <Package className="w-8 h-8 text-accent-yellow" />
                 <div>
-                  <h3 className="font-mono text-lg">@rockfridrich/villa-sdk-react</h3>
+                  <h3 className="font-mono text-lg">
+                    @rockfridrich/villa-sdk-react
+                  </h3>
                   <p className="text-sm text-ink-muted">React SDK</p>
                 </div>
               </div>
               <p className="text-ink-muted text-sm">
-                React-specific SDK with hooks and components. Pre-built auth flow and avatar components.
+                React-specific SDK with hooks and components. Pre-built auth
+                flow and avatar components.
               </p>
               <CodeBlock
                 code="npm install @rockfridrich/villa-sdk-react"
@@ -391,7 +412,8 @@ const villa = new Villa({
             <div className="space-y-4">
               <h3 className="font-mono text-xl">villa.signIn()</h3>
               <p className="text-ink-muted text-sm">
-                Open auth flow and return user identity. Returns a Promise that resolves to SignInResult.
+                Open auth flow and return user identity. Returns a Promise that
+                resolves to SignInResult.
               </p>
               <CodeBlock
                 code={`const result = await villa.signIn({
@@ -447,7 +469,9 @@ await villa.reverseEns(addr)  // address -> name`}
         <div className="max-w-3xl mx-auto space-y-8">
           <div className="text-center space-y-4">
             <h2 className="font-serif text-3xl">Type Definitions</h2>
-            <p className="text-ink-muted">TypeScript types exported by the SDK</p>
+            <p className="text-ink-muted">
+              TypeScript types exported by the SDK
+            </p>
           </div>
 
           <div className="space-y-8">
@@ -455,7 +479,9 @@ await villa.reverseEns(addr)  // address -> name`}
               <div key={type.name} className="space-y-4">
                 <div>
                   <h3 className="font-mono text-xl">{type.name}</h3>
-                  <p className="text-ink-muted text-sm mt-1">{type.description}</p>
+                  <p className="text-ink-muted text-sm mt-1">
+                    {type.description}
+                  </p>
                 </div>
                 <CodeBlock code={type.code} language="typescript" />
               </div>
@@ -469,7 +495,9 @@ await villa.reverseEns(addr)  // address -> name`}
         <div className="max-w-3xl mx-auto space-y-8">
           <div className="text-center space-y-4">
             <h2 className="font-serif text-3xl">React Components</h2>
-            <p className="text-ink-muted">Pre-built components from @rockfridrich/villa-sdk-react</p>
+            <p className="text-ink-muted">
+              Pre-built components from @rockfridrich/villa-sdk-react
+            </p>
           </div>
 
           <div className="space-y-12">
@@ -477,7 +505,9 @@ await villa.reverseEns(addr)  // address -> name`}
               <div key={component.name} className="space-y-6">
                 <div>
                   <h3 className="font-mono text-xl">{component.name}</h3>
-                  <p className="text-ink-muted text-sm mt-1">{component.description}</p>
+                  <p className="text-ink-muted text-sm mt-1">
+                    {component.description}
+                  </p>
                 </div>
 
                 {/* Props Table */}
@@ -487,15 +517,24 @@ await villa.reverseEns(addr)  // address -> name`}
                       <tr className="border-b border-ink/5 bg-cream-100">
                         <th className="text-left p-3 font-medium">Prop</th>
                         <th className="text-left p-3 font-medium">Type</th>
-                        <th className="text-left p-3 font-medium">Description</th>
+                        <th className="text-left p-3 font-medium">
+                          Description
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {component.props.map((prop) => (
-                        <tr key={prop.name} className="border-b border-ink/5 last:border-0">
-                          <td className="p-3 font-mono text-accent-yellow">{prop.name}</td>
+                        <tr
+                          key={prop.name}
+                          className="border-b border-ink/5 last:border-0"
+                        >
+                          <td className="p-3 font-mono text-accent-yellow">
+                            {prop.name}
+                          </td>
                           <td className="p-3 font-mono text-xs">{prop.type}</td>
-                          <td className="p-3 text-ink-muted">{prop.description}</td>
+                          <td className="p-3 text-ink-muted">
+                            {prop.description}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -522,8 +561,8 @@ await villa.reverseEns(addr)  // address -> name`}
             </div>
             <h2 className="font-serif text-3xl">VillaBridge</h2>
             <p className="text-ink-muted">
-              Low-level API for fine-grained control over the authentication flow.
-              Most developers should use the Villa class instead.
+              Low-level API for fine-grained control over the authentication
+              flow. Most developers should use the Villa class instead.
             </p>
           </div>
 
@@ -586,7 +625,9 @@ bridge.isOpen()    // boolean`}
         <div className="max-w-3xl mx-auto space-y-8">
           <div className="text-center space-y-4">
             <h2 className="font-serif text-3xl">Contract Addresses</h2>
-            <p className="text-ink-muted">Access deployed smart contract addresses</p>
+            <p className="text-ink-muted">
+              Access deployed smart contract addresses
+            </p>
           </div>
 
           <div className="space-y-6">
@@ -595,11 +636,17 @@ bridge.isOpen()    // boolean`}
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between items-center">
                   <span className="text-ink-muted">VillaNicknameResolver</span>
-                  <code className="font-mono text-xs">0xf4648423aC6b3f6328018c49B2102f4E9bA6D800</code>
+                  <code className="font-mono text-xs">
+                    0xf4648423aC6b3f6328018c49B2102f4E9bA6D800
+                  </code>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-ink-muted">BiometricRecoverySigner</span>
-                  <code className="font-mono text-xs">0xdFb55a363bdF549EE5C2e77D0aAaC39276ED5836</code>
+                  <span className="text-ink-muted">
+                    BiometricRecoverySigner
+                  </span>
+                  <code className="font-mono text-xs">
+                    0xdFb55a363bdF549EE5C2e77D0aAaC39276ED5836
+                  </code>
                 </div>
               </div>
               <a
@@ -640,7 +687,9 @@ const resolverAddress = getNicknameResolverAddress(84532)
       <section className="mb-20">
         <div className="max-w-3xl mx-auto">
           <div className="bg-cream-50 border border-ink/5 rounded-xl p-8 space-y-6">
-            <h2 className="font-serif text-2xl text-center">Related Resources</h2>
+            <h2 className="font-serif text-2xl text-center">
+              Related Resources
+            </h2>
             <div className="grid md:grid-cols-2 gap-4">
               <a
                 href="/"
@@ -649,7 +698,9 @@ const resolverAddress = getNicknameResolverAddress(84532)
                 <BookOpen className="w-5 h-5 text-accent-yellow flex-shrink-0" />
                 <div>
                   <h3 className="font-medium text-sm">Full Documentation</h3>
-                  <p className="text-xs text-ink-muted">Complete guides and tutorials</p>
+                  <p className="text-xs text-ink-muted">
+                    Complete guides and tutorials
+                  </p>
                 </div>
               </a>
               <a
@@ -696,5 +747,5 @@ const resolverAddress = getNicknameResolverAddress(84532)
         </div>
       </section>
     </div>
-  )
+  );
 }

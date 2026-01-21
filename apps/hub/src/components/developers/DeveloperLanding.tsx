@@ -1,10 +1,21 @@
-'use client'
+"use client";
 
-import { useRef, useState, useCallback } from 'react'
-import { motion } from 'framer-motion'
-import { Code2, Lock, Zap, Fingerprint, Play, ExternalLink, Sparkles, Copy, Check, FileText } from 'lucide-react'
-import { Button } from '@/components/ui'
-import Link from 'next/link'
+import { useRef, useState, useCallback } from "react";
+import { motion } from "framer-motion";
+import {
+  Code2,
+  Lock,
+  Zap,
+  Fingerprint,
+  Play,
+  ExternalLink,
+  Sparkles,
+  Copy,
+  Check,
+  FileText,
+} from "lucide-react";
+import { Button } from "@/components/ui";
+import Link from "next/link";
 
 const AI_INTEGRATION_PROMPT = `I want to add Villa passkey authentication to my project. Villa provides privacy-first authentication on Base network - no passwords, just biometrics.
 
@@ -33,43 +44,46 @@ function App() {
 }
 \`\`\`
 
-Please analyze my project structure and suggest the best way to integrate Villa authentication.`
+Please analyze my project structure and suggest the best way to integrate Villa authentication.`;
 
 interface DeveloperLandingProps {
-  onConnect: () => void
-  isConnected?: boolean
+  onConnect: () => void;
+  isConnected?: boolean;
 }
 
 /**
  * Developer Portal landing page
  * Hero section, features, code snippet, and CTA
  */
-export function DeveloperLanding({ onConnect, isConnected }: DeveloperLandingProps) {
-  const [copied, setCopied] = useState(false)
+export function DeveloperLanding({
+  onConnect,
+  isConnected,
+}: DeveloperLandingProps) {
+  const [copied, setCopied] = useState(false);
 
   const copyPrompt = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(AI_INTEGRATION_PROMPT)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      await navigator.clipboard.writeText(AI_INTEGRATION_PROMPT);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback for older browsers
-      const textarea = document.createElement('textarea')
-      textarea.value = AI_INTEGRATION_PROMPT
-      document.body.appendChild(textarea)
-      textarea.select()
-      document.execCommand('copy')
-      document.body.removeChild(textarea)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      const textarea = document.createElement("textarea");
+      textarea.value = AI_INTEGRATION_PROMPT;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
-  }, [])
+  }, []);
 
   const prefersReducedMotion = useRef(
-    typeof window !== 'undefined'
-      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      : false
-  ).current
+    typeof window !== "undefined"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      : false,
+  ).current;
 
   const containerVariants = prefersReducedMotion
     ? undefined
@@ -82,7 +96,7 @@ export function DeveloperLanding({ onConnect, isConnected }: DeveloperLandingPro
             staggerChildren: 0.1,
           },
         },
-      }
+      };
 
   const itemVariants = prefersReducedMotion
     ? undefined
@@ -93,30 +107,30 @@ export function DeveloperLanding({ onConnect, isConnected }: DeveloperLandingPro
           y: 0,
           transition: { duration: 0.3 },
         },
-      }
+      };
 
   const features = [
     {
       icon: Fingerprint,
-      title: 'Passkey Authentication',
-      description: 'No passwords. Users authenticate with biometrics.',
+      title: "Passkey Authentication",
+      description: "No passwords. Users authenticate with biometrics.",
     },
     {
       icon: Lock,
-      title: 'Privacy-First',
-      description: 'Users control exactly what data apps can access.',
+      title: "Privacy-First",
+      description: "Users control exactly what data apps can access.",
     },
     {
       icon: Zap,
-      title: 'Fast Integration',
-      description: 'One SDK. Five minutes to working auth.',
+      title: "Fast Integration",
+      description: "One SDK. Five minutes to working auth.",
     },
     {
       icon: Code2,
-      title: 'ENS Compatible',
-      description: 'Nicknames resolve as proofofretreat.eth subdomains.',
+      title: "ENS Compatible",
+      description: "Nicknames resolve as villa.cash subdomains.",
     },
-  ]
+  ];
 
   return (
     <motion.div
@@ -137,16 +151,20 @@ export function DeveloperLanding({ onConnect, isConnected }: DeveloperLandingPro
           variants={itemVariants}
           className="text-xl text-ink-muted max-w-2xl mx-auto"
         >
-          Privacy-first passkey authentication on Base. Drop-in identity for your village apps.
+          Privacy-first passkey authentication on Base. Drop-in identity for
+          your village apps.
         </motion.p>
-        <motion.div variants={itemVariants} className="pt-4 flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <motion.div
+          variants={itemVariants}
+          className="pt-4 flex flex-col sm:flex-row gap-4 justify-center items-center"
+        >
           <Button
             size="lg"
             variant="primary"
             onClick={onConnect}
             className="min-w-[200px]"
           >
-            {isConnected ? 'View Dashboard' : 'Connect Wallet'}
+            {isConnected ? "View Dashboard" : "Connect Wallet"}
           </Button>
         </motion.div>
       </div>
@@ -163,14 +181,19 @@ export function DeveloperLanding({ onConnect, isConnected }: DeveloperLandingPro
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-serif text-ink">AI-Powered Integration</h2>
-              <p className="text-sm text-ink-muted">Let AI tools integrate Villa auth for you</p>
+              <h2 className="text-2xl font-serif text-ink">
+                AI-Powered Integration
+              </h2>
+              <p className="text-sm text-ink-muted">
+                Let AI tools integrate Villa auth for you
+              </p>
             </div>
           </div>
 
           <p className="text-ink-muted mb-6 max-w-2xl">
-            Copy this prompt and paste it into Claude, ChatGPT, or any AI coding assistant.
-            It will analyze your project and suggest the best integration approach.
+            Copy this prompt and paste it into Claude, ChatGPT, or any AI coding
+            assistant. It will analyze your project and suggest the best
+            integration approach.
           </p>
 
           <div className="flex flex-wrap gap-3">
@@ -214,7 +237,7 @@ export function DeveloperLanding({ onConnect, isConnected }: DeveloperLandingPro
         className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-20"
       >
         {features.map((feature) => {
-          const Icon = feature.icon
+          const Icon = feature.icon;
           return (
             <motion.div
               key={feature.title}
@@ -236,7 +259,7 @@ export function DeveloperLanding({ onConnect, isConnected }: DeveloperLandingPro
                 </div>
               </div>
             </motion.div>
-          )
+          );
         })}
       </motion.div>
 
@@ -251,7 +274,8 @@ export function DeveloperLanding({ onConnect, isConnected }: DeveloperLandingPro
               Try the Interactive Demo
             </h2>
             <p className="text-ink-muted">
-              Test the full SDK flow in your browser. See postMessage events, inspect the iframe, and debug your integration.
+              Test the full SDK flow in your browser. See postMessage events,
+              inspect the iframe, and debug your integration.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -298,5 +322,5 @@ const profile = await villa.getData(['nickname', 'avatar'])`}</code>
         </div>
       </motion.div>
     </motion.div>
-  )
+  );
 }

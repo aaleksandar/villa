@@ -5,52 +5,46 @@
  * See contracts/deployments/ for deployment details.
  */
 
-import { baseSepolia, base } from 'viem/chains'
-import type { Address, Chain } from 'viem'
+import { baseSepolia, base } from "viem/chains";
+import type { Address, Chain } from "viem";
 
 /** Contract deployment info */
 export interface ContractDeployment {
   /** Proxy address (user interacts with this) */
-  proxy: Address
+  proxy: Address;
   /** Implementation address */
-  implementation: Address
+  implementation: Address;
   /** Block number of deployment */
-  deployedAt?: number
+  deployedAt?: number;
 }
 
 /** Chain-specific contract addresses */
 export interface ChainContracts {
-  /** VillaNicknameResolverV2 - ENS CCIP-Read gateway resolver */
-  nicknameResolver: ContractDeployment
+  /** VillaNicknameResolverV3 - ENS CCIP-Read gateway resolver */
+  nicknameResolver: ContractDeployment;
   /** BiometricRecoverySignerV2 - Face-based wallet recovery */
-  recoverySigner: ContractDeployment
+  recoverySigner: ContractDeployment;
   /** Mock verifier (testnet only) */
-  mockVerifier?: Address
+  mockVerifier?: Address;
 }
 
 /** Contract addresses by chain ID */
 export const CONTRACTS: Record<number, ChainContracts> = {
-  // Base Sepolia (Testnet) - Deployed 2026-01-05
+  // Base Sepolia (Testnet) - V3 Deployed 2026-01-21
   [baseSepolia.id]: {
     nicknameResolver: {
-      proxy: '0xf4648423aC6b3f6328018c49B2102f4E9bA6D800',
-      implementation: '0xd959290E5E5f99D1e56765aFcd1c786E9118AAe7',
-      deployedAt: 22_000_000, // Approximate
+      proxy: "0x180ddE044F1627156Cac6b2d068706508902AE9C",
+      implementation: "0x2Ef91A7247A4C64E4d165489F63d47D9374A34ce",
+      deployedAt: 22_500_000,
     },
     recoverySigner: {
-      proxy: '0xdFb55a363bdF549EE5C2e77D0aAaC39276ED5836',
-      implementation: '0xbff139E1db248B60B0BEAA7864Ba180597714D7F',
-      deployedAt: 22_000_000, // Approximate
+      proxy: "0xdFb55a363bdF549EE5C2e77D0aAaC39276ED5836",
+      implementation: "0xbff139E1db248B60B0BEAA7864Ba180597714D7F",
+      deployedAt: 22_000_000,
     },
-    mockVerifier: '0x3a4C091500159901deB27D8F5559ACD8a643A12b',
+    mockVerifier: "0x3a4C091500159901deB27D8F5559ACD8a643A12b",
   },
-
-  // Base Mainnet - Not yet deployed
-  // [base.id]: {
-  //   nicknameResolver: { proxy: '0x...', implementation: '0x...' },
-  //   recoverySigner: { proxy: '0x...', implementation: '0x...' },
-  // },
-}
+};
 
 /**
  * Gets contract addresses for a chain
@@ -65,7 +59,7 @@ export const CONTRACTS: Record<number, ChainContracts> = {
  * }
  */
 export function getContracts(chainId: number): ChainContracts | null {
-  return CONTRACTS[chainId] ?? null
+  return CONTRACTS[chainId] ?? null;
 }
 
 /**
@@ -79,7 +73,7 @@ export function getContracts(chainId: number): ChainContracts | null {
  * const contracts = getContractsForChain(baseSepolia)
  */
 export function getContractsForChain(chain: Chain): ChainContracts | null {
-  return getContracts(chain.id)
+  return getContracts(chain.id);
 }
 
 /**
@@ -89,8 +83,8 @@ export function getContractsForChain(chain: Chain): ChainContracts | null {
  * @returns Proxy address or null
  */
 export function getNicknameResolverAddress(chainId: number): Address | null {
-  const contracts = getContracts(chainId)
-  return contracts?.nicknameResolver.proxy ?? null
+  const contracts = getContracts(chainId);
+  return contracts?.nicknameResolver.proxy ?? null;
 }
 
 /**
@@ -100,14 +94,14 @@ export function getNicknameResolverAddress(chainId: number): Address | null {
  * @returns Proxy address or null
  */
 export function getRecoverySignerAddress(chainId: number): Address | null {
-  const contracts = getContracts(chainId)
-  return contracts?.recoverySigner.proxy ?? null
+  const contracts = getContracts(chainId);
+  return contracts?.recoverySigner.proxy ?? null;
 }
 
 /** List of chains where Villa contracts are deployed */
-export const DEPLOYED_CHAINS = Object.keys(CONTRACTS).map(Number)
+export const DEPLOYED_CHAINS = Object.keys(CONTRACTS).map(Number);
 
 /** Check if contracts are deployed on a chain */
 export function isDeployed(chainId: number): boolean {
-  return chainId in CONTRACTS
+  return chainId in CONTRACTS;
 }
