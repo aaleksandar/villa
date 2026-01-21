@@ -74,15 +74,19 @@ function hashString(str: string): number {
   return Math.abs(hash);
 }
 
+function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 export function generateNickname(seed?: string): string {
   if (seed) {
     const hash = hashString(seed);
     const adjIndex = hash % ADJECTIVES.length;
     const nounIndex = (hash >> 8) % NOUNS.length;
-    return `${ADJECTIVES[adjIndex]}-${NOUNS[nounIndex]}`;
+    return `${capitalize(ADJECTIVES[adjIndex])}${capitalize(NOUNS[nounIndex])}`;
   }
 
   const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
   const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
-  return `${adjective}-${noun}`;
+  return `${capitalize(adjective)}${capitalize(noun)}`;
 }

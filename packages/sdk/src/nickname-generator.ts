@@ -85,7 +85,7 @@ const RESERVED_NICKNAMES = new Set([
 export const NICKNAME_RULES = {
   minLength: 3,
   maxLength: 20,
-  pattern: /^[a-z][a-z0-9-]*[a-z0-9]$/,
+  pattern: /^[A-Z][a-zA-Z0-9]*$/,
   cooldownMs: 30 * 24 * 60 * 60 * 1000,
   maxChanges: 1,
 } as const;
@@ -104,17 +104,21 @@ function hashString(str: string): number {
   return Math.abs(hash);
 }
 
+function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 export function generateNickname(seed?: string): string {
   if (seed) {
     const hash = hashString(seed);
     const adjIndex = hash % ADJECTIVES.length;
     const nounIndex = (hash >> 8) % NOUNS.length;
-    return `${ADJECTIVES[adjIndex]}-${NOUNS[nounIndex]}`;
+    return `${capitalize(ADJECTIVES[adjIndex])}${capitalize(NOUNS[nounIndex])}`;
   }
 
   const adjective = getRandomElement(ADJECTIVES);
   const noun = getRandomElement(NOUNS);
-  return `${adjective}-${noun}`;
+  return `${capitalize(adjective)}${capitalize(noun)}`;
 }
 
 export function generateUniqueNickname(
@@ -131,12 +135,12 @@ export function generateUniqueNickname(
     }
 
     const suffix = Math.floor(Math.random() * 999) + 1;
-    nickname = `${generateNickname()}-${suffix}`;
+    nickname = `${generateNickname()}${suffix}`;
     attempts++;
   }
 
   const timestamp = Date.now().toString(36).slice(-4);
-  return `${generateNickname()}-${timestamp}`;
+  return `${generateNickname()}${timestamp}`;
 }
 
 export type NicknameValidationError =
@@ -152,17 +156,18 @@ export interface NicknameValidationResult {
 }
 
 export function validateNickname(nickname: string): NicknameValidationResult {
-  const normalized = nickname.toLowerCase().trim();
+  const trimmed = nickname.trim();
+  const normalized = trimmed.toLowerCase();
 
-  if (normalized.length < NICKNAME_RULES.minLength) {
+  if (trimmed.length < NICKNAME_RULES.minLength) {
     return { valid: false, error: "TOO_SHORT" };
   }
 
-  if (normalized.length > NICKNAME_RULES.maxLength) {
+  if (trimmed.length > NICKNAME_RULES.maxLength) {
     return { valid: false, error: "TOO_LONG" };
   }
 
-  if (!NICKNAME_RULES.pattern.test(normalized)) {
+  if (!NICKNAME_RULES.pattern.test(trimmed)) {
     return { valid: false, error: "INVALID_FORMAT" };
   }
 
