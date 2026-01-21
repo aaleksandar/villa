@@ -11,33 +11,60 @@ React bindings for Villa SDK. Privacy-first passkey authentication for Base netw
 npm install @rockfridrich/villa-sdk @rockfridrich/villa-sdk-react viem zod
 ```
 
-## Quick Start
+## Quick Start (Simple API)
+
+No provider needed. Just use the hook and button:
 
 ```tsx
-import { VillaProvider, VillaAuth, useIdentity } from '@rockfridrich/villa-sdk-react'
+import { useVilla, VillaButton } from "@rockfridrich/villa-sdk-react";
+
+function App() {
+  const { user, signOut } = useVilla();
+
+  if (!user) {
+    return <VillaButton onSignIn={(u) => console.log("Welcome", u.nickname)} />;
+  }
+
+  return (
+    <div>
+      <img src={user.avatar} alt="" />
+      <p>@{user.nickname}</p>
+      <button onClick={signOut}>Sign Out</button>
+    </div>
+  );
+}
+```
+
+## Advanced API (with Provider)
+
+For more control, use the provider pattern:
+
+```tsx
+import {
+  VillaProvider,
+  VillaAuth,
+  useIdentity,
+  useAuth,
+} from "@rockfridrich/villa-sdk-react";
 
 function App() {
   return (
-    <VillaProvider config={{ appId: 'your-app' }}>
+    <VillaProvider config={{ appId: "your-app" }}>
       <AuthenticatedApp />
     </VillaProvider>
-  )
+  );
 }
 
 function AuthenticatedApp() {
-  const identity = useIdentity()
-  const { signOut } = useAuth()
+  const identity = useIdentity();
+  const { signOut } = useAuth();
 
   if (!identity) {
     return (
       <VillaAuth
-        onComplete={(result) => {
-          if (result.success) {
-            console.log('Welcome', result.identity.nickname)
-          }
-        }}
+        onComplete={(r) => r.success && console.log(r.identity.nickname)}
       />
-    )
+    );
   }
 
   return (
@@ -46,16 +73,28 @@ function AuthenticatedApp() {
       <h1>Welcome, @{identity.nickname}!</h1>
       <button onClick={signOut}>Sign Out</button>
     </div>
-  )
+  );
 }
 ```
 
 ## API
 
-### Provider
+### Simple API (Recommended)
 
 ```tsx
-<VillaProvider config={{ appId: 'your-app', network: 'base' }}>
+import { useVilla, VillaButton } from '@rockfridrich/villa-sdk-react'
+
+// useVilla hook
+const { user, signIn, signOut, isAuthenticated, isLoading } = useVilla()
+
+// VillaButton component
+<VillaButton onSignIn={(user) => {}} onSignOut={() => {}} />
+```
+
+### Provider API
+
+```tsx
+<VillaProvider config={{ appId: "your-app", network: "base" }}>
   {children}
 </VillaProvider>
 ```
@@ -63,14 +102,9 @@ function AuthenticatedApp() {
 ### Hooks
 
 ```tsx
-// Get current user
-const identity = useIdentity()
-
-// Auth state and methods
-const { signIn, signOut, isAuthenticated, isLoading } = useAuth()
-
-// SDK config
-const config = useVillaConfig()
+const identity = useIdentity();
+const { signIn, signOut, isAuthenticated, isLoading } = useAuth();
+const config = useVillaConfig();
 ```
 
 ### Components
@@ -98,14 +132,14 @@ const config = useVillaConfig()
 
 ```typescript
 interface Identity {
-  address: `0x${string}`
-  nickname: string
-  avatar: AvatarConfig
+  address: `0x${string}`;
+  nickname: string;
+  avatar: AvatarConfig;
 }
 
 type VillaAuthResponse =
   | { success: true; identity: Identity }
-  | { success: false; error: string; code: SignInErrorCode }
+  | { success: false; error: string; code: SignInErrorCode };
 ```
 
 ## Links

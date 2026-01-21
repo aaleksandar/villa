@@ -5,15 +5,24 @@
  * Privacy-first passkey authentication for Base network
  */
 
-// Context & Provider
-export { VillaProvider, useVillaContext } from './context'
-export type { VillaAuthResult, VillaAuthError, VillaAuthResponse } from './context'
+// Simple API (recommended)
+export { useVilla } from "./useVilla";
+export { VillaButton } from "./VillaButton";
+export type { VillaButtonProps } from "./VillaButton";
 
-// Hooks
-export { useIdentity, useAuth, useVillaConfig } from './hooks'
+// Context & Provider (advanced)
+export { VillaProvider, useVillaContext } from "./context";
+export type {
+  VillaAuthResult,
+  VillaAuthError,
+  VillaAuthResponse,
+} from "./context";
+
+// Hooks (advanced)
+export { useIdentity, useAuth, useVillaConfig } from "./hooks";
 
 // Components
-export { VillaAuth, Avatar, AvatarPreview } from './components'
+export { VillaAuth, Avatar, AvatarPreview } from "./components";
 
 // Re-export types from core SDK
 export type {
@@ -22,4 +31,4 @@ export type {
   VillaConfig,
   SignInResult,
   SignInErrorCode,
-} from '@rockfridrich/villa-sdk'
+} from "@rockfridrich/villa-sdk";

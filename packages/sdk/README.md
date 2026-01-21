@@ -9,14 +9,14 @@ Privacy-first passkey authentication for Base network. No wallets. No passwords.
 
 ## Security & Trust
 
-| Guarantee | Implementation |
-|-----------|----------------|
-| **Passkeys never leave device** | WebAuthn hardware-bound keys |
-| **Zero knowledge** | Villa never sees your private key |
-| **Trustless deploys** | npm provenance attestation via OIDC |
-| **Minimal dependencies** | Only `viem` + `zod` (peer deps) |
-| **Origin validation** | Strict postMessage origin checks |
-| **Input validation** | Zod schemas for all external data |
+| Guarantee                       | Implementation                      |
+| ------------------------------- | ----------------------------------- |
+| **Passkeys never leave device** | WebAuthn hardware-bound keys        |
+| **Zero knowledge**              | Villa never sees your private key   |
+| **Trustless deploys**           | npm provenance attestation via OIDC |
+| **Minimal dependencies**        | Only `viem` + `zod` (peer deps)     |
+| **Origin validation**           | Strict postMessage origin checks    |
+| **Input validation**            | Zod schemas for all external data   |
 
 ```
 Dependencies: 2 peer (viem, zod)
@@ -25,32 +25,49 @@ Bundle size: ~22KB minified
 
 ## Quick Start
 
-### Installation
-
 ```bash
 npm install @rockfridrich/villa-sdk viem zod
 ```
 
-### Basic Usage
+### Simple API (Recommended)
 
 ```typescript
-import { Villa } from '@rockfridrich/villa-sdk'
+import { villa } from "@rockfridrich/villa-sdk";
 
-// Create SDK instance
-const villa = new Villa({
-  appId: 'your-app-id',
-  network: 'base' // or 'base-sepolia' for testnet
-})
+// One-liner sign in
+const user = await villa.signIn();
+console.log(user.address, user.nickname, user.avatar);
 
-// Open auth flow
-const result = await villa.signIn()
+// Check auth state anywhere
+if (villa.user) {
+  console.log("Logged in as", villa.user.nickname);
+}
+
+// Sign out
+villa.signOut();
+
+// Listen to auth changes
+villa.onAuthChange((user) => {
+  console.log("Auth changed:", user?.nickname || "signed out");
+});
+```
+
+### Advanced API
+
+```typescript
+import { Villa } from "@rockfridrich/villa-sdk";
+
+const client = new Villa({
+  appId: "your-app-id",
+  network: "base", // or 'base-sepolia' for testnet
+});
+
+const result = await client.signIn();
 
 if (result.success) {
-  console.log('Welcome', result.identity.nickname)
-  console.log('Address:', result.identity.address)
-  console.log('Avatar:', result.identity.avatar)
+  console.log("Welcome", result.identity.nickname);
 } else {
-  console.error('Auth failed:', result.error, result.code)
+  console.error("Auth failed:", result.error, result.code);
 }
 ```
 
@@ -63,15 +80,17 @@ Main entry point for SDK usage.
 #### Constructor
 
 ```typescript
-const villa = new Villa(config)
+const villa = new Villa(config);
 ```
 
 **Parameters:**
+
 - `config.appId` (string, required) - Your application identifier
 - `config.network` (string, optional) - 'base' (default) or 'base-sepolia'
 - `config.apiUrl` (string, optional) - Override API endpoint
 
 **Throws:**
+
 - `Error` if appId is missing or empty
 
 #### Methods
@@ -82,44 +101,47 @@ Opens fullscreen auth iframe and authenticates user.
 
 ```typescript
 const result = await villa.signIn({
-  scopes: ['profile', 'wallet'],      // Optional: data to request
-  onProgress: (step) => {              // Optional: track progress
-    console.log(step.message)
+  scopes: ["profile", "wallet"], // Optional: data to request
+  onProgress: (step) => {
+    // Optional: track progress
+    console.log(step.message);
   },
-  timeout: 5 * 60 * 1000              // Optional: timeout in ms
-})
+  timeout: 5 * 60 * 1000, // Optional: timeout in ms
+});
 
 if (result.success) {
   // User authenticated
-  const { address, nickname, avatar } = result.identity
+  const { address, nickname, avatar } = result.identity;
 } else {
   // Authentication failed
-  console.error(result.error)          // Error message
-  console.error(result.code)           // Error code
+  console.error(result.error); // Error message
+  console.error(result.code); // Error code
 }
 ```
 
 **Progress Tracking:**
+
 ```typescript
 onProgress((step) => {
   switch (step.step) {
-    case 'opening_auth':
-      console.log('Showing auth UI...')
-      break
-    case 'waiting_for_user':
-      console.log('User is authenticating...')
-      break
-    case 'processing':
-      console.log('Processing response...')
-      break
-    case 'complete':
-      console.log('Auth complete!')
-      break
+    case "opening_auth":
+      console.log("Showing auth UI...");
+      break;
+    case "waiting_for_user":
+      console.log("User is authenticating...");
+      break;
+    case "processing":
+      console.log("Processing response...");
+      break;
+    case "complete":
+      console.log("Auth complete!");
+      break;
   }
-})
+});
 ```
 
 **Error Codes:**
+
 - `CANCELLED` - User closed auth flow
 - `TIMEOUT` - Auth took too long (default: 5 minutes)
 - `NETWORK_ERROR` - Failed to load auth page
@@ -131,8 +153,8 @@ onProgress((step) => {
 Clears session and signs out user.
 
 ```typescript
-await villa.signOut()
-console.log('Signed out')
+await villa.signOut();
+console.log("Signed out");
 ```
 
 ##### `isAuthenticated()`
@@ -141,7 +163,7 @@ Check if user has a valid session.
 
 ```typescript
 if (villa.isAuthenticated()) {
-  console.log('User is authenticated')
+  console.log("User is authenticated");
 }
 ```
 
@@ -150,12 +172,12 @@ if (villa.isAuthenticated()) {
 Get current user's identity (if authenticated).
 
 ```typescript
-const identity = villa.getIdentity()
+const identity = villa.getIdentity();
 if (identity) {
-  console.log('Address:', identity.address)
-  console.log('Nickname:', identity.nickname)
+  console.log("Address:", identity.address);
+  console.log("Nickname:", identity.nickname);
 } else {
-  console.log('Not authenticated')
+  console.log("Not authenticated");
 }
 ```
 
@@ -164,7 +186,7 @@ if (identity) {
 Resolve Villa ENS name to address.
 
 ```typescript
-const address = await villa.resolveEns('alice')
+const address = await villa.resolveEns("alice");
 // => '0x...'
 ```
 
@@ -173,7 +195,7 @@ const address = await villa.resolveEns('alice')
 Resolve address to Villa ENS name.
 
 ```typescript
-const name = await villa.reverseEns('0x...')
+const name = await villa.reverseEns("0x...");
 // => 'alice'
 ```
 
@@ -196,7 +218,7 @@ const url = villa.getAvatarUrl(address, {
 Get configured network.
 
 ```typescript
-const network = villa.getNetwork()
+const network = villa.getNetwork();
 // => 'base' | 'base-sepolia'
 ```
 
@@ -205,7 +227,7 @@ const network = villa.getNetwork()
 Get API endpoint URL.
 
 ```typescript
-const url = villa.getApiUrl()
+const url = villa.getApiUrl();
 // => 'https://api.villa.cash'
 ```
 
@@ -218,13 +240,13 @@ User identity returned on successful authentication.
 ```typescript
 interface Identity {
   /** Ethereum address derived from passkey */
-  address: `0x${string}`
+  address: `0x${string}`;
 
   /** User's chosen nickname */
-  nickname: string
+  nickname: string;
 
   /** Avatar configuration */
-  avatar: AvatarConfig
+  avatar: AvatarConfig;
 }
 ```
 
@@ -235,13 +257,13 @@ Avatar configuration for deterministic generation.
 ```typescript
 interface AvatarConfig {
   /** DiceBear style: 'adventurer' | 'avataaars' | 'bottts' | 'thumbs' */
-  style: string
+  style: string;
 
   /** Seed for generation (address, nickname, etc) */
-  seed: string
+  seed: string;
 
   /** Optional gender preference */
-  gender?: 'male' | 'female' | 'other'
+  gender?: "male" | "female" | "other";
 }
 ```
 
@@ -252,21 +274,21 @@ Result from authentication.
 ```typescript
 type SignInResult =
   | {
-      success: true
-      identity: Identity
+      success: true;
+      identity: Identity;
     }
   | {
-      success: false
-      error: string
-      code: SignInErrorCode
-    }
+      success: false;
+      error: string;
+      code: SignInErrorCode;
+    };
 
 type SignInErrorCode =
-  | 'CANCELLED'
-  | 'TIMEOUT'
-  | 'NETWORK_ERROR'
-  | 'INVALID_CONFIG'
-  | 'AUTH_ERROR'
+  | "CANCELLED"
+  | "TIMEOUT"
+  | "NETWORK_ERROR"
+  | "INVALID_CONFIG"
+  | "AUTH_ERROR";
 ```
 
 #### VillaConfig
@@ -276,13 +298,13 @@ SDK configuration.
 ```typescript
 interface VillaConfig {
   /** Your application ID */
-  appId: string
+  appId: string;
 
   /** Network: 'base' (production) or 'base-sepolia' (testnet) */
-  network?: 'base' | 'base-sepolia'
+  network?: "base" | "base-sepolia";
 
   /** Override API URL */
-  apiUrl?: string
+  apiUrl?: string;
 }
 ```
 
@@ -293,37 +315,37 @@ For fine-grained control over the auth flow, use `VillaBridge` directly.
 ### Basic Example
 
 ```typescript
-import { VillaBridge } from '@rockfridrich/villa-sdk'
+import { VillaBridge } from "@rockfridrich/villa-sdk";
 
 const bridge = new VillaBridge({
-  appId: 'your-app',
-  network: 'base',
+  appId: "your-app",
+  network: "base",
   timeout: 5 * 60 * 1000,
-  debug: false
-})
+  debug: false,
+});
 
 // Subscribe to events
-bridge.on('ready', () => {
-  console.log('Auth UI ready')
-})
+bridge.on("ready", () => {
+  console.log("Auth UI ready");
+});
 
-bridge.on('success', (identity) => {
-  console.log('Authenticated:', identity.nickname)
-})
+bridge.on("success", (identity) => {
+  console.log("Authenticated:", identity.nickname);
+});
 
-bridge.on('cancel', () => {
-  console.log('User cancelled')
-})
+bridge.on("cancel", () => {
+  console.log("User cancelled");
+});
 
-bridge.on('error', (error, code) => {
-  console.error('Auth error:', error, code)
-})
+bridge.on("error", (error, code) => {
+  console.error("Auth error:", error, code);
+});
 
 // Open auth flow
-await bridge.open(['profile'])
+await bridge.open(["profile"]);
 
 // Later...
-bridge.close()
+bridge.close();
 ```
 
 ### Event Handling
@@ -333,9 +355,9 @@ bridge.close()
 Fired when iframe is loaded and ready.
 
 ```typescript
-bridge.on('ready', () => {
+bridge.on("ready", () => {
   // UI is ready, user can authenticate
-})
+});
 ```
 
 #### `success`
@@ -343,10 +365,10 @@ bridge.on('ready', () => {
 Fired when user successfully authenticates.
 
 ```typescript
-bridge.on('success', (identity) => {
-  const { address, nickname, avatar } = identity
+bridge.on("success", (identity) => {
+  const { address, nickname, avatar } = identity;
   // Save identity, redirect, etc.
-})
+});
 ```
 
 #### `cancel`
@@ -354,10 +376,10 @@ bridge.on('success', (identity) => {
 Fired when user closes auth flow.
 
 ```typescript
-bridge.on('cancel', () => {
+bridge.on("cancel", () => {
   // User cancelled authentication
   // Bridge is automatically closed
-})
+});
 ```
 
 #### `error`
@@ -365,16 +387,16 @@ bridge.on('cancel', () => {
 Fired when authentication fails.
 
 ```typescript
-bridge.on('error', (error, code) => {
+bridge.on("error", (error, code) => {
   // error: error message (string)
   // code: error code (VillaErrorCode)
 
-  if (code === 'TIMEOUT') {
-    console.error('Auth took too long')
-  } else if (code === 'NETWORK_ERROR') {
-    console.error('Network error:', error)
+  if (code === "TIMEOUT") {
+    console.error("Auth took too long");
+  } else if (code === "NETWORK_ERROR") {
+    console.error("Network error:", error);
   }
-})
+});
 ```
 
 #### `consent_granted`
@@ -382,9 +404,9 @@ bridge.on('error', (error, code) => {
 Fired when user grants consent to access their data.
 
 ```typescript
-bridge.on('consent_granted', (appId, scopes) => {
-  console.log(`Consent granted for ${appId} with scopes:`, scopes)
-})
+bridge.on("consent_granted", (appId, scopes) => {
+  console.log(`Consent granted for ${appId} with scopes:`, scopes);
+});
 ```
 
 #### `consent_denied`
@@ -392,9 +414,9 @@ bridge.on('consent_granted', (appId, scopes) => {
 Fired when user denies consent.
 
 ```typescript
-bridge.on('consent_denied', (appId) => {
-  console.log(`Consent denied for ${appId}`)
-})
+bridge.on("consent_denied", (appId) => {
+  console.log(`Consent denied for ${appId}`);
+});
 ```
 
 ### VillaBridge Configuration
@@ -402,25 +424,25 @@ bridge.on('consent_denied', (appId) => {
 ```typescript
 interface BridgeConfig {
   /** Your application ID (required) */
-  appId: string
+  appId: string;
 
   /** Override Villa auth origin (defaults to production) */
-  origin?: string
+  origin?: string;
 
   /** Network: 'base' or 'base-sepolia' (default: 'base') */
-  network?: 'base' | 'base-sepolia'
+  network?: "base" | "base-sepolia";
 
   /** Timeout in milliseconds (default: 5 minutes) */
-  timeout?: number
+  timeout?: number;
 
   /** Enable debug logging (default: false) */
-  debug?: boolean
+  debug?: boolean;
 
   /** Prefer popup over iframe (default: false) */
-  preferPopup?: boolean
+  preferPopup?: boolean;
 
   /** Timeout to detect iframe blocking in ms (default: 3 seconds) */
-  iframeDetectionTimeout?: number
+  iframeDetectionTimeout?: number;
 }
 ```
 
@@ -431,7 +453,7 @@ interface BridgeConfig {
 Open auth iframe.
 
 ```typescript
-await bridge.open(['profile', 'wallet'])
+await bridge.open(["profile", "wallet"]);
 ```
 
 #### `close()`
@@ -439,7 +461,7 @@ await bridge.open(['profile', 'wallet'])
 Close auth iframe and clean up.
 
 ```typescript
-bridge.close()
+bridge.close();
 ```
 
 #### `on(event, callback)`
@@ -447,12 +469,12 @@ bridge.close()
 Subscribe to event.
 
 ```typescript
-const unsubscribe = bridge.on('success', (identity) => {
-  console.log('Success!')
-})
+const unsubscribe = bridge.on("success", (identity) => {
+  console.log("Success!");
+});
 
 // Later...
-unsubscribe()
+unsubscribe();
 ```
 
 #### `off(event, callback)`
@@ -460,10 +482,12 @@ unsubscribe()
 Unsubscribe from event.
 
 ```typescript
-const handler = (identity) => { /* ... */ }
-bridge.on('success', handler)
+const handler = (identity) => {
+  /* ... */
+};
+bridge.on("success", handler);
 // Later...
-bridge.off('success', handler)
+bridge.off("success", handler);
 ```
 
 #### `removeAllListeners(event?)`
@@ -471,8 +495,8 @@ bridge.off('success', handler)
 Remove all listeners for an event (or all events).
 
 ```typescript
-bridge.removeAllListeners('success')
-bridge.removeAllListeners()  // Remove all
+bridge.removeAllListeners("success");
+bridge.removeAllListeners(); // Remove all
 ```
 
 #### `getState()`
@@ -480,7 +504,7 @@ bridge.removeAllListeners()  // Remove all
 Get current bridge state.
 
 ```typescript
-const state = bridge.getState()
+const state = bridge.getState();
 // => 'idle' | 'opening' | 'ready' | 'authenticating' | 'closing' | 'closed'
 ```
 
@@ -499,7 +523,7 @@ if (bridge.isOpen()) {
 Send custom message to iframe (advanced).
 
 ```typescript
-bridge.postMessage({ type: 'CUSTOM_MESSAGE', payload: {} })
+bridge.postMessage({ type: "CUSTOM_MESSAGE", payload: {} });
 ```
 
 ## Authentication Flow
@@ -534,62 +558,69 @@ bridge.postMessage({ type: 'CUSTOM_MESSAGE', payload: {} })
 ### Popup vs Iframe
 
 **Iframe (default)**
+
 - Opens in fullscreen modal
 - No popup blockers
 - Seamless UX
 - Recommended for all apps
 
 **Automatic Popup Fallback**
+
 - If iframe is blocked, SDK automatically falls back to popup
 - Detection timeout: 3 seconds (configurable)
 - Popup automatically closes after auth completes
 
 **Force Popup Mode**
+
 ```typescript
 const bridge = new VillaBridge({
-  appId: 'your-app',
-  preferPopup: true  // Skip iframe, go straight to popup
-})
+  appId: "your-app",
+  preferPopup: true, // Skip iframe, go straight to popup
+});
 ```
 
 **Handle Popup Blocked**
+
 ```typescript
-bridge.on('error', (error, code) => {
-  if (code === 'NETWORK_ERROR' && error.includes('Popup blocked')) {
-    alert('Please allow popups for this site to authenticate')
+bridge.on("error", (error, code) => {
+  if (code === "NETWORK_ERROR" && error.includes("Popup blocked")) {
+    alert("Please allow popups for this site to authenticate");
   }
-})
+});
 ```
 
 ## Error Handling
 
 ### Common Errors & Solutions
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `appId is required` | Missing config.appId | Pass appId to constructor |
-| `Connection timeout` | User taking too long | Increase timeout option |
-| `NETWORK_ERROR` | Failed to load auth | Check network, try again |
-| `CANCELLED` | User closed auth | Handled by app (expected) |
-| `INVALID_CONFIG` | Bad scopes | Use valid scopes: ['profile', 'wallet'] |
+| Error                | Cause                | Solution                                |
+| -------------------- | -------------------- | --------------------------------------- |
+| `appId is required`  | Missing config.appId | Pass appId to constructor               |
+| `Connection timeout` | User taking too long | Increase timeout option                 |
+| `NETWORK_ERROR`      | Failed to load auth  | Check network, try again                |
+| `CANCELLED`          | User closed auth     | Handled by app (expected)               |
+| `INVALID_CONFIG`     | Bad scopes           | Use valid scopes: ['profile', 'wallet'] |
 
 ### Development Tips
 
 **Enable debug logging:**
+
 ```typescript
 const bridge = new VillaBridge({
-  appId: 'your-app',
-  debug: true  // Logs all messages
-})
+  appId: "your-app",
+  debug: true, // Logs all messages
+});
 ```
 
 **Check iframe in DevTools:**
+
 - Open Chrome DevTools
 - Go to Elements tab
 - Look for `#villa-auth-iframe`
 - Inspect postMessage in Console
 
 **Passkey issues:**
+
 - Ensure you're on HTTPS (or localhost for dev)
 - Use `pnpm dev:https` for local passkey testing
 - iOS requires iOS 16+
@@ -600,28 +631,28 @@ const bridge = new VillaBridge({
 ### `resolveEns(name: string)`
 
 ```typescript
-import { resolveEns } from '@rockfridrich/villa-sdk'
+import { resolveEns } from "@rockfridrich/villa-sdk";
 
-const address = await resolveEns('alice')
+const address = await resolveEns("alice");
 ```
 
 ### `reverseEns(address: string)`
 
 ```typescript
-import { reverseEns } from '@rockfridrich/villa-sdk'
+import { reverseEns } from "@rockfridrich/villa-sdk";
 
-const name = await reverseEns('0x...')
+const name = await reverseEns("0x...");
 ```
 
 ### `getAvatarUrl(seed: string, config?)`
 
 ```typescript
-import { getAvatarUrl } from '@rockfridrich/villa-sdk'
+import { getAvatarUrl } from "@rockfridrich/villa-sdk";
 
-const url = getAvatarUrl('0x...', {
-  style: 'avataaars',
-  seed: '0x...'
-})
+const url = getAvatarUrl("0x...", {
+  style: "avataaars",
+  seed: "0x...",
+});
 ```
 
 ### `getContracts(network?)`
@@ -629,9 +660,9 @@ const url = getAvatarUrl('0x...', {
 Get contract addresses for a network.
 
 ```typescript
-import { getContracts } from '@rockfridrich/villa-sdk'
+import { getContracts } from "@rockfridrich/villa-sdk";
 
-const contracts = getContracts('base')
+const contracts = getContracts("base");
 // => {
 //   nicknameResolver: '0x...',
 //   recoverySigner: '0x...'
@@ -640,10 +671,10 @@ const contracts = getContracts('base')
 
 ## Networks
 
-| Network | Chain ID | Use Case |
-|---------|----------|----------|
-| **Base** | 8453 | Production |
-| **Base Sepolia** | 84532 | Testing |
+| Network          | Chain ID | Use Case   |
+| ---------------- | -------- | ---------- |
+| **Base**         | 8453     | Production |
+| **Base Sepolia** | 84532    | Testing    |
 
 ## React Integration
 
@@ -683,8 +714,8 @@ Sessions are automatically saved to localStorage:
 
 ```typescript
 // Session saved after signIn()
-villa.isAuthenticated()  // true
-villa.getIdentity()      // returns identity
+villa.isAuthenticated(); // true
+villa.getIdentity(); // returns identity
 
 // Even after page reload
 // Session restored from localStorage
@@ -703,7 +734,7 @@ Sessions expire after 7 days:
 ### Manual Sign Out
 
 ```typescript
-await villa.signOut()
+await villa.signOut();
 // localStorage cleared
 // currentSession = null
 ```
@@ -720,7 +751,7 @@ import type {
   VillaConfig,
   SignInErrorCode,
   VillaSession,
-} from '@rockfridrich/villa-sdk'
+} from "@rockfridrich/villa-sdk";
 ```
 
 ## AI Integration
@@ -740,6 +771,7 @@ Works with Claude Code, Cursor, Windsurf, and Lovable.
 **Symptoms:** Auth iframe shows blank page
 
 **Solution:**
+
 ```bash
 # Clear build cache and restart
 pnpm dev:clean
@@ -750,6 +782,7 @@ pnpm dev:clean
 **Symptoms:** Passkey creation fails or no biometric option
 
 **Solution:**
+
 ```bash
 # Use HTTPS (local dev with mkcert)
 pnpm dev:https
@@ -763,6 +796,7 @@ const villa = new Villa({ appId: 'test', network: 'base-sepolia' })
 **Symptoms:** "Origin not in allowlist" error
 
 **Solution:**
+
 - Don't provide custom `origin` in production
 - Use network defaults (base or base-sepolia)
 - Contact support for custom origin allowlisting
@@ -772,9 +806,10 @@ const villa = new Villa({ appId: 'test', network: 'base-sepolia' })
 **Symptoms:** getIdentity() returns null after reload
 
 **Solution:**
+
 ```typescript
 // Check localStorage
-console.log(localStorage.getItem('villa:session'))
+console.log(localStorage.getItem("villa:session"));
 
 // Sessions require:
 // 1. localStorage available
@@ -810,26 +845,25 @@ import {
   parseWebAuthnError,
   isPasskeySupported,
   getPasskeyManagerName,
-} from '@rockfridrich/villa-sdk'
+} from "@rockfridrich/villa-sdk";
 
 // Check if passkeys are supported
 if (!isPasskeySupported()) {
-  console.error('Passkeys not supported')
+  console.error("Passkeys not supported");
 }
 
 // Detect capabilities
-const caps = await detectBrowserCapabilities()
-console.log('Platform auth available:', caps.platformAuthenticatorAvailable)
-console.log('Passkey managers:', caps.passkeyManagers)
+const caps = await detectBrowserCapabilities();
+console.log("Platform auth available:", caps.platformAuthenticatorAvailable);
+console.log("Passkey managers:", caps.passkeyManagers);
 
 // Handle WebAuthn errors gracefully
 try {
-  await navigator.credentials.create(options)
+  await navigator.credentials.create(options);
 } catch (error) {
-  const webAuthnError = parseWebAuthnError(error)
+  const webAuthnError = parseWebAuthnError(error);
   if (webAuthnError.shouldDisplay) {
-    showError(webAuthnError.userMessage)
+    showError(webAuthnError.userMessage);
   }
 }
 ```
-

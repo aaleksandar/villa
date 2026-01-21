@@ -7,33 +7,37 @@
  * Network: Base (primary), Base Sepolia (testnet)
  */
 
-// Main SDK client
-export { Villa } from './client'
+// Simplified API (recommended)
+export { villa, signInWithVilla, getVillaUser, signOutVilla } from "./simple";
+export type { VillaUser, SimpleSignInOptions } from "./simple";
+
+// Main SDK client (advanced)
+export { Villa } from "./client";
 export type {
   Scope,
   SignInOptions,
   SignInProgress,
   SignInErrorCode,
   SignInResult,
-} from './client'
+} from "./client";
 
 // Core utilities
-export { resolveEns, reverseEns } from './ens'
-export { getAvatarUrl, createAvatarConfig } from './avatar'
+export { resolveEns, reverseEns } from "./ens";
+export { getAvatarUrl, createAvatarConfig } from "./avatar";
 
 // Auth utilities
-export { signIn, signOut, isAuthenticated, getIdentity } from './auth'
-export type { AuthOptions } from './auth'
+export { signIn, signOut, isAuthenticated, getIdentity } from "./auth";
+export type { AuthOptions } from "./auth";
 
 // Session utilities
-export { saveSession, loadSession, clearSession } from './session'
+export { saveSession, loadSession, clearSession } from "./session";
 
 // Iframe utilities (advanced usage)
-export { createAuthIframe, destroyAuthIframe } from './iframe'
-export type { IframeConfig, AuthMessage } from './iframe'
+export { createAuthIframe, destroyAuthIframe } from "./iframe";
+export type { IframeConfig, AuthMessage } from "./iframe";
 
 // Iframe bridge (new API)
-export { VillaBridge } from './iframe/bridge'
+export { VillaBridge } from "./iframe/bridge";
 export type {
   BridgeConfig,
   BridgeState,
@@ -42,13 +46,13 @@ export type {
   VillaMessage,
   ParentMessage,
   VillaErrorCode,
-} from './iframe/types'
+} from "./iframe/types";
 export {
   validateOrigin,
   parseVillaMessage,
   parseParentMessage,
   ALLOWED_ORIGINS,
-} from './iframe/validation'
+} from "./iframe/validation";
 
 // Wallet utilities (secure key generation & backup)
 export {
@@ -60,13 +64,13 @@ export {
   importBackup,
   isValidPrivateKey,
   createLocalStorage,
-} from './wallet'
+} from "./wallet";
 export type {
   EncryptedWallet,
   WalletResult,
   EncryptionOptions,
   WalletStorage,
-} from './wallet'
+} from "./wallet";
 
 // Contract addresses and utilities
 export {
@@ -77,8 +81,8 @@ export {
   isDeployed,
   CONTRACTS,
   DEPLOYED_CHAINS,
-} from './contracts'
-export type { ContractDeployment, ChainContracts } from './contracts'
+} from "./contracts";
+export type { ContractDeployment, ChainContracts } from "./contracts";
 
 // Auth utilities - WebAuthn error handling & browser capabilities
 export {
@@ -92,14 +96,14 @@ export {
   getChainConfig,
   validatePortoConfig,
   createVillaTheme,
-} from './auth-utils'
+} from "./auth-utils";
 export type {
   BrowserCapabilities,
   WebAuthnError,
   PortoMode,
   PortoThemeConfig,
   PortoConfig,
-} from './auth-utils'
+} from "./auth-utils";
 
 // Types - all shared types for the ecosystem
 export type {
@@ -110,7 +114,7 @@ export type {
   VillaConfig,
   VillaSession,
   Result,
-} from './types'
+} from "./types";
 
 // WebAuthn types - authentication primitives
 export type {
@@ -122,5 +126,5 @@ export type {
   AuthenticationOptions,
   AuthenticationResponse,
   VillaAuthConfig,
-} from './webauthn'
+} from "./webauthn";
 // Note: AuthMessage and AuthMessageType not exported to avoid conflict with iframe.ts

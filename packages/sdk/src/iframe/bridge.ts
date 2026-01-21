@@ -310,11 +310,6 @@ export class VillaBridge {
     });
   }
 
-  /**
-   * Close the auth iframe or popup
-   *
-   * Removes iframe/popup and cleans up all listeners.
-   */
   close(): void {
     if (this.state === "closed" || this.state === "idle") {
       return;
@@ -323,7 +318,6 @@ export class VillaBridge {
     this.state = "closing";
     this.log(`Closing auth ${this.mode}...`);
 
-    // Clear all timeouts
     if (this.timeoutId) {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
@@ -333,16 +327,43 @@ export class VillaBridge {
       this.iframeDetectionTimeoutId = null;
     }
 
-    // Remove message listener
     if (this.messageHandler) {
       window.removeEventListener("message", this.messageHandler);
       this.messageHandler = null;
     }
 
-    // Clean up iframe
-    this.cleanupIframe();
+    if (this.escapeHandler) {
+      document.removeEventListener("keydown", this.escapeHandler);
+      this.escapeHandler = null;
+    }
 
-    // Clean up popup
+    const isMobile = typeof window !== "undefined" && window.innerWidth <= 768;
+
+    if (this.container && !isMobile) {
+      this.container.style.backgroundColor = "rgba(0, 0, 0, 0)";
+      this.container.style.backdropFilter = "blur(0px)";
+      (
+        this.container.style as CSSStyleDeclaration & {
+          WebkitBackdropFilter: string;
+        }
+      ).WebkitBackdropFilter = "blur(0px)";
+
+      if (this.iframe) {
+        this.iframe.style.animation =
+          "villa-scale-out 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards";
+      }
+
+      setTimeout(() => {
+        this.cleanupIframe();
+        this.finalizeClose();
+      }, 200);
+    } else {
+      this.cleanupIframe();
+      this.finalizeClose();
+    }
+  }
+
+  private finalizeClose(): void {
     if (this.popup && !this.popup.closed) {
       this.popup.close();
       this.popup = null;
@@ -454,6 +475,7 @@ export class VillaBridge {
   /**
    * Create container element - modal on desktop, fullscreen on mobile
    * Includes instant loading UI that shows before iframe loads
+   * Features smooth animations for native feel
    */
   private createContainer(): HTMLDivElement {
     const container = document.createElement("div");
@@ -465,8 +487,11 @@ export class VillaBridge {
     // Responsive: modal on desktop (>768px), fullscreen on mobile
     const isMobile = window.innerWidth <= 768;
 
+    // Add animation styles
+    this.injectAnimationStyles();
+
     if (isMobile) {
-      // Mobile: fullscreen
+      // Mobile: fullscreen with slide-up animation
       Object.assign(container.style, {
         position: "fixed",
         top: "0",
@@ -478,9 +503,10 @@ export class VillaBridge {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        animation: "villa-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
       });
     } else {
-      // Desktop: modal with backdrop
+      // Desktop: modal with backdrop - fade in backdrop
       Object.assign(container.style, {
         position: "fixed",
         top: "0",
@@ -488,13 +514,26 @@ export class VillaBridge {
         width: "100vw",
         height: "100vh",
         zIndex: "999999",
-        backgroundColor: "rgba(0, 0, 0, 0.4)",
-        backdropFilter: "blur(8px)",
-        WebkitBackdropFilter: "blur(8px)", // Safari support
+        backgroundColor: "rgba(0, 0, 0, 0)",
+        backdropFilter: "blur(0px)",
+        WebkitBackdropFilter: "blur(0px)", // Safari support
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         padding: "16px",
+        transition:
+          "background-color 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease",
+      });
+
+      // Trigger backdrop animation after frame
+      requestAnimationFrame(() => {
+        container.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+        container.style.backdropFilter = "blur(12px)";
+        (
+          container.style as CSSStyleDeclaration & {
+            WebkitBackdropFilter: string;
+          }
+        ).WebkitBackdropFilter = "blur(12px)";
       });
 
       // Click backdrop to close (cancel)
@@ -505,6 +544,9 @@ export class VillaBridge {
           this.close();
         }
       });
+
+      // Escape key to close
+      this.setupEscapeKeyHandler();
     }
 
     // Add instant loading UI (shows before iframe loads)
@@ -515,9 +557,75 @@ export class VillaBridge {
   }
 
   /**
-   * Create loading overlay that shows instantly before iframe loads
-   * This provides seamless UX with no white flash
+   * Set up escape key handler for closing modal
    */
+  private escapeHandler: ((e: KeyboardEvent) => void) | null = null;
+
+  private setupEscapeKeyHandler(): void {
+    this.escapeHandler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        this.log("Escape key pressed, cancelling");
+        this.emit("cancel");
+        this.close();
+      }
+    };
+    document.addEventListener("keydown", this.escapeHandler);
+  }
+
+  /**
+   * Inject animation keyframes into document
+   */
+  private injectAnimationStyles(): void {
+    if (document.getElementById("villa-animation-styles")) return;
+
+    const style = document.createElement("style");
+    style.id = "villa-animation-styles";
+    style.textContent = `
+      @keyframes villa-spin {
+        to { transform: rotate(360deg); }
+      }
+      @keyframes villa-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+      }
+      @keyframes villa-scale-in {
+        from {
+          opacity: 0;
+          transform: scale(0.95) translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
+      }
+      @keyframes villa-scale-out {
+        from {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
+        to {
+          opacity: 0;
+          transform: scale(0.95) translateY(10px);
+        }
+      }
+      @keyframes villa-slide-up {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes villa-shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   private createLoadingOverlay(isMobile: boolean): HTMLDivElement {
     const overlay = document.createElement("div");
     overlay.id = "villa-loading-overlay";
@@ -532,72 +640,78 @@ export class VillaBridge {
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "#FFFDF8", // Villa cream
-      borderRadius: isMobile ? "0" : "16px",
+      backgroundColor: "#FFFDF8",
+      borderRadius: isMobile ? "0" : "20px",
       zIndex: "1",
-      transition: "opacity 0.2s ease-out",
+      transition: "opacity 0.25s ease-out, transform 0.25s ease-out",
+      animation: isMobile
+        ? "villa-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+        : "villa-scale-in 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+      boxShadow: isMobile
+        ? "none"
+        : "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)",
     });
 
-    // Villa logo
     const logo = document.createElement("div");
     Object.assign(logo.style, {
-      width: "64px",
-      height: "64px",
-      borderRadius: "16px",
-      background: "linear-gradient(135deg, #FFE047 0%, #F5D547 100%)",
+      width: "72px",
+      height: "72px",
+      borderRadius: "18px",
+      background: "linear-gradient(145deg, #FFE047 0%, #F5D030 100%)",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: "24px",
-      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+      marginBottom: "28px",
+      boxShadow:
+        "0 8px 24px rgba(245, 208, 48, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3)",
+      animation: "villa-pulse 2s ease-in-out infinite",
     });
 
     const logoText = document.createElement("span");
     logoText.textContent = "V";
     Object.assign(logoText.style, {
-      fontSize: "32px",
-      fontFamily: "Georgia, serif",
+      fontSize: "36px",
+      fontFamily: "Georgia, 'Times New Roman', serif",
       color: "#5C4813",
       fontWeight: "600",
+      textShadow: "0 1px 0 rgba(255, 255, 255, 0.3)",
     });
     logo.appendChild(logoText);
     overlay.appendChild(logo);
 
-    // Loading spinner
-    const spinner = document.createElement("div");
-    Object.assign(spinner.style, {
-      width: "24px",
-      height: "24px",
-      border: "3px solid #E5E5E5",
-      borderTopColor: "#FFE047",
-      borderRadius: "50%",
-      animation: "villa-spin 0.8s linear infinite",
+    const progressContainer = document.createElement("div");
+    Object.assign(progressContainer.style, {
+      width: "120px",
+      height: "4px",
+      backgroundColor: "rgba(0, 0, 0, 0.06)",
+      borderRadius: "2px",
+      overflow: "hidden",
+      marginBottom: "16px",
     });
-    overlay.appendChild(spinner);
 
-    // Loading text
+    const progressBar = document.createElement("div");
+    Object.assign(progressBar.style, {
+      width: "100%",
+      height: "100%",
+      background: "linear-gradient(90deg, transparent, #FFE047, transparent)",
+      backgroundSize: "200% 100%",
+      animation: "villa-shimmer 1.5s ease-in-out infinite",
+    });
+    progressContainer.appendChild(progressBar);
+    overlay.appendChild(progressContainer);
+
     const text = document.createElement("p");
-    text.textContent = "Loading...";
+    text.textContent = "Preparing secure login...";
     Object.assign(text.style, {
-      marginTop: "16px",
+      marginTop: "4px",
       fontSize: "14px",
-      color: "#666",
+      color: "#888",
       fontFamily:
-        '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif',
+      fontWeight: "500",
+      letterSpacing: "-0.01em",
     });
     overlay.appendChild(text);
-
-    // Add keyframes animation
-    if (!document.getElementById("villa-spinner-styles")) {
-      const style = document.createElement("style");
-      style.id = "villa-spinner-styles";
-      style.textContent = `
-        @keyframes villa-spin {
-          to { transform: rotate(360deg); }
-        }
-      `;
-      document.head.appendChild(style);
-    }
 
     return overlay;
   }
@@ -644,7 +758,6 @@ export class VillaBridge {
     const isMobile = window.innerWidth <= 768;
 
     if (isMobile) {
-      // Mobile: fullscreen
       Object.assign(iframe.style, {
         width: "100%",
         height: "100%",
@@ -652,17 +765,18 @@ export class VillaBridge {
         backgroundColor: "transparent",
       });
     } else {
-      // Desktop: modal card
       Object.assign(iframe.style, {
-        width: "480px",
-        height: "640px",
-        maxWidth: "calc(100vw - 32px)",
-        maxHeight: "calc(100vh - 32px)",
+        width: "420px",
+        height: "560px",
+        maxWidth: "calc(100vw - 48px)",
+        maxHeight: "calc(100vh - 48px)",
         border: "none",
-        borderRadius: "16px",
-        backgroundColor: "#FFFDF8", // Villa cream
-        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        borderRadius: "20px",
+        backgroundColor: "#FFFDF8",
+        boxShadow:
+          "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)",
         overflow: "hidden",
+        animation: "villa-scale-in 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
       });
     }
 

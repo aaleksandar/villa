@@ -68,3 +68,8 @@ certificates/
 # Lock files (pnpm uses pnpm-lock.yaml)
 package-lock.json
 yarn.lock
+
+# Examples (should be clean for contributors)
+examples/*/node_modules/
+examples/*/.next/
+examples/*/.turbo/

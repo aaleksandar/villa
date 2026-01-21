@@ -101,7 +101,6 @@
   "workspaces": [
     "apps/*",
     "packages/*",
-    "contracts",
-    "examples/*"
+    "contracts"
   ]
 }

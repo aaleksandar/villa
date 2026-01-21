@@ -22,31 +22,41 @@ Drop-in passkey authentication, persistent identities, and cross-device sync. Bu
 npm install @rockfridrich/villa-sdk
 ```
 
+### Vanilla JavaScript (3 lines)
+
 ```typescript
-import { Villa } from '@rockfridrich/villa-sdk'
+import { villa } from "@rockfridrich/villa-sdk";
 
-const villa = new Villa({
-  appId: 'your-app-id',
-  appSignature: '0x...',
-  appWallet: '0x...'
-})
+const user = await villa.signIn();
+console.log(user.address, user.nickname, user.avatar);
+```
 
-// Open fullscreen passkey auth
-const result = await villa.signIn()
+### React (2 components)
 
-if (result.success) {
-  console.log(result.identity.nickname)    // "alice"
-  console.log(result.identity.walletAddress) // "0x..."
-  console.log(result.identity.avatar)       // DiceBear avatar URL
+```bash
+npm install @rockfridrich/villa-sdk @rockfridrich/villa-sdk-react
+```
+
+```tsx
+import { useVilla, VillaButton } from "@rockfridrich/villa-sdk-react";
+
+function App() {
+  const { user } = useVilla();
+
+  return user ? (
+    <p>Welcome, @{user.nickname}!</p>
+  ) : (
+    <VillaButton onSignIn={(u) => console.log("Signed in:", u)} />
+  );
 }
 ```
 
 **What you get:**
+
 - Passwordless auth via Face ID / Touch ID / fingerprint
-- Persistent nickname (alice.villa.eth)
-- Deterministic avatar generation
-- Session management (7-day TTL)
-- Cross-device sync via biometric recovery
+- Persistent nickname and avatar
+- Automatic session management (7-day TTL)
+- Zero configuration required
 
 ## For AI Assistants
 
@@ -58,12 +68,14 @@ curl https://developers.villa.cash/CLAUDE.txt
 ```
 
 **What's included:**
+
 - SDK API reference
 - Integration patterns
 - Common troubleshooting
 - Contract addresses
 
 **Example prompt:**
+
 ```
 "Add Villa authentication to my Next.js app. Use https://developers.villa.cash/CLAUDE.txt for context."
 ```
@@ -73,6 +85,7 @@ See [developers.villa.cash](https://developers.villa.cash) for full documentatio
 ## Ecosystem
 
 **Proof of Retreat apps using Villa:**
+
 - **Vote** - Governance for village decisions
 - **Rides** - Coordinate transportation
 - **Splits** - Group expense tracking
@@ -80,11 +93,11 @@ See [developers.villa.cash](https://developers.villa.cash) for full documentatio
 
 ## Live Environments
 
-| Environment | URL | Use Case |
-|-------------|-----|----------|
-| Production | [villa.cash](https://villa.cash) | Stable SDK |
-| Staging | [beta.villa.cash](https://beta.villa.cash) | Latest features |
-| Developers | [developers.villa.cash](https://developers.villa.cash) | Docs + CLAUDE.txt |
+| Environment | URL                                                    | Use Case          |
+| ----------- | ------------------------------------------------------ | ----------------- |
+| Production  | [villa.cash](https://villa.cash)                       | Stable SDK        |
+| Staging     | [beta.villa.cash](https://beta.villa.cash)             | Latest features   |
+| Developers  | [developers.villa.cash](https://developers.villa.cash) | Docs + CLAUDE.txt |
 
 ## Development
 
@@ -97,9 +110,9 @@ bun verify           # Run before every push (typecheck + build + E2E)
 
 ## Contract Addresses (Base Sepolia)
 
-| Contract | Address |
-|----------|---------|
-| VillaNicknameResolverV2 | `0xf4648423aC6b3f6328018c49B2102f4E9bA6D800` |
+| Contract                  | Address                                      |
+| ------------------------- | -------------------------------------------- |
+| VillaNicknameResolverV2   | `0xf4648423aC6b3f6328018c49B2102f4E9bA6D800` |
 | BiometricRecoverySignerV2 | `0xdFb55a363bdF549EE5C2e77D0aAaC39276ED5836` |
 
 ## Architecture
@@ -116,6 +129,7 @@ returned        (passkeys)          (alice.villa.eth)
 ```
 
 **Privacy model:**
+
 - Passkeys never leave device (WebAuthn)
 - Biometrics processed 100% on-device
 - User controls all data sharing
@@ -132,11 +146,12 @@ returned        (passkeys)          (alice.villa.eth)
 git clone https://github.com/rockfridrich/villa.git
 cd villa
 bun install
-bun dev
-bun verify  # Before every commit
+./scripts/doctor.sh  # Verify setup
+bun dev              # Start development
+bun verify           # Before every commit
 ```
 
-See `.claude/CLAUDE.md` for AI-assisted development workflow.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## License
 
