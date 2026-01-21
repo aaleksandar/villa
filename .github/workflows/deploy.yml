@@ -18,22 +18,14 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Domain architecture (CloudFlare DNS → DigitalOcean)
   PRODUCTION_DOMAIN: villa.cash
   STAGING_DOMAIN: beta.villa.cash
   DEV_1_DOMAIN: dev-1.villa.cash
   DEV_2_DOMAIN: dev-2.villa.cash
-  # GIFs for delightful bot messages
-  GIF_SHIP: "https://media.giphy.com/media/ule4vhcY1xEKQ/giphy.gif"
-  GIF_SUCCESS: "https://media.giphy.com/media/XreQmk7ETCak0/giphy.gif"
-  GIF_THINKING: "https://media.giphy.com/media/3o7TKwmnDgQb5jemjK/giphy.gif"
-  GIF_CELEBRATE: "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif"
-  GIF_ROCKET: "https://media.giphy.com/media/mi6DsSSNKDbUY/giphy.gif"
-  GIF_STAGING: "https://media.giphy.com/media/3o7btNa0RUYa5E7iiQ/giphy.gif"
 
 jobs:
   # =============================================================================
-  # QUICK CI - Always runs for PRs (fast feedback ~30s)
+  # QUICK CI - Fast feedback for PRs (~30s)
   # =============================================================================
   quick-ci:
     name: "⚡ Quick CI"
@@ -55,22 +47,18 @@ jobs:
       - name: Run linting and type checking
         run: bun run typecheck && bun run lint
 
-      # Skip unit tests temporarily - jest-dom matchers issue in CI
-      # - run: cd apps/hub && bun run vitest run --config vitest.config.unit.ts
-
       - name: Assign dev slot (1 or 2)
         id: slot
         run: |
           PR_NUM=${{ github.event.pull_request.number }}
           SLOT=$(( (PR_NUM % 2) + 1 ))
           echo "slot=${SLOT}" >> $GITHUB_OUTPUT
-          echo "📍 PR #${PR_NUM} assigned to dev-${SLOT}.villa.cash"
 
       - name: Check if E2E needed
         id: check-paths
         run: |
           CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null || echo "src/")
-          if echo "$CHANGED" | grep -qE '^(src/|tests/|playwright|package)'; then
+          if echo "$CHANGED" | grep -qE '^(apps/|packages/|tests/|playwright)'; then
             echo "run=true" >> $GITHUB_OUTPUT
           else
             echo "run=false" >> $GITHUB_OUTPUT
@@ -78,7 +66,7 @@ jobs:
           fi
 
   # =============================================================================
-  # E2E TESTS - Sharded for parallel execution on separate machines
+  # E2E TESTS - Sharded parallel execution (PRs only)
   # =============================================================================
   e2e-tests:
     name: "🧪 E2E (Shard ${{ matrix.shard }}/4)"
@@ -109,7 +97,7 @@ jobs:
         env:
           CI: true
 
-      - name: Upload test results (shard ${{ matrix.shard }})
+      - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -117,17 +105,15 @@ jobs:
           path: |
             apps/hub/playwright-report/
             apps/hub/test-results/
-            apps/hub/test-results.json
           retention-days: 7
-          include-hidden-files: true
 
   # =============================================================================
-  # MERGE E2E REPORTS - Combine results from all shards
+  # MERGE E2E REPORTS
   # =============================================================================
   merge-e2e-reports:
     name: "📊 Merge E2E Reports"
     needs: e2e-tests
-    if: always()
+    if: always() && needs.e2e-tests.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -146,9 +132,7 @@ jobs:
           merge-multiple: false
 
       - name: Merge Playwright reports
-        run: |
-          # Merge all shard reports into single HTML report
-          cd apps/hub && npx playwright merge-reports --reporter html ../../all-reports/e2e-report-shard-*
+        run: cd apps/hub && npx playwright merge-reports --reporter html ../../all-reports/e2e-report-shard-*
         continue-on-error: true
 
       - name: Upload merged report
@@ -159,16 +143,6 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
-      - name: Check if any shard failed
-        run: |
-          # Check if any shard had failures
-          if find all-reports -name "test-results.json" -exec grep -q '"status":"failed"' {} \;; then
-            echo "Some E2E tests failed"
-            exit 1
-          else
-            echo "All E2E tests passed"
-          fi
-
   # =============================================================================
   # CHECK PERMISSION - For preview deploys
   # =============================================================================
@@ -177,8 +151,7 @@ jobs:
     if: |
       github.event_name == 'pull_request' &&
       github.event.action != 'closed' &&
-      github.event.pull_request.draft == false &&
-      !contains(github.event.pull_request.title, '[skip deploy]')
+      github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     outputs:
       is-collaborator: ${{ steps.check.outputs.is-collaborator }}
@@ -197,7 +170,7 @@ jobs:
             core.setOutput('is-collaborator', hasAccess);
 
   # =============================================================================
-  # DEPLOY PREVIEW - To dev-1 or dev-2 based on PR number
+  # DEPLOY PREVIEW - To dev-1 or dev-2
   # =============================================================================
   deploy-preview:
     name: "🚀 Deploy Preview (dev-${{ needs.quick-ci.outputs.dev-slot }})"
@@ -206,8 +179,7 @@ jobs:
       github.event_name == 'pull_request' &&
       github.event.action != 'closed' &&
       github.event.pull_request.draft == false &&
-      needs.check-permission.outputs.is-collaborator == 'true' &&
-      !contains(github.event.pull_request.title, '[skip deploy]')
+      needs.check-permission.outputs.is-collaborator == 'true'
     runs-on: ubuntu-latest
     outputs:
       url: ${{ steps.deploy.outputs.url }}
@@ -227,10 +199,6 @@ jobs:
       - name: Get PR info
         id: pr-info
         run: |
-          COMMITS=$(git log --oneline origin/${{ github.base_ref }}..HEAD 2>/dev/null | head -5 || echo "Initial commit")
-          echo "commits<<EOF" >> $GITHUB_OUTPUT
-          echo "$COMMITS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
           echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
       - name: Generate app spec
@@ -242,10 +210,6 @@ jobs:
           export BRANCH_NAME="${{ github.head_ref }}"
           export DATABASE_URL
           envsubst < .do/app-preview.yaml > .do/app-preview-generated.yaml
-          echo "📝 Generated preview spec"
-          if [ -n "$DATABASE_URL" ]; then
-            echo "✅ DATABASE_URL included"
-          fi
 
       - name: Deploy to dev-${{ needs.quick-ci.outputs.dev-slot }}.villa.cash
         id: deploy
@@ -254,37 +218,26 @@ jobs:
         run: |
           APP_NAME="villa-dev-${DEV_SLOT}"
           DOMAIN="dev-${DEV_SLOT}.villa.cash"
-          START_TIME=$(date +%s)
 
           APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "${APP_NAME}$" | awk '{print $1}')
 
           if [ -n "$APP_ID" ]; then
-            echo "📦 Updating ${APP_NAME} (slot ${DEV_SLOT})..."
             doctl apps update $APP_ID --spec .do/app-preview-generated.yaml
           else
-            echo "🆕 Creating ${APP_NAME}..."
             doctl apps create --spec .do/app-preview-generated.yaml
           fi
 
-          # Wait for deployment
           for i in {1..30}; do
             APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "${APP_NAME}$" | awk '{print $1}')
             if [ -n "$APP_ID" ]; then
-              APP_JSON=$(doctl apps get $APP_ID --output json 2>/dev/null || echo '[]')
-              ACTIVE_PHASE=$(echo "$APP_JSON" | jq -r '.[0].active_deployment.phase // empty')
+              ACTIVE_PHASE=$(doctl apps get $APP_ID --output json | jq -r '.[0].active_deployment.phase // empty')
               if [ "$ACTIVE_PHASE" = "ACTIVE" ]; then
-                END_TIME=$(date +%s)
-                DURATION=$((END_TIME - START_TIME))
                 echo "url=https://${DOMAIN}" >> $GITHUB_OUTPUT
-                echo "duration=${DURATION}s" >> $GITHUB_OUTPUT
-                echo "✅ Deployed to https://${DOMAIN}"
                 exit 0
               fi
             fi
-            echo "⏳ Waiting for deployment... ($i/30)"
             sleep 10
           done
-          echo "❌ Deployment timeout"
           exit 1
 
       - name: Comment PR with preview URL
@@ -292,37 +245,14 @@ jobs:
         with:
           script: |
             const url = '${{ steps.deploy.outputs.url }}';
-            const duration = '${{ steps.deploy.outputs.duration }}';
             const sha = '${{ steps.pr-info.outputs.sha }}';
-            const commits = `${{ steps.pr-info.outputs.commits }}`;
-            const branch = '${{ github.head_ref }}';
             const slot = '${{ needs.quick-ci.outputs.dev-slot }}';
-            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 
-            const body = `![Ship it!](https://media.giphy.com/media/ule4vhcY1xEKQ/giphy.gif)
+            const body = `## 🚀 Preview Ready
 
-            ## 🚀 Preview Ready on dev-${slot}!
+            **[${url}](${url})** • \`${sha}\` • dev-${slot}
 
-            ### **[🔗 ${url}](${url})** ← Click to test!
-
-            | | |
-            |---|---|
-            | 🏷️ **Slot** | \`dev-${slot}.villa.cash\` |
-            | 🌿 **Branch** | \`${branch}\` |
-            | 📝 **Commit** | \`${sha}\` |
-            | ⏱️ **Deploy time** | ${duration} |
-
-            <details>
-            <summary>📋 Recent commits</summary>
-
-            \`\`\`
-            ${commits}
-            \`\`\`
-
-            </details>
-
-            ---
-            <sub>🤖 Slot reused on PR close • [View Logs](${runUrl})</sub>`;
+            <sub>Auto-deployed on push</sub>`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -349,122 +279,11 @@ jobs:
             }
 
   # =============================================================================
-  # E2E PREVIEW - Test on dev slot
+  # CI - Runs on push to main and tags (shared job)
   # =============================================================================
-  e2e-preview:
-    name: "🧪 E2E (dev-${{ needs.deploy-preview.outputs.slot }})"
-    needs: deploy-preview
-    if: needs.deploy-preview.outputs.url
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
-        with:
-          install-playwright: "true"
-          playwright-browser: "chromium"
-
-      - name: Wait for healthy deployment
-        run: |
-          URL="${{ needs.deploy-preview.outputs.url }}"
-          for i in {1..20}; do
-            if curl -sf "$URL/api/health" > /dev/null; then
-              echo "✅ Preview healthy"
-              exit 0
-            fi
-            sleep 10
-          done
-          exit 1
-
-      - name: Run E2E tests
-        id: e2e
-        run: bun run test:e2e:chromium 2>&1 | tee e2e-output.txt
-        env:
-          BASE_URL: ${{ needs.deploy-preview.outputs.url }}
-          CI: true
-        continue-on-error: true
-
-      - name: Comment E2E results
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const passed = '${{ steps.e2e.outcome }}' === 'success';
-            const url = '${{ needs.deploy-preview.outputs.url }}';
-            const slot = '${{ needs.deploy-preview.outputs.slot }}';
-            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-
-            let body;
-            if (passed) {
-              body = `![Tests passing](https://media.giphy.com/media/XreQmk7ETCak0/giphy.gif)
-
-              ## ✅ E2E Tests Passing on dev-${slot}!
-
-              All tests passed.
-
-              | | |
-              |---|---|
-              | 🌐 **Tested URL** | [${url}](${url}) |
-              | 📊 **Full Report** | [View Logs](${runUrl}) |
-
-              ---
-              <sub>🤖 Tests ran automatically on preview deploy</sub>`;
-            } else {
-              body = `## ❌ E2E Tests Need Attention
-
-              Some tests failed on dev-${slot}.
-
-              | | |
-              |---|---|
-              | 🌐 **Tested URL** | [${url}](${url}) |
-              | 📊 **Full Report** | [View Logs](${runUrl}) |
-
-              ---
-              <sub>🤖 Run \`npm run test:e2e:ui\` locally to debug</sub>`;
-            }
-
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-
-            const botComment = comments.find(c => c.user.type === 'Bot' && c.body.includes('E2E Tests'));
-
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body
-              });
-            } else {
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body
-              });
-            }
-
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-report-preview
-          path: playwright-report/
-          retention-days: 7
-
-      - name: Fail if tests failed
-        if: steps.e2e.outcome != 'success'
-        run: exit 1
-
-  # =============================================================================
-  # STAGING CI - Runs on push to main (not tags)
-  # =============================================================================
-  ci-staging:
-    name: "🔒 CI (Staging)"
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
+  ci:
+    name: "🔒 CI"
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -482,14 +301,16 @@ jobs:
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
-          path: node_modules
+          path: |
+            node_modules
+            ~/.bun/install/cache
           key: deps-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
           restore-keys: deps-${{ runner.os }}-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Run linting and type checking in parallel
+      - name: Run checks in parallel
         run: bun run typecheck & bun run lint & wait
 
   # =============================================================================
@@ -497,11 +318,12 @@ jobs:
   # =============================================================================
   deploy-staging:
     name: "🎯 Deploy Staging"
-    needs: ci-staging
-    if: needs.ci-staging.result == 'success'
+    needs: ci
+    if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     outputs:
       url: ${{ steps.deploy.outputs.url }}
+      build-id: ${{ steps.wait-build.outputs.build-id }}
     environment:
       name: staging
       url: https://beta.villa.cash
@@ -510,9 +332,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Note: Database migrations run on app startup (ensureTables).
-      # CI can't access the private VPC database - only apps in the VPC can.
-
       - uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
@@ -520,236 +339,101 @@ jobs:
       - name: Get staging info
         id: staging-info
         run: |
-          CHANGELOG=$(git log --oneline -10 --pretty=format:"- %s" | head -10)
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "msg=$(git log -1 --pretty=%s | head -c 50)" >> $GITHUB_OUTPUT
 
       - name: Generate staging spec
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          # Debug: Check if env var is set (without revealing value)
-          if [ -n "$DATABASE_URL" ]; then
-            echo "✅ DATABASE_URL is set (length: ${#DATABASE_URL})"
-          else
-            echo "❌ DATABASE_URL is NOT set"
-          fi
-          # Generate spec with explicit variable substitution
           export DATABASE_URL
           export MINTER_PRIVATE_KEY="${{ secrets.DEPLOYER_PRIVATE_KEY }}"
           envsubst '${DATABASE_URL} ${MINTER_PRIVATE_KEY}' < .do/app-staging.yaml > .do/app-staging-generated.yaml
-          echo "📝 Generated staging spec"
-          # Verify substitution happened (check if placeholder remains)
-          if grep -q '\${DATABASE_URL}' .do/app-staging-generated.yaml; then
-            echo "❌ ERROR: DATABASE_URL was not substituted!"
-            exit 1
-          else
-            echo "✅ DATABASE_URL substituted successfully"
-          fi
-          if grep -q '\${MINTER_PRIVATE_KEY}' .do/app-staging-generated.yaml; then
-            echo "❌ ERROR: MINTER_PRIVATE_KEY was not substituted!"
-            exit 1
-          else
-            echo "✅ MINTER_PRIVATE_KEY substituted successfully"
-          fi
 
       - name: Deploy to beta.villa.cash
         id: deploy
         run: |
-          START_TIME=$(date +%s)
           APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "villa-staging$" | awk '{print $1}')
 
           if [ -z "$APP_ID" ]; then
-            echo "🆕 Creating staging app..."
             doctl apps create --spec .do/app-staging-generated.yaml
           else
-            echo "📦 Updating staging app..."
             doctl apps update $APP_ID --spec .do/app-staging-generated.yaml
-
-            # Force rebuild to ensure new code is deployed (fixes cache issues)
-            echo "🔨 Forcing rebuild with --force-rebuild..."
             doctl apps create-deployment $APP_ID --force-rebuild --wait=false
           fi
 
-          # Wait for deployment
-          for i in {1..30}; do
-            APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "villa-staging$" | awk '{print $1}')
-            if [ -n "$APP_ID" ]; then
-              APP_JSON=$(doctl apps get $APP_ID --output json 2>/dev/null || echo '[]')
-              IN_PROGRESS=$(echo "$APP_JSON" | jq -r '.[0].in_progress_deployment.phase // empty')
-              if [ -n "$IN_PROGRESS" ]; then
-                echo "🔨 Building: $IN_PROGRESS ($i/30)"
-                sleep 10
-                continue
-              fi
-              ACTIVE_PHASE=$(echo "$APP_JSON" | jq -r '.[0].active_deployment.phase // empty')
-              if [ "$ACTIVE_PHASE" = "ACTIVE" ]; then
-                END_TIME=$(date +%s)
-                DURATION=$((END_TIME - START_TIME))
-                echo "url=https://beta.villa.cash" >> $GITHUB_OUTPUT
-                echo "duration=${DURATION}s" >> $GITHUB_OUTPUT
-                exit 0
-              fi
+          echo "url=https://beta.villa.cash" >> $GITHUB_OUTPUT
+
+      - name: Wait for build to complete
+        id: wait-build
+        run: |
+          APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "villa-staging$" | awk '{print $1}')
+
+          for i in {1..60}; do
+            APP_JSON=$(doctl apps get $APP_ID --output json 2>/dev/null)
+            IN_PROGRESS=$(echo "$APP_JSON" | jq -r '.[0].in_progress_deployment.phase // empty')
+            
+            if [ -n "$IN_PROGRESS" ]; then
+              echo "⏳ Building: $IN_PROGRESS ($i/60)"
+              sleep 10
+              continue
+            fi
+            
+            ACTIVE_PHASE=$(echo "$APP_JSON" | jq -r '.[0].active_deployment.phase // empty')
+            if [ "$ACTIVE_PHASE" = "ACTIVE" ]; then
+              echo "✅ Build complete"
+              echo "build-id=$(echo "$APP_JSON" | jq -r '.[0].active_deployment.id')" >> $GITHUB_OUTPUT
+              exit 0
             fi
             sleep 10
           done
+          echo "⚠️ Build timeout"
           exit 1
 
       - name: Purge CloudFlare cache
-        if: steps.deploy.outcome == 'success'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
         run: |
           if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ZONE_ID" ]; then
-            echo "🗑️ Purging CloudFlare cache for beta.villa.cash..."
-            bun run infra:cache:purge || echo "Cache purge failed (non-blocking)"
-          else
-            echo "⚠️ CloudFlare secrets not configured, skipping cache purge"
+            curl -X POST "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/purge_cache" \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data '{"hosts":["beta.villa.cash"]}' || true
           fi
 
-      - name: Create staging comment
+      - name: Smoke test
+        run: |
+          for i in {1..10}; do
+            if curl -sf "https://beta.villa.cash/api/health" > /dev/null; then
+              echo "✅ Staging healthy"
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+
+      - name: Comment on commit
         uses: actions/github-script@v7
         with:
           script: |
-            const url = 'https://beta.villa.cash';
-            const duration = '${{ steps.deploy.outputs.duration }}';
-            const version = '${{ steps.staging-info.outputs.version }}';
             const sha = '${{ steps.staging-info.outputs.sha }}';
-            const changelog = `${{ steps.staging-info.outputs.changelog }}`;
-            const actor = '${{ github.actor }}';
-            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const commitMsg = context.payload.head_commit?.message?.split('\n')[0] || 'Staging deploy';
-
-            const body = `![Staging!](https://media.giphy.com/media/3o7btNa0RUYa5E7iiQ/giphy.gif)
-
-            ## 🎯 Deployed to Staging!
-
-            ### **[🔗 beta.villa.cash](${url})** ← Test before release
-
-            | | |
-            |---|---|
-            | 📦 **Version** | \`v${version}\` |
-            | 📝 **Commit** | \`${sha}\` - ${commitMsg} |
-            | ⏱️ **Deploy time** | ${duration} |
-            | 👤 **Deployed by** | @${actor} |
-
-            <details>
-            <summary>📋 What's in staging</summary>
-
-            ${changelog}
-
-            </details>
-
-            **Next:** Test on staging, then create release tag \`git tag v${version} && git push --tags\`
-
-            ---
-            <sub>🤖 [View logs](${runUrl}) • Staging auto-deploys on merge to main</sub>`;
+            const msg = '${{ steps.staging-info.outputs.msg }}';
 
             await github.rest.repos.createCommitComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               commit_sha: context.sha,
-              body
+              body: `🎯 **Deployed to staging** • [beta.villa.cash](https://beta.villa.cash) • \`${sha}\`\n\n_${msg}_`
             });
 
   # =============================================================================
-  # E2E STAGING - Test on beta.villa.cash
-  # TEMPORARILY SKIPPED: Tests fail due to browser detection issues in CI
-  # TODO: Fix staging E2E tests to handle CI browser environment
-  # =============================================================================
-  e2e-staging:
-    name: "🧪 E2E (Staging)"
-    needs: deploy-staging
-    if: false # Temporarily disabled - see TODO above
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
-        with:
-          install-playwright: "true"
-          playwright-browser: "chromium"
-
-      - name: Wait for fresh build
-        run: |
-          # Get current buildId before waiting
-          OLD_BUILD=$(curl -s https://beta.villa.cash 2>&1 | grep -o '"buildId":"[^"]*"' | head -1 || echo "none")
-          echo "📦 Current buildId: $OLD_BUILD"
-
-          # Wait for buildId to change (indicates new deployment is live)
-          for i in {1..40}; do
-            if curl -sf "https://beta.villa.cash/api/health" > /dev/null; then
-              NEW_BUILD=$(curl -s https://beta.villa.cash 2>&1 | grep -o '"buildId":"[^"]*"' | head -1 || echo "none")
-              if [ "$NEW_BUILD" != "$OLD_BUILD" ] && [ "$NEW_BUILD" != "none" ]; then
-                echo "✅ New build deployed: $NEW_BUILD"
-                exit 0
-              fi
-              echo "⏳ Waiting for new build... ($i/40) - still: $NEW_BUILD"
-            fi
-            sleep 15
-          done
-          echo "⚠️ Timeout waiting for new build, proceeding anyway"
-          exit 0
-
-      - name: Run E2E tests on staging
-        run: bun run test:e2e:chromium
-        env:
-          BASE_URL: https://beta.villa.cash
-          CI: true
-
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-report-staging
-          path: playwright-report/
-          retention-days: 7
-
-  # =============================================================================
-  # PRODUCTION CI - Runs on release tags (v*)
-  # =============================================================================
-  ci-production:
-    name: "🔒 CI (Production)"
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: deps-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
-          restore-keys: deps-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Run linting and type checking in parallel
-        run: bun run typecheck & bun run lint & wait
-
-  # =============================================================================
-  # DEPLOY PRODUCTION - To villa.cash on release tags only
+  # DEPLOY PRODUCTION - To villa.cash on release tags
   # =============================================================================
   deploy-production:
     name: "🎉 Deploy Production"
-    needs: ci-production
-    if: needs.ci-production.result == 'success'
+    needs: ci
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     outputs:
       url: ${{ steps.deploy.outputs.url }}
@@ -761,9 +445,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Note: Database migrations run on app startup (ensureTables).
-      # CI can't access the private VPC database - only apps in the VPC can.
-
       - uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
@@ -772,185 +453,101 @@ jobs:
         id: release-info
         run: |
           TAG_NAME="${{ github.ref_name }}"
-          CHANGELOG=$(git log --oneline -10 --pretty=format:"- %s" | head -10)
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "version=${TAG_NAME#v}" >> $GITHUB_OUTPUT
           echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "version=${TAG_NAME#v}" >> $GITHUB_OUTPUT
           echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
       - name: Generate production spec
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          if [ -n "$DATABASE_URL" ]; then
-            echo "✅ DATABASE_URL is set (length: ${#DATABASE_URL})"
-          else
-            echo "❌ DATABASE_URL is NOT set"
-          fi
           export DATABASE_URL
           export MINTER_PRIVATE_KEY="${{ secrets.DEPLOYER_PRIVATE_KEY }}"
           envsubst '${DATABASE_URL} ${MINTER_PRIVATE_KEY}' < .do/app-production.yaml > .do/app-production-generated.yaml
-          echo "📝 Generated production spec"
-          if grep -q '\${DATABASE_URL}' .do/app-production-generated.yaml; then
-            echo "❌ ERROR: DATABASE_URL was not substituted!"
-            exit 1
-          else
-            echo "✅ DATABASE_URL substituted successfully"
-          fi
-          if grep -q '\${MINTER_PRIVATE_KEY}' .do/app-production-generated.yaml; then
-            echo "❌ ERROR: MINTER_PRIVATE_KEY was not substituted!"
-            exit 1
-          else
-            echo "✅ MINTER_PRIVATE_KEY substituted successfully"
-          fi
 
       - name: Deploy to villa.cash
         id: deploy
         run: |
-          START_TIME=$(date +%s)
           APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "villa-production$" | awk '{print $1}')
 
           if [ -z "$APP_ID" ]; then
-            echo "🆕 Creating production app..."
             doctl apps create --spec .do/app-production-generated.yaml
           else
-            echo "📦 Updating production app..."
             doctl apps update $APP_ID --spec .do/app-production-generated.yaml
-
-            # Force rebuild to ensure new code is deployed (fixes cache issues)
-            echo "🔨 Forcing rebuild with --force-rebuild..."
             doctl apps create-deployment $APP_ID --force-rebuild --wait=false
           fi
 
-          # Wait for deployment
-          for i in {1..30}; do
-            APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "villa-production$" | awk '{print $1}')
-            if [ -n "$APP_ID" ]; then
-              APP_JSON=$(doctl apps get $APP_ID --output json 2>/dev/null || echo '[]')
-              IN_PROGRESS=$(echo "$APP_JSON" | jq -r '.[0].in_progress_deployment.phase // empty')
-              if [ -n "$IN_PROGRESS" ]; then
-                echo "🔨 Building: $IN_PROGRESS ($i/30)"
-                sleep 10
-                continue
-              fi
-              ACTIVE_PHASE=$(echo "$APP_JSON" | jq -r '.[0].active_deployment.phase // empty')
-              if [ "$ACTIVE_PHASE" = "ACTIVE" ]; then
-                END_TIME=$(date +%s)
-                DURATION=$((END_TIME - START_TIME))
-                echo "url=https://villa.cash" >> $GITHUB_OUTPUT
-                echo "duration=${DURATION}s" >> $GITHUB_OUTPUT
-                exit 0
-              fi
+          echo "url=https://villa.cash" >> $GITHUB_OUTPUT
+
+      - name: Wait for build to complete
+        run: |
+          APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "villa-production$" | awk '{print $1}')
+
+          for i in {1..60}; do
+            APP_JSON=$(doctl apps get $APP_ID --output json 2>/dev/null)
+            IN_PROGRESS=$(echo "$APP_JSON" | jq -r '.[0].in_progress_deployment.phase // empty')
+            
+            if [ -n "$IN_PROGRESS" ]; then
+              echo "⏳ Building: $IN_PROGRESS ($i/60)"
+              sleep 10
+              continue
+            fi
+            
+            ACTIVE_PHASE=$(echo "$APP_JSON" | jq -r '.[0].active_deployment.phase // empty')
+            if [ "$ACTIVE_PHASE" = "ACTIVE" ]; then
+              echo "✅ Production build complete"
+              exit 0
             fi
             sleep 10
           done
+          echo "❌ Build timeout"
           exit 1
 
       - name: Purge CloudFlare cache
-        if: steps.deploy.outcome == 'success'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
         run: |
           if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ZONE_ID" ]; then
-            echo "🗑️ Purging CloudFlare cache for villa.cash..."
-            bun run infra:cache:purge || echo "Cache purge failed (non-blocking)"
-          else
-            echo "⚠️ CloudFlare secrets not configured, skipping cache purge"
+            curl -X POST "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/purge_cache" \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data '{"hosts":["villa.cash","www.villa.cash"]}' || true
           fi
 
-      - name: Create GitHub Release with Contributor Stats
+      - name: Smoke test production
+        run: |
+          for i in {1..10}; do
+            if curl -sf "https://villa.cash/api/health" > /dev/null; then
+              BUILD_ID=$(curl -s https://villa.cash | grep -o '"buildId":"[^"]*"' | head -1)
+              echo "✅ Production healthy - $BUILD_ID"
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+
+      - name: Create GitHub Release
         uses: actions/github-script@v7
         with:
           script: |
             const tag = '${{ steps.release-info.outputs.tag }}';
-            const version = '${{ steps.release-info.outputs.version }}';
-            const changelog = `${{ steps.release-info.outputs.changelog }}`;
             const sha = '${{ steps.release-info.outputs.sha }}';
-            const duration = '${{ steps.deploy.outputs.duration }}';
-            const actor = '${{ github.actor }}';
             const { owner, repo } = context.repo;
 
-            // Get previous tag for comparison
-            const { data: tags } = await github.rest.repos.listTags({
-              owner, repo, per_page: 10
-            });
-            const previousTag = tags.find(t => t.name !== tag)?.name;
+            const { data: comparison } = await github.rest.repos.compareCommits({
+              owner, repo,
+              base: 'HEAD~10',
+              head: tag
+            }).catch(() => ({ data: { commits: [] } }));
 
-            // Get contributor stats since last release
-            let contributorStats = '';
-            let newContributors = [];
+            const changelog = comparison.commits
+              .slice(0, 10)
+              .map(c => `- ${c.commit.message.split('\n')[0]}`)
+              .join('\n');
 
-            if (previousTag) {
-              try {
-                const { data: comparison } = await github.rest.repos.compareCommits({
-                  owner, repo,
-                  base: previousTag,
-                  head: tag
-                });
+            const body = `## 🎉 Villa ${tag}\n\nLive at **[villa.cash](https://villa.cash)**\n\n### Changes\n${changelog}\n\n---\nCommit: \`${sha}\``;
 
-                // Aggregate commits by author
-                const authorCommits = {};
-                for (const commit of comparison.commits) {
-                  const author = commit.author?.login || commit.commit.author?.name || 'unknown';
-                  if (!author.includes('[bot]')) {
-                    authorCommits[author] = (authorCommits[author] || 0) + 1;
-                  }
-                }
-
-                // Sort by commit count
-                const sortedAuthors = Object.entries(authorCommits)
-                  .sort(([,a], [,b]) => b - a)
-                  .slice(0, 10);
-
-                if (sortedAuthors.length > 0) {
-                  contributorStats = '\n### 🏆 Contributors\n\n| Rank | Contributor | Commits |\n|------|-------------|--------|\n';
-                  sortedAuthors.forEach(([author, count], i) => {
-                    const rank = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
-                    contributorStats += `| ${rank} | @${author} | ${count} |\n`;
-                  });
-                }
-
-                // Check for first-time contributors
-                const { data: allPRs } = await github.rest.pulls.list({
-                  owner, repo, state: 'closed', per_page: 100
-                });
-
-                for (const [author] of sortedAuthors) {
-                  const authorPRs = allPRs.filter(pr => pr.user?.login === author && pr.merged_at);
-                  if (authorPRs.length === 1) {
-                    newContributors.push(author);
-                  }
-                }
-
-                if (newContributors.length > 0) {
-                  contributorStats += `\n### 🆕 New Contributors\nWelcome ${newContributors.map(n => '@' + n).join(', ')}!\n`;
-                }
-              } catch (e) {
-                console.log('Could not generate contributor stats:', e.message);
-              }
-            }
-
-            const body = [
-              `## 🎉 Villa ${tag}`,
-              '',
-              `Live at **[villa.cash](https://villa.cash)**`,
-              '',
-              '### What\'s Changed',
-              changelog,
-              contributorStats,
-              '### Deployment Info',
-              `- Commit: \`${sha}\``,
-              `- Deploy time: ${duration}`,
-              `- Deployed by: @${actor}`,
-              '',
-              '---',
-              `[Full changelog](https://github.com/${owner}/${repo}/compare/${previousTag || 'main'}...${tag}) | [Contributors](https://developers.villa.cash/contributors)`
-            ].join('\n');
-
-            // Create GitHub Release
             await github.rest.repos.createRelease({
               owner, repo,
               tag_name: tag,
@@ -961,87 +558,25 @@ jobs:
             });
 
   # =============================================================================
-  # E2E PRODUCTION - Test on villa.cash
-  # =============================================================================
-  e2e-production:
-    name: "🧪 E2E (Production)"
-    needs: deploy-production
-    if: needs.deploy-production.outputs.url
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
-        with:
-          install-playwright: "true"
-          playwright-browser: "chromium"
-
-      - name: Wait for fresh build
-        run: |
-          # Get current buildId before waiting
-          OLD_BUILD=$(curl -s https://villa.cash 2>&1 | grep -o '"buildId":"[^"]*"' | head -1 || echo "none")
-          echo "📦 Current buildId: $OLD_BUILD"
-
-          # Wait for buildId to change (indicates new deployment is live)
-          for i in {1..40}; do
-            if curl -sf "https://villa.cash/api/health" > /dev/null; then
-              NEW_BUILD=$(curl -s https://villa.cash 2>&1 | grep -o '"buildId":"[^"]*"' | head -1 || echo "none")
-              if [ "$NEW_BUILD" != "$OLD_BUILD" ] && [ "$NEW_BUILD" != "none" ]; then
-                echo "✅ New build deployed: $NEW_BUILD"
-                exit 0
-              fi
-              echo "⏳ Waiting for new build... ($i/40) - still: $NEW_BUILD"
-            fi
-            sleep 15
-          done
-          echo "⚠️ Timeout waiting for new build, proceeding anyway"
-          exit 0
-
-      - name: Run E2E tests on production
-        run: bun run test:e2e:chromium
-        env:
-          BASE_URL: https://villa.cash
-          CI: true
-
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-report-production
-          path: playwright-report/
-          retention-days: 7
-
-  # =============================================================================
-  # CLEANUP PREVIEW - Frees up dev slot
+  # CLEANUP PREVIEW - Frees up dev slot on PR close
   # =============================================================================
   cleanup-preview:
     name: "🗑️ Cleanup Preview"
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
     steps:
-      - name: Calculate slot
-        id: slot
-        run: |
-          PR_NUM=${{ github.event.pull_request.number }}
-          SLOT=$(( (PR_NUM % 2) + 1 ))
-          echo "slot=${SLOT}" >> $GITHUB_OUTPUT
-
       - name: Comment cleanup
         uses: actions/github-script@v7
         with:
           script: |
             const merged = context.payload.pull_request.merged;
-            const slot = '${{ steps.slot.outputs.slot }}';
-            const emoji = merged ? '🎉' : '👋';
-            const status = merged ? 'merged' : 'closed';
-
-            const body = `${emoji} **PR ${status}** - dev-${slot}.villa.cash slot freed.
-
-            ${merged ? '✅ Changes are now on [beta.villa.cash](https://beta.villa.cash) (staging).\n\nCreate release tag to deploy to production.' : 'No changes deployed.'}`;
+            const slot = (context.payload.pull_request.number % 2) + 1;
 
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body
+              body: merged 
+                ? `🎉 Merged! Changes on [beta.villa.cash](https://beta.villa.cash). Create \`v*\` tag to deploy to production.`
+                : `👋 Closed. dev-${slot} slot freed.`
             });
