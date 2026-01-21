@@ -2,11 +2,20 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  env: {
+    NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
+    NEXT_PUBLIC_GIT_SHA:
+      process.env.GITHUB_SHA || process.env.VERCEL_GIT_COMMIT_SHA || "local",
+  },
+
   // Enable standalone output for Docker deployment
-  output: 'standalone',
+  output: "standalone",
 
   // Transpile SDK packages for hot reload in development
-  transpilePackages: ['@rockfridrich/villa-sdk', '@rockfridrich/villa-sdk-react'],
+  transpilePackages: [
+    "@rockfridrich/villa-sdk",
+    "@rockfridrich/villa-sdk-react",
+  ],
 
   // Enable compression (gzip)
   compress: true,
@@ -28,58 +37,60 @@ const nextConfig = {
     // - Only user's own identity is returned
     // - No secrets sent to external origin
     // - Similar to OAuth redirect_uri model
-    const authFrameAncestors = "'self' https: http://localhost:* http://127.0.0.1:*"
+    const authFrameAncestors =
+      "'self' https: http://localhost:* http://127.0.0.1:*";
 
     return [
       // Static assets - long cache (hashed filenames)
       {
-        source: '/_next/static/:path*',
+        source: "/_next/static/:path*",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },
       // Public assets - moderate cache
       {
-        source: '/public/:path*',
+        source: "/public/:path*",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400, stale-while-revalidate=604800',
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
           },
         ],
       },
       // API routes - no cache
       {
-        source: '/api/:path*',
+        source: "/api/:path*",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'no-store, must-revalidate',
+            key: "Cache-Control",
+            value: "no-store, must-revalidate",
           },
         ],
       },
       // /auth route - ALLOW iframe embedding for SDK
       {
-        source: '/auth',
+        source: "/auth",
         headers: [
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
+            key: "X-Content-Type-Options",
+            value: "nosniff",
           },
           {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
           },
           {
-            key: 'Permissions-Policy',
-            value: 'publickey-credentials-get=*, publickey-credentials-create=*',
+            key: "Permissions-Policy",
+            value:
+              "publickey-credentials-get=*, publickey-credentials-create=*",
           },
           {
             // CSP for Porto SDK - allows iframe embedding from trusted origins
-            key: 'Content-Security-Policy',
+            key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
@@ -89,33 +100,33 @@ const nextConfig = {
               "connect-src 'self' https://rpc.porto.sh https://*.porto.sh wss://*.porto.sh",
               "frame-src 'self' https://id.porto.sh",
               `frame-ancestors ${authFrameAncestors}`,
-            ].join('; '),
+            ].join("; "),
           },
         ],
       },
       // HTML pages (excluding /auth) - strict security headers
       {
-        source: '/:path((?!api|_next|auth).*)',
+        source: "/:path((?!api|_next|auth).*)",
         headers: [
           {
-            key: 'X-Frame-Options',
-            value: 'DENY',
+            key: "X-Frame-Options",
+            value: "DENY",
           },
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
+            key: "X-Content-Type-Options",
+            value: "nosniff",
           },
           {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
           },
           {
-            key: 'Permissions-Policy',
-            value: 'geolocation=(), microphone=(), camera=()',
+            key: "Permissions-Policy",
+            value: "geolocation=(), microphone=(), camera=()",
           },
           {
             // CSP for Porto SDK
-            key: 'Content-Security-Policy',
+            key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
@@ -125,12 +136,12 @@ const nextConfig = {
               "connect-src 'self' https://rpc.porto.sh https://*.porto.sh wss://*.porto.sh",
               "frame-src 'self' https://id.porto.sh",
               "frame-ancestors 'none'",
-            ].join('; '),
+            ].join("; "),
           },
         ],
       },
-    ]
+    ];
   },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
