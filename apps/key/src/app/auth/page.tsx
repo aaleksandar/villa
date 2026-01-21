@@ -10,12 +10,26 @@ import {
   Suspense,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, ShieldCheck } from "lucide-react";
-import { createAccount, signIn, isPortoSupported } from "@/lib/porto";
+import { Loader2, ShieldCheck, Fingerprint, UserPlus } from "lucide-react";
+import {
+  createAccount,
+  signIn,
+  isPortoSupported,
+  setWebAuthnHandlers,
+} from "@/lib/porto";
 import { generateNickname } from "@/lib/nickname";
 
 const HUB_API_URL =
   process.env.NEXT_PUBLIC_HUB_API_URL || "https://beta.villa.cash";
+
+interface ProfileData {
+  nickname: string;
+  avatar?: {
+    style: string;
+    selection: string;
+    variant: number;
+  };
+}
 
 async function persistProfile(
   address: string,
@@ -48,11 +62,6 @@ async function persistProfile(
         continue;
       }
 
-      const isDatabaseUnavailable = response.status === 503;
-      if (isDatabaseUnavailable) {
-        return { nickname, persisted: false };
-      }
-
       return { nickname, persisted: false };
     } catch {
       return { nickname, persisted: false };
@@ -62,16 +71,17 @@ async function persistProfile(
   return { nickname: currentNickname, persisted: false };
 }
 
-async function fetchProfile(
-  address: string,
-): Promise<{ nickname: string } | null> {
+async function fetchProfile(address: string): Promise<ProfileData | null> {
   try {
     const response = await fetch(
       `${HUB_API_URL}/api/profile/${address.toLowerCase()}`,
     );
     if (response.ok) {
       const data = await response.json();
-      return { nickname: data.nickname || "" };
+      return {
+        nickname: data.nickname || "",
+        avatar: data.avatar || undefined,
+      };
     }
     return null;
   } catch {
@@ -174,11 +184,14 @@ function getValidatedParentOrigin(queryOrigin: string | null): string | null {
   return null;
 }
 
+type AuthState = "idle" | "passkey-prompt" | "processing" | "success" | "error";
+
 function AuthPageContent() {
   const searchParams = useSearchParams();
   const hasNotifiedReady = useRef(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [authState, setAuthState] = useState<AuthState>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   const queryOrigin = searchParams.get("origin");
   const targetOrigin = useMemo(
@@ -213,9 +226,24 @@ function AuthPageContent() {
     }
   }, [postToParent]);
 
+  useEffect(() => {
+    setWebAuthnHandlers({
+      onPasskeyCreate: () => setAuthState("passkey-prompt"),
+      onPasskeyGet: () => setAuthState("passkey-prompt"),
+      onComplete: () => setAuthState("processing"),
+      onError: (err) => {
+        setError(err.message);
+        setAuthState("error");
+      },
+    });
+  }, []);
+
   const handleSuccess = useCallback(
     async (address: string, isNewAccount: boolean = false) => {
+      setAuthState("processing");
+
       let nickname = "";
+      let avatar: ProfileData["avatar"] | undefined;
 
       if (isNewAccount) {
         const generatedNickname = generateNickname(address);
@@ -224,18 +252,19 @@ function AuthPageContent() {
           generatedNickname,
         );
         nickname = persistedNickname;
+        avatar = { style: "lorelei", selection: address, variant: 0 };
       } else {
         const profile = await fetchProfile(address);
         nickname = profile?.nickname || "";
+        avatar = profile?.avatar;
       }
+
+      setAuthState("success");
 
       const identity = {
         address,
         nickname,
-        avatar: {
-          style: "lorelei",
-          seed: address,
-        },
+        avatar: avatar || { style: "lorelei", seed: address },
       };
       postToParent({ type: "AUTH_SUCCESS", identity });
       postToParent({ type: "VILLA_AUTH_SUCCESS", payload: { identity } });
@@ -256,26 +285,34 @@ function AuthPageContent() {
 
   const handleSignIn = async () => {
     setError(null);
-    setIsLoading(true);
+    setIsCreating(false);
+    setAuthState("passkey-prompt");
     const result = await signIn();
-    setIsLoading(false);
     if (result.success) {
       handleSuccess(result.address, false);
     } else {
       setError(result.error?.message || "Sign in failed");
+      setAuthState("error");
     }
   };
 
   const handleCreateAccount = async () => {
     setError(null);
-    setIsLoading(true);
+    setIsCreating(true);
+    setAuthState("passkey-prompt");
     const result = await createAccount();
-    setIsLoading(false);
     if (result.success) {
       handleSuccess(result.address, true);
     } else {
       setError(result.error?.message || "Account creation failed");
+      setAuthState("error");
     }
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    setAuthState("idle");
+    setIsCreating(false);
   };
 
   if (!isPortoSupported()) {
@@ -294,6 +331,120 @@ function AuthPageContent() {
     );
   }
 
+  if (authState === "passkey-prompt") {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="min-h-screen bg-cream-50 flex flex-col items-center justify-center p-6"
+      >
+        <div className="text-center space-y-6 max-w-sm">
+          <motion.div
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ repeat: Infinity, duration: 2 }}
+            className="w-20 h-20 mx-auto bg-accent-yellow rounded-2xl flex items-center justify-center"
+          >
+            <Fingerprint className="w-10 h-10 text-accent-brown" />
+          </motion.div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-serif text-ink">
+              {isCreating ? "Create your passkey" : "Use your passkey"}
+            </h2>
+            <p className="text-sm text-ink-muted">
+              {isCreating
+                ? "Follow the prompt to create a new passkey for Villa"
+                : "Use Face ID, Touch ID, or your security key"}
+            </p>
+          </div>
+          <div className="pt-4">
+            <button
+              onClick={handleCancel}
+              className="text-sm text-ink-muted hover:text-ink transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (authState === "processing" || authState === "success") {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="min-h-screen bg-cream-50 flex flex-col items-center justify-center p-6"
+      >
+        <div className="text-center space-y-6 max-w-sm">
+          {authState === "success" ? (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="w-20 h-20 mx-auto bg-accent-green/20 rounded-2xl flex items-center justify-center"
+            >
+              <ShieldCheck className="w-10 h-10 text-accent-green" />
+            </motion.div>
+          ) : (
+            <div className="w-20 h-20 mx-auto bg-cream-100 rounded-2xl flex items-center justify-center">
+              <Loader2 className="w-10 h-10 text-accent-brown animate-spin" />
+            </div>
+          )}
+          <div className="space-y-2">
+            <h2 className="text-2xl font-serif text-ink">
+              {authState === "success" ? "Welcome!" : "Setting up..."}
+            </h2>
+            <p className="text-sm text-ink-muted">
+              {authState === "success"
+                ? "You're signed in"
+                : "Getting your profile ready"}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (authState === "error") {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="min-h-screen bg-cream-50 flex flex-col items-center justify-center p-6"
+      >
+        <div className="text-center space-y-6 max-w-sm">
+          <div className="w-20 h-20 mx-auto bg-red-100 rounded-2xl flex items-center justify-center">
+            <span className="text-3xl">😕</span>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-serif text-ink">
+              Something went wrong
+            </h2>
+            <p className="text-sm text-ink-muted">
+              {error || "Please try again"}
+            </p>
+          </div>
+          <div className="space-y-3">
+            <button
+              onClick={handleRetry}
+              className="w-full min-h-14 py-4 px-6 bg-accent-yellow hover:bg-villa-600
+                         text-accent-brown font-medium rounded-xl
+                         transition-all active:scale-[0.98]"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={handleCancel}
+              className="w-full py-3 text-sm text-ink-muted hover:text-ink transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -301,6 +452,9 @@ function AuthPageContent() {
       className="min-h-screen bg-cream-50 flex flex-col justify-between p-6"
     >
       <div className="pt-12 text-center">
+        <div className="w-16 h-16 mx-auto bg-gradient-to-br from-accent-yellow to-villa-500 rounded-2xl flex items-center justify-center shadow-lg mb-4">
+          <span className="text-2xl font-serif text-accent-brown">V</span>
+        </div>
         <h1 className="text-2xl font-serif text-ink">Villa</h1>
       </div>
 
@@ -328,32 +482,27 @@ function AuthPageContent() {
         <div className="space-y-3">
           <button
             onClick={handleSignIn}
-            disabled={isLoading}
+            disabled={authState !== "idle"}
             className="w-full min-h-14 py-4 px-6 bg-accent-yellow hover:bg-villa-600
                        text-accent-brown font-medium rounded-xl
                        focus:outline-none focus:ring-2 focus:ring-accent-yellow focus:ring-offset-2 focus:ring-offset-cream-50
                        disabled:opacity-50 disabled:cursor-not-allowed
-                       transition-all active:scale-[0.98]"
+                       transition-all active:scale-[0.98] flex items-center justify-center gap-2"
           >
-            {isLoading ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Signing in...
-              </span>
-            ) : (
-              "Sign In"
-            )}
+            <Fingerprint className="w-5 h-5" />
+            Sign In
           </button>
 
           <button
             onClick={handleCreateAccount}
-            disabled={isLoading}
+            disabled={authState !== "idle"}
             className="w-full min-h-14 py-4 px-6 bg-cream-100 border border-neutral-200
                        text-ink font-medium rounded-xl hover:bg-cream-200
                        focus:outline-none focus:ring-2 focus:ring-accent-yellow focus:ring-offset-2 focus:ring-offset-cream-50
                        disabled:opacity-50 disabled:cursor-not-allowed
-                       transition-all active:scale-[0.98]"
+                       transition-all active:scale-[0.98] flex items-center justify-center gap-2"
           >
+            <UserPlus className="w-5 h-5" />
             Create Villa ID
           </button>
 

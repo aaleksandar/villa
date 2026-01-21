@@ -1,6 +1,18 @@
-import { Porto, Dialog, Mode } from "porto";
+import { Porto, Mode } from "porto";
 import * as Chains from "porto/core/Chains";
-import type { ThemeFragment } from "porto/theme";
+
+/**
+ * Porto Relay Mode for Villa
+ *
+ * Uses relay mode so Villa controls all UI - no Porto dialog appears.
+ * Passkeys are bound to villa.cash domain (not id.porto.sh).
+ *
+ * Flow:
+ * 1. Villa UI shows branded passkey prompt
+ * 2. Porto relay mode handles WebAuthn under the hood
+ * 3. Browser shows native passkey dialog (1Password, iCloud, etc)
+ * 4. Villa UI shows success/error state
+ */
 
 function getPortoChains():
   | readonly [typeof Chains.base]
@@ -12,66 +24,77 @@ function getPortoChains():
   return [Chains.base] as const;
 }
 
-export const villaTheme: ThemeFragment = {
-  colorScheme: "light",
-  accent: "#ffe047",
-  primaryBackground: "#ffe047",
-  primaryContent: "#382207",
-  primaryBorder: "#ffe047",
-  primaryHoveredBackground: "#f5d63d",
-  primaryHoveredBorder: "#f5d63d",
-  secondaryBackground: "#fef9f0",
-  secondaryContent: "#0d0d17",
-  secondaryBorder: "#e0e0e6",
-  secondaryHoveredBackground: "#fdf3e0",
-  secondaryHoveredBorder: "#c4c4cc",
-  baseBackground: "#fffcf8",
-  baseAltBackground: "#fef9f0",
-  basePlaneBackground: "#fdf3e0",
-  baseContent: "#0d0d17",
-  baseContentSecondary: "#45454f",
-  baseContentTertiary: "#61616b",
-  baseBorder: "#e0e0e6",
-  baseHoveredBackground: "#fef9f0",
-  frameBackground: "#fffcf8",
-  frameBorder: "#e0e0e6",
-  frameContent: "#0d0d17",
-  frameRadius: 14,
-  fieldBackground: "#fffcf8",
-  fieldContent: "#0d0d17",
-  fieldContentSecondary: "#45454f",
-  fieldBorder: "#e0e0e6",
-  fieldFocusedBackground: "#fffcf8",
-  fieldFocusedContent: "#0d0d17",
-  fieldErrorBorder: "#ef4444",
-  radiusSmall: 6,
-  radiusMedium: 10,
-  radiusLarge: 14,
-  positiveBackground: "#e8f5e8",
-  positiveContent: "#698f69",
-  positiveBorder: "#698f69",
-  negativeBackground: "#fee2e2",
-  negativeContent: "#dc2626",
-  negativeBorder: "#fca5a5",
-  focus: "#ffe047",
-  link: "#382207",
-  separator: "#e0e0e6",
-};
+/**
+ * Villa Passkey Domain Configuration
+ *
+ * keystoreHost determines the WebAuthn Relying Party ID (rpId).
+ * Passkeys are permanently bound to this domain - users see "villa.cash"
+ * in browser/OS passkey prompts instead of "porto.sh".
+ */
+const VILLA_KEYSTORE_HOST = "villa.cash";
+
+/**
+ * WebAuthn event handlers for Villa UI feedback
+ */
+export interface WebAuthnHandlers {
+  onPasskeyCreate?: () => void;
+  onPasskeyGet?: () => void;
+  onComplete?: (result: { address: string }) => void;
+  onError?: (error: Error) => void;
+}
+
+let webAuthnHandlers: WebAuthnHandlers = {};
+
+/**
+ * Set WebAuthn handlers for UI feedback
+ * Call this before createAccount/signIn to get UI callbacks
+ */
+export function setWebAuthnHandlers(handlers: WebAuthnHandlers): void {
+  webAuthnHandlers = handlers;
+}
 
 let portoInstance: ReturnType<typeof Porto.create> | null = null;
-let themeController: Dialog.ThemeController | null = null;
 
+/**
+ * Get Porto instance in relay mode
+ * Villa controls all UI, Porto handles passkey infrastructure
+ */
 export function getPorto(): ReturnType<typeof Porto.create> {
   if (!portoInstance) {
-    themeController = Dialog.createThemeController();
-
     portoInstance = Porto.create({
       chains: getPortoChains(),
-      mode: Mode.dialog({
-        renderer: Dialog.iframe(),
-        host: "https://id.porto.sh/dialog",
-        theme: villaTheme,
-        themeController,
+      mode: Mode.relay({
+        keystoreHost: VILLA_KEYSTORE_HOST,
+        webAuthn: {
+          createFn: async (options) => {
+            if (!options) {
+              throw new Error("WebAuthn creation options are required");
+            }
+            const createOptions = options as CredentialCreationOptions;
+            // Override rp.name to show "Villa" in passkey managers
+            if (createOptions.publicKey?.rp) {
+              createOptions.publicKey.rp.name = "Villa";
+            }
+            // Notify Villa UI that passkey creation is starting
+            webAuthnHandlers.onPasskeyCreate?.();
+            // Browser shows biometric prompt
+            const credential =
+              await navigator.credentials.create(createOptions);
+            return credential as PublicKeyCredential;
+          },
+          getFn: async (options) => {
+            if (!options) {
+              throw new Error("WebAuthn request options are required");
+            }
+            // Notify Villa UI that passkey selection is starting
+            webAuthnHandlers.onPasskeyGet?.();
+            // Browser shows biometric prompt
+            const assertion = await navigator.credentials.get(
+              options as CredentialRequestOptions,
+            );
+            return assertion as PublicKeyCredential;
+          },
+        },
       }),
     });
   }
@@ -80,7 +103,6 @@ export function getPorto(): ReturnType<typeof Porto.create> {
 
 export function resetPorto(): void {
   portoInstance = null;
-  themeController = null;
 }
 
 export interface ConnectResult {
@@ -95,6 +117,10 @@ export interface ConnectError {
 
 export type PortoConnectResult = ConnectResult | ConnectError;
 
+/**
+ * Create a new Villa account with passkey
+ * Villa UI controls the flow, no Porto dialog shown
+ */
 export async function createAccount(): Promise<PortoConnectResult> {
   try {
     const porto = getPorto();
@@ -116,9 +142,11 @@ export async function createAccount(): Promise<PortoConnectResult> {
     };
 
     if (response.accounts && response.accounts.length > 0) {
+      const address = response.accounts[0].address;
+      webAuthnHandlers.onComplete?.({ address });
       return {
         success: true,
-        address: response.accounts[0].address,
+        address,
       };
     }
 
@@ -127,13 +155,19 @@ export async function createAccount(): Promise<PortoConnectResult> {
       error: new Error("No account returned from Porto"),
     };
   } catch (err) {
+    const error = err instanceof Error ? err : new Error("Unknown error");
+    webAuthnHandlers.onError?.(error);
     return {
       success: false,
-      error: err instanceof Error ? err : new Error("Unknown error"),
+      error,
     };
   }
 }
 
+/**
+ * Sign in with existing Villa passkey
+ * Villa UI controls the flow, no Porto dialog shown
+ */
 export async function signIn(): Promise<PortoConnectResult> {
   try {
     const porto = getPorto();
@@ -143,9 +177,11 @@ export async function signIn(): Promise<PortoConnectResult> {
     });
 
     if (accounts && accounts.length > 0) {
+      const address = accounts[0];
+      webAuthnHandlers.onComplete?.({ address });
       return {
         success: true,
-        address: accounts[0],
+        address,
       };
     }
 
@@ -154,13 +190,18 @@ export async function signIn(): Promise<PortoConnectResult> {
       error: new Error("No account selected"),
     };
   } catch (err) {
+    const error = err instanceof Error ? err : new Error("Unknown error");
+    webAuthnHandlers.onError?.(error);
     return {
       success: false,
-      error: err instanceof Error ? err : new Error("Unknown error"),
+      error,
     };
   }
 }
 
+/**
+ * Check if Porto/WebAuthn is supported in this browser
+ */
 export function isPortoSupported(): boolean {
   return (
     typeof window !== "undefined" &&

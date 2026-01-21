@@ -75,12 +75,16 @@ const IdentitySchema = z.object({
     .string()
     .regex(/^0x[a-fA-F0-9]{40}$/)
     .transform((val) => val as `0x${string}`),
-  nickname: z.string().min(1),
-  avatar: z.object({
-    style: z.enum(["lorelei", "adventurer", "avataaars", "bottts", "thumbs"]),
-    seed: z.string(),
-    gender: z.enum(["male", "female", "other"]).optional(),
-  }),
+  nickname: z.string().optional().default(""),
+  avatar: z
+    .object({
+      style: z.enum(["lorelei", "adventurer", "avataaars", "bottts", "thumbs"]),
+      seed: z.string().optional(),
+      selection: z.string().optional(),
+      variant: z.number().optional(),
+      gender: z.enum(["male", "female", "other"]).optional(),
+    })
+    .optional(),
 });
 
 const AuthMessageSchema = z.discriminatedUnion("type", [
