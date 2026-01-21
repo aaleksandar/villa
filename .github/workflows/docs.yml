@@ -1,0 +1,122 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/developers/**"
+      - "packages/sdk/CLAUDE.txt"
+      - "packages/sdk/README.md"
+      - "packages/sdk-react/README.md"
+      - "docs/**"
+      - "README.md"
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/developers/**"
+      - "packages/sdk/CLAUDE.txt"
+      - "packages/sdk/README.md"
+      - "packages/sdk-react/README.md"
+      - "docs/**"
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-check:
+    name: "📚 Build Docs"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: deps-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
+          restore-keys: deps-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build developers app
+        run: bun run --filter @villa/developers build
+
+  link-check:
+    name: "🔗 Check Links"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check links in documentation
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: --verbose --no-progress 'README.md' 'packages/*/README.md' 'docs/**/*.md'
+          fail: false
+
+  sync-claude-txt:
+    name: "🤖 Sync CLAUDE.txt"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check CLAUDE.txt consistency
+        run: |
+          SDK_CLAUDE="packages/sdk/CLAUDE.txt"
+          DEV_CLAUDE="apps/developers/public/CLAUDE.txt"
+
+          if [ -f "$SDK_CLAUDE" ] && [ -f "$DEV_CLAUDE" ]; then
+            if ! diff -q "$SDK_CLAUDE" "$DEV_CLAUDE" > /dev/null 2>&1; then
+              echo "⚠️ CLAUDE.txt files are out of sync"
+              echo "SDK: $SDK_CLAUDE"
+              echo "Developers: $DEV_CLAUDE"
+              echo ""
+              echo "Consider syncing: cp $DEV_CLAUDE $SDK_CLAUDE"
+            else
+              echo "✅ CLAUDE.txt files are in sync"
+            fi
+          fi
+
+  deploy-docs:
+    name: "🚀 Deploy Docs"
+    needs: build-check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Trigger developers app rebuild
+        run: |
+          APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "villa-developers$" | awk '{print $1}')
+
+          if [ -n "$APP_ID" ]; then
+            echo "Triggering rebuild for villa-developers (ID: $APP_ID)"
+            doctl apps create-deployment $APP_ID --force-rebuild --wait=false
+            echo "✅ Rebuild triggered"
+          else
+            echo "⚠️ villa-developers app not found, skipping deploy"
+          fi
+
+      - name: Purge CloudFlare cache for docs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ZONE_ID" ]; then
+            curl -X POST "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/purge_cache" \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data '{"files":["https://developers.villa.cash/CLAUDE.txt","https://developers.villa.cash/llms.txt"]}' || true
+            echo "✅ CloudFlare cache purged for CLAUDE.txt"
+          fi

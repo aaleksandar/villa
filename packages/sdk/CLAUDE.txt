@@ -1,78 +1,369 @@
-# Villa SDK - AI Integration Guide
+# Villa SDK - AI Integration Context
 
-Villa SDK provides privacy-first passkey authentication on Base network.
-Use this context when helping developers integrate Villa authentication.
+> Privacy-first passkey authentication for Base network.
+> Use this context when helping developers integrate Villa authentication.
 
-## One-Prompt Integration
+## Quick Reference
 
-When a developer says "add Villa authentication", generate this code:
+- **Packages**: `@rockfridrich/villa-sdk`, `@rockfridrich/villa-sdk-react`
+- **Peer deps**: `viem`, `zod`
+- **Networks**: Base (8453) for production, Base Sepolia (84532) for testing
+- **Docs**: https://developers.villa.cash
+- **GitHub**: https://github.com/rockfridrich/villa
+
+## One-Prompt Integration (React)
+
+When a developer says "add Villa authentication", generate this:
 
 ```tsx
 // 1. Install
-// npm install @rockfridrich/villa-sdk viem zod
+// npm install @rockfridrich/villa-sdk @rockfridrich/villa-sdk-react viem zod
 
-// 2. Wrap your app
-import { VillaProvider } from '@rockfridrich/villa-sdk-react'
+// 2. Simple API (no provider needed)
+import { useVilla, VillaButton } from '@rockfridrich/villa-sdk-react'
+
+function App() {
+  const { user, signOut } = useVilla()
+
+  if (!user) {
+    return <VillaButton onSignIn={(u) => console.log('Welcome', u.nickname)} />
+  }
+
+  return (
+    <div>
+      <p>@{user.nickname}</p>
+      <button onClick={signOut}>Sign Out</button>
+    </div>
+  )
+}
+```
+
+## One-Prompt Integration (Vanilla JS)
+
+```typescript
+import { villa } from '@rockfridrich/villa-sdk'
+
+const user = await villa.signIn()
+console.log(user.address, user.nickname, user.avatar)
+
+// Check auth state
+if (villa.user) {
+  console.log('Logged in as', villa.user.nickname)
+}
+
+// Sign out
+villa.signOut()
+```
+
+## Provider Pattern (Advanced React)
+
+For apps needing more control:
+
+```tsx
+import { VillaProvider, VillaAuth, useIdentity, useAuth } from '@rockfridrich/villa-sdk-react'
 
 function App() {
   return (
-    <VillaProvider config={{ appId: 'your-app' }}>
-      <YourApp />
+    <VillaProvider config={{ appId: 'your-app', network: 'base' }}>
+      <AuthenticatedApp />
     </VillaProvider>
   )
 }
 
-// 3. Add auth component
-import { VillaAuth, type VillaAuthResult } from '@rockfridrich/villa-sdk-react'
+function AuthenticatedApp() {
+  const identity = useIdentity()
+  const { signOut } = useAuth()
 
-function LoginPage() {
-  const handleComplete = (result: VillaAuthResult) => {
-    if (result.success) {
-      console.log('Welcome', result.identity.nickname)
-    }
+  if (!identity) {
+    return <VillaAuth onComplete={(r) => r.success && console.log(r.identity)} />
   }
-  return <VillaAuth onComplete={handleComplete} />
+
+  return <h1>Welcome, @{identity.nickname}!</h1>
 }
 ```
 
-## What Villa Provides
-
-After authentication, you get:
-- `address`: User's Ethereum address (0x...)
-- `nickname`: User's chosen username (unique, immutable)
-- `avatar`: Avatar configuration for rendering
-
-## Headless API (No React)
-
-```ts
-import { Villa } from '@rockfridrich/villa-sdk'
-
-const villa = new Villa({ appId: 'your-app' })
-const result = await villa.signIn()
-
-if (result.success) {
-  console.log(result.identity.nickname)
-}
-```
-
-## Key Types
+## Core SDK API (Villa Class)
 
 ```typescript
-interface VillaAuthResult {
-  success: true
-  identity: { address: string; nickname: string; avatar: AvatarConfig }
+import { Villa } from '@rockfridrich/villa-sdk'
+
+const villa = new Villa({
+  appId: 'your-app',           // Required
+  network: 'base',             // 'base' | 'base-sepolia'
+  apiUrl: 'https://...'        // Optional override
+})
+
+// Authentication
+const result = await villa.signIn({
+  scopes: ['profile', 'wallet'],
+  timeout: 5 * 60 * 1000,
+  onProgress: (step) => console.log(step.message)
+})
+
+if (result.success) {
+  const { address, nickname, avatar } = result.identity
+} else {
+  console.error(result.error, result.code)
 }
 
-interface VillaAuthError {
-  success: false
-  error: string
-  code: 'CANCELLED' | 'AUTH_FAILED' | 'NETWORK_ERROR'
+// Session management
+villa.isAuthenticated()  // boolean
+villa.getIdentity()      // Identity | null
+await villa.signOut()
+
+// ENS resolution
+const address = await villa.resolveEns('alice')     // '0x...'
+const name = await villa.reverseEns('0x...')        // 'alice'
+
+// Avatar
+const url = villa.getAvatarUrl(address, { style: 'avataaars' })
+```
+
+## React Hooks Reference
+
+```typescript
+// Simple API (no provider needed)
+import { useVilla, VillaButton } from '@rockfridrich/villa-sdk-react'
+
+const { user, signIn, signOut, isAuthenticated, isLoading } = useVilla()
+
+// Provider API
+import { useIdentity, useAuth, useVillaConfig } from '@rockfridrich/villa-sdk-react'
+
+const identity = useIdentity()  // Identity | null
+const { signIn, signOut, isAuthenticated, isLoading } = useAuth()
+const config = useVillaConfig()
+```
+
+## React Components Reference
+
+```tsx
+// Simple button (handles full flow)
+<VillaButton 
+  onSignIn={(user) => {}} 
+  onSignOut={() => {}} 
+/>
+
+// Full auth component
+<VillaAuth 
+  onComplete={(result) => {}}
+  buttonText="Sign In"
+/>
+
+// Avatar display
+<Avatar identity={user} size={48} />
+
+// Avatar preview
+<AvatarPreview
+  walletAddress="0x..."
+  selection="female"
+  variant={2}
+  size={64}
+/>
+```
+
+## TypeScript Types
+
+```typescript
+interface Identity {
+  address: `0x${string}`
+  nickname: string
+  avatar: AvatarConfig
+}
+
+interface AvatarConfig {
+  style: 'adventurer' | 'avataaars' | 'bottts' | 'thumbs'
+  seed: string
+  gender?: 'male' | 'female' | 'other'
+}
+
+type SignInResult = 
+  | { success: true; identity: Identity }
+  | { success: false; error: string; code: SignInErrorCode }
+
+type SignInErrorCode = 
+  | 'CANCELLED'      // User closed auth
+  | 'TIMEOUT'        // Auth took too long
+  | 'NETWORK_ERROR'  // Failed to load
+  | 'INVALID_CONFIG' // Bad configuration
+  | 'AUTH_ERROR'     // General error
+
+interface VillaConfig {
+  appId: string
+  network?: 'base' | 'base-sepolia'
+  apiUrl?: string
 }
 ```
 
-## Network
-- Production: Base (8453)
-- Testnet: base-sepolia (84532)
+## Error Handling
 
-## Docs
-https://developers.villa.cash
+```typescript
+const result = await villa.signIn()
+
+if (!result.success) {
+  switch (result.code) {
+    case 'CANCELLED':
+      // User closed - expected, no action needed
+      break
+    case 'TIMEOUT':
+      showMessage('Authentication timed out. Please try again.')
+      break
+    case 'NETWORK_ERROR':
+      showMessage('Network error. Check your connection.')
+      break
+    default:
+      showMessage(`Error: ${result.error}`)
+  }
+}
+```
+
+## VillaBridge (Low-Level API)
+
+For custom auth flows with fine-grained control:
+
+```typescript
+import { VillaBridge } from '@rockfridrich/villa-sdk'
+
+const bridge = new VillaBridge({
+  appId: 'your-app',
+  network: 'base',
+  timeout: 5 * 60 * 1000,
+  debug: false,
+  preferPopup: false
+})
+
+// Event listeners
+bridge.on('ready', () => console.log('Auth UI ready'))
+bridge.on('success', (identity) => console.log('Authenticated:', identity))
+bridge.on('cancel', () => console.log('User cancelled'))
+bridge.on('error', (error, code) => console.error('Error:', error, code))
+
+// Open/close
+await bridge.open(['profile'])
+bridge.close()
+
+// State
+bridge.getState()  // 'idle' | 'opening' | 'ready' | 'authenticating' | 'closing' | 'closed'
+bridge.isOpen()    // boolean
+```
+
+## Next.js Integration
+
+```tsx
+// app/providers.tsx
+'use client'
+import { VillaProvider } from '@rockfridrich/villa-sdk-react'
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <VillaProvider config={{ appId: 'my-nextjs-app' }}>
+      {children}
+    </VillaProvider>
+  )
+}
+
+// app/layout.tsx
+import { Providers } from './providers'
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  )
+}
+
+// app/page.tsx
+'use client'
+import { useIdentity, VillaAuth } from '@rockfridrich/villa-sdk-react'
+
+export default function Home() {
+  const identity = useIdentity()
+  
+  if (!identity) return <VillaAuth onComplete={() => {}} />
+  return <h1>Welcome, @{identity.nickname}!</h1>
+}
+```
+
+## Contract Addresses
+
+| Contract | Base Sepolia (testnet) |
+|----------|------------------------|
+| VillaNicknameResolverV3 | `0x180ddE044F1627156Cac6b2d068706508902AE9C` |
+| VillaNicknameResolverV2 | `0xf4648423aC6b3f6328018c49B2102f4E9bA6D800` |
+| BiometricRecoverySignerV2 | `0xdFb55a363bdF549EE5C2e77D0aAaC39276ED5836` |
+
+## Common Patterns
+
+### Protected Route
+
+```tsx
+function ProtectedRoute({ children }) {
+  const identity = useIdentity()
+  if (!identity) return <Navigate to="/login" />
+  return children
+}
+```
+
+### Auth State Listener
+
+```typescript
+villa.onAuthChange((user) => {
+  if (user) {
+    analytics.identify(user.address)
+  } else {
+    analytics.reset()
+  }
+})
+```
+
+### Server-Side Verification
+
+```typescript
+// Verify Villa identity on your backend
+const response = await fetch('https://api.villa.cash/verify', {
+  method: 'POST',
+  body: JSON.stringify({ address, signature })
+})
+```
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Passkeys not working | Use HTTPS (`pnpm dev:https`) or localhost |
+| Blank auth page | Clear cache: `pnpm dev:clean` |
+| Session not persisting | Check localStorage availability |
+| "Origin not in allowlist" | Use default network, don't override origin |
+
+## What Villa Returns
+
+After successful authentication:
+- `address`: Ethereum address derived from passkey (0x...)
+- `nickname`: User-chosen username (unique, immutable, resolves via ENS)
+- `avatar`: Configuration for deterministic avatar generation
+
+## Security Model
+
+- Passkeys never leave device (WebAuthn hardware-bound)
+- Villa never sees private keys
+- Biometrics processed 100% on-device
+- Sessions stored locally with 7-day TTL
+- All external data validated with Zod schemas
+
+## Live Environments
+
+| Environment | URL | Use |
+|-------------|-----|-----|
+| Production | villa.cash | Stable SDK |
+| Staging | beta.villa.cash | Latest features |
+| Developers | developers.villa.cash | Docs + this file |
+
+## Links
+
+- Docs: https://developers.villa.cash
+- GitHub: https://github.com/rockfridrich/villa
+- npm (SDK): https://www.npmjs.com/package/@rockfridrich/villa-sdk
+- npm (React): https://www.npmjs.com/package/@rockfridrich/villa-sdk-react

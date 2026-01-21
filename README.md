@@ -63,24 +63,34 @@ function App() {
 Villa ships with structured context for AI coding assistants:
 
 ```bash
-# Add to your AI assistant's context
 curl https://developers.villa.cash/CLAUDE.txt
 ```
 
-**What's included:**
-
-- SDK API reference
-- Integration patterns
-- Common troubleshooting
-- Contract addresses
+**Works with:** Claude Code, Cursor, Windsurf, Lovable, GitHub Copilot
 
 **Example prompt:**
 
 ```
-"Add Villa authentication to my Next.js app. Use https://developers.villa.cash/CLAUDE.txt for context."
+Add Villa authentication to my Next.js app
 ```
 
-See [developers.villa.cash](https://developers.villa.cash) for full documentation.
+Your AI already knows how - [CLAUDE.txt](https://developers.villa.cash/CLAUDE.txt) includes:
+
+- Complete API reference with TypeScript types
+- React hooks and components
+- Next.js integration patterns
+- Error handling and troubleshooting
+
+## Documentation
+
+| Resource             | URL                                                                | Description        |
+| -------------------- | ------------------------------------------------------------------ | ------------------ |
+| **Developer Portal** | [developers.villa.cash](https://developers.villa.cash)             | Full documentation |
+| **AI Context**       | [CLAUDE.txt](https://developers.villa.cash/CLAUDE.txt)             | For AI assistants  |
+| **SDK Reference**    | [npm](https://www.npmjs.com/package/@rockfridrich/villa-sdk)       | API docs           |
+| **React Reference**  | [npm](https://www.npmjs.com/package/@rockfridrich/villa-sdk-react) | Component docs     |
+| **Source Code**      | [GitHub](https://github.com/rockfridrich/villa)                    | Implementation     |
+| **Deploy Status**    | [villa.cash/deployments](https://villa.cash/deployments)           | Live status        |
 
 ## Ecosystem
 
