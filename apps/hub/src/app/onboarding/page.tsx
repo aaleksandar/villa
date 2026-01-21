@@ -1,15 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { AlertCircle, ExternalLink, Copy, CheckCircle2 } from "lucide-react";
-import { Button, Input, Spinner, SuccessCelebration } from "@/components/ui";
-import { AvatarSelection } from "@/components/sdk";
-import { VillaBridge } from "@rockfridrich/villa-sdk";
+import { Button, Spinner } from "@/components/ui";
+import { AuthModal } from "@/components/auth";
 import { useIdentityStore } from "@/lib/store";
-import { displayNameSchema } from "@/lib/validation";
 import { createAvatarConfig } from "@/lib/avatar";
-import type { AvatarConfig } from "@/types";
 import { isPortoSupported } from "@/lib/porto";
 import {
   detectInAppBrowser,
@@ -20,18 +17,9 @@ import {
 import {
   authenticateTinyCloud,
   syncToTinyCloud,
-  avatarStore,
 } from "@/lib/storage/tinycloud-client";
 
-type Step =
-  | "inapp-browser"
-  | "welcome"
-  | "connecting"
-  | "success"
-  | "welcome-back" // Returning user on new device (has nickname, needs avatar)
-  | "profile"
-  | "avatar"
-  | "error";
+type Step = "inapp-browser" | "welcome" | "error";
 
 interface ErrorState {
   message: string;
@@ -58,59 +46,17 @@ function OnboardingLoading() {
 
 function OnboardingContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { identity, setIdentity } = useIdentityStore();
 
-  // Read URL params (available after hydration)
-  const testStep = searchParams.get("step") as Step | null;
-  const testAddress = searchParams.get("address");
-  const testDisplayName = searchParams.get("displayName");
-  const isTestMode = Boolean(testStep && testAddress);
-
-  // State - initialized to defaults, synced from URL params after hydration
   const [step, setStep] = useState<Step>("welcome");
-  const [displayName, setDisplayName] = useState("");
-  const [nameError, setNameError] = useState<string>();
   const [error, setError] = useState<ErrorState | null>(null);
-  const [address, setAddress] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(true);
   const [inAppBrowser, setInAppBrowser] = useState<InAppBrowserInfo | null>(
     null,
   );
-  const [paramsLoaded, setParamsLoaded] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // Sync state from URL params after hydration (searchParams is empty during SSR)
   useEffect(() => {
-    if (testStep && testAddress) {
-      setStep(testStep);
-      setAddress(testAddress);
-      if (testDisplayName) {
-        setDisplayName(testDisplayName);
-      }
-    }
-    setParamsLoaded(true);
-  }, [testStep, testAddress, testDisplayName]);
-
-  // Ref for tracking timeouts to prevent memory leaks
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Check for in-app browser and Porto support on mount
-  useEffect(() => {
-    // Skip browser checks in test mode
-    if (isTestMode) {
-      return;
-    }
-
-    // First check for in-app browser
     const browserInfo = detectInAppBrowser();
     if (browserInfo.isInApp) {
       setInAppBrowser(browserInfo);
@@ -118,7 +64,6 @@ function OnboardingContent() {
       return;
     }
 
-    // Then check Porto support
     if (!isPortoSupported()) {
       setIsSupported(false);
       setError({
@@ -130,158 +75,52 @@ function OnboardingContent() {
       });
       setStep("error");
     }
-  }, [isTestMode]);
+  }, []);
 
-  // Redirect if already has identity (skip in test mode)
   useEffect(() => {
-    if (identity && !isTestMode) {
+    if (identity) {
       router.replace("/home");
     }
-  }, [identity, router, isTestMode]);
+  }, [identity, router]);
 
-  // VillaBridge reference for SDK iframe/popup auth
-  const bridgeRef = useRef<VillaBridge | null>(null);
-
-  // Check if user has existing profile
-  const checkExistingProfile = useCallback(async (addr: string) => {
+  const handleAuthSuccess = async (address: string) => {
+    let nickname = formatAddressAsName(address);
     try {
-      const response = await fetch(`/api/nicknames/reverse/${addr}`);
+      const response = await fetch(`/api/nicknames/reverse/${address}`);
       if (response.ok) {
         const data = await response.json();
-        return data.nickname || null;
+        if (data.nickname) {
+          nickname = data.nickname;
+        }
       }
     } catch {
-      // Continue to profile creation
-    }
-    return null;
-  }, []);
-
-  // Handle SDK auth success
-  // VillaBridge opens iframe with auth flow (passkey + optional nickname)
-  const handleAuthSuccess = useCallback(
-    async (bridgeIdentity: { address: string; nickname?: string }) => {
-      const { address: authAddress, nickname: authNickname } = bridgeIdentity;
-
-      // Update local state with address
-      setAddress(authAddress);
-
-      // If nickname provided from auth flow, use it
-      if (authNickname) {
-        setDisplayName(authNickname);
-        setStep("avatar");
-        return;
-      }
-
-      // Otherwise check for existing profile (returning user)
-      const existingNickname = await checkExistingProfile(authAddress);
-      if (existingNickname) {
-        setDisplayName(existingNickname);
-        setStep("welcome-back");
-      } else {
-        // Fallback - shouldn't happen as nickname is now in auth modal
-        setStep("profile");
-      }
-    },
-    [checkExistingProfile],
-  );
-
-  // Open SDK auth (iframe to key.villa.cash)
-  const openAuth = useCallback(async () => {
-    setStep("connecting");
-
-    // Determine network based on chain ID
-    const chainId = process.env.NEXT_PUBLIC_CHAIN_ID;
-    const network = chainId === "84532" ? "base-sepolia" : "base";
-
-    // Create VillaBridge to open auth iframe
-    // In development, the SDK auto-detects localhost and uses the current origin
-    const bridge = new VillaBridge({
-      appId: "villa-web",
-      network,
-      debug: process.env.NODE_ENV === "development",
-    });
-    bridgeRef.current = bridge;
-
-    // Set up event handlers
-    bridge.on("success", (bridgeIdentity) => {
-      // Pass full identity (address + nickname) to handler
-      handleAuthSuccess({
-        address: bridgeIdentity.address,
-        nickname: bridgeIdentity.nickname,
-      });
-      bridge.close();
-    });
-
-    bridge.on("cancel", () => {
-      setStep("welcome");
-      bridge.close();
-    });
-
-    bridge.on("error", (errorMsg) => {
-      setError({
-        message: errorMsg || "Authentication failed",
-        retry: () => {
-          setError(null);
-          setStep("welcome");
-        },
-      });
-      setStep("error");
-      bridge.close();
-    });
-
-    // Open the auth iframe/popup
-    try {
-      await bridge.open();
-    } catch (err) {
-      console.error("Failed to open auth:", err);
-      setError({
-        message: "Failed to open authentication. Please try again.",
-        retry: () => {
-          setError(null);
-          setStep("welcome");
-        },
-      });
-      setStep("error");
-    }
-  }, [handleAuthSuccess]);
-
-  // Cleanup bridge on unmount
-  useEffect(() => {
-    return () => {
-      bridgeRef.current?.close();
-    };
-  }, []);
-
-  const handleSubmitProfile = () => {
-    const result = displayNameSchema.safeParse(displayName);
-    if (!result.success) {
-      setNameError(result.error.errors[0]?.message ?? "Invalid name");
-      return;
+      /* empty - use address-based name */
     }
 
-    if (!address) {
-      setError({
-        message: "No address found. Please try again.",
-        retry: () => {
-          setError(null);
-          setStep("welcome");
-        },
-      });
-      setStep("error");
-      return;
-    }
+    const defaultAvatar = createAvatarConfig("other", 0);
 
-    // Store validated display name and proceed to avatar
-    setStep("avatar");
+    setIdentity({
+      address,
+      displayName: nickname,
+      avatar: defaultAvatar,
+      createdAt: Date.now(),
+    });
+
+    saveProfile(address, nickname, defaultAvatar);
+    authenticateTinyCloud(address)
+      .then(() => syncToTinyCloud())
+      .catch(console.warn);
+
+    router.replace("/home");
   };
 
   const saveProfile = async (
     address: string,
     nickname: string,
-    avatar: AvatarConfig,
+    avatar: { style: string; selection?: string; variant?: number },
   ) => {
     try {
-      const response = await fetch("/api/profile", {
+      await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -294,84 +133,9 @@ function OnboardingContent() {
           },
         }),
       });
-
-      if (!response.ok) {
-        console.error("Failed to save profile:", await response.text());
-      }
     } catch (error) {
       console.error("Error saving profile:", error);
     }
-  };
-
-  const handleAvatarSelected = (config: AvatarConfig) => {
-    if (!address) {
-      setError({
-        message: "No address found. Please try again.",
-        retry: () => {
-          setError(null);
-          setStep("welcome");
-        },
-      });
-      setStep("error");
-      return;
-    }
-
-    const finalName = displayName.trim() || formatAddressAsName(address);
-
-    setIdentity({
-      address,
-      displayName: finalName,
-      avatar: config,
-      createdAt: Date.now(),
-    });
-
-    avatarStore
-      .save({
-        type: "generated",
-        style: config.style,
-        selection: config.selection,
-        variant: config.variant,
-        createdAt: Date.now(),
-      })
-      .catch(console.warn);
-
-    saveProfile(address, finalName, config);
-    authenticateTinyCloud(address)
-      .then(() => syncToTinyCloud())
-      .catch(console.warn);
-
-    router.replace("/home");
-  };
-
-  const skipToHome = () => {
-    if (!address) {
-      setError({
-        message: "No address found. Please try again.",
-        retry: () => {
-          setError(null);
-          setStep("welcome");
-        },
-      });
-      setStep("error");
-      return;
-    }
-
-    const defaultName = formatAddressAsName(address);
-    const defaultAvatar = createAvatarConfig("other", 0);
-
-    setIdentity({
-      address,
-      displayName: defaultName,
-      avatar: defaultAvatar,
-      createdAt: Date.now(),
-    });
-
-    saveProfile(address, defaultName, defaultAvatar);
-    authenticateTinyCloud(address)
-      .then(() => syncToTinyCloud())
-      .catch(console.warn);
-
-    router.replace("/home");
   };
 
   const formatAddressAsName = (addr: string): string => {
@@ -389,18 +153,6 @@ function OnboardingContent() {
     );
   }
 
-  // Show loading until params are loaded
-  // This prevents the welcome screen from flashing before test mode state is synced
-  if (!paramsLoaded) {
-    return (
-      <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-cream-50">
-        <div className="w-full max-w-md text-center">
-          <Spinner size="lg" />
-        </div>
-      </main>
-    );
-  }
-
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-cream-50">
       <div className="w-full max-w-md">
@@ -408,75 +160,22 @@ function OnboardingContent() {
           <InAppBrowserStep browserInfo={inAppBrowser} />
         )}
 
-        {(step === "welcome" || step === "connecting") && (
-          <WelcomeStep
-            onGetStarted={openAuth}
-            isLoading={step === "connecting"}
-          />
-        )}
-
-        {step === "success" && <SuccessStep />}
-
-        {step === "welcome-back" && displayName && (
-          <WelcomeBackStep
-            nickname={displayName}
-            onContinue={() => setStep("avatar")}
-          />
-        )}
-
-        {step === "profile" && (
-          <ProfileStep
-            displayName={displayName}
-            onDisplayNameChange={(value) => {
-              setDisplayName(value);
-              setNameError(undefined);
-            }}
-            error={nameError}
-            onSubmit={handleSubmitProfile}
-            onSkip={() => setStep("avatar")}
-            isPending={false}
-          />
-        )}
-
-        {step === "avatar" && address && (
-          <AvatarSelectionWithSkip
-            walletAddress={address}
-            onSelect={handleAvatarSelected}
-            onSkip={skipToHome}
-          />
+        {step === "welcome" && (
+          <WelcomeStep onGetStarted={() => setShowAuthModal(true)} />
         )}
 
         {step === "error" && error && (
           <ErrorStep message={error.message} onRetry={error.retry} />
         )}
       </div>
-    </main>
-  );
-}
 
-function AvatarSelectionWithSkip({
-  walletAddress,
-  onSelect,
-  onSkip,
-}: {
-  walletAddress: string;
-  onSelect: (config: AvatarConfig) => void;
-  onSkip: () => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <AvatarSelection
-        walletAddress={walletAddress}
-        onSelect={onSelect}
-        timerDuration={0}
+      <AuthModal
+        open={showAuthModal}
+        onOpenChange={setShowAuthModal}
+        onSuccess={handleAuthSuccess}
+        onCancel={() => setShowAuthModal(false)}
       />
-      <button
-        onClick={onSkip}
-        className="w-full py-3 text-sm text-ink-muted hover:text-ink transition-colors min-h-11"
-      >
-        Skip for now
-      </button>
-    </div>
+    </main>
   );
 }
 
@@ -491,7 +190,6 @@ function InAppBrowserStep({ browserInfo }: { browserInfo: InAppBrowserInfo }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback: select text for manual copy
       const input = document.createElement("input");
       input.value = url;
       document.body.appendChild(input);
@@ -551,27 +249,7 @@ function InAppBrowserStep({ browserInfo }: { browserInfo: InAppBrowserInfo }) {
   );
 }
 
-function SuccessStep() {
-  return (
-    <div className="text-center space-y-6">
-      <div className="flex justify-center">
-        <SuccessCelebration size="lg" />
-      </div>
-      <div className="space-y-2">
-        <h2 className="text-2xl font-serif text-ink">Connected!</h2>
-        <p className="text-ink-muted">Your secure identity is ready</p>
-      </div>
-    </div>
-  );
-}
-
-function WelcomeStep({
-  onGetStarted,
-  isLoading,
-}: {
-  onGetStarted: () => void;
-  isLoading: boolean;
-}) {
+function WelcomeStep({ onGetStarted }: { onGetStarted: () => void }) {
   return (
     <div className="text-center space-y-8">
       <div className="space-y-4">
@@ -587,20 +265,8 @@ function WelcomeStep({
       </div>
 
       <div className="space-y-4">
-        <Button
-          size="lg"
-          className="w-full"
-          onClick={onGetStarted}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Spinner size="sm" className="mr-2" />
-              Opening...
-            </>
-          ) : (
-            "Get Started"
-          )}
+        <Button size="lg" className="w-full" onClick={onGetStarted}>
+          Get Started
         </Button>
         <p className="text-xs text-ink-muted">
           Sign in with your fingerprint, face, or security key
@@ -612,96 +278,6 @@ function WelcomeStep({
           Works with 1Password, iCloud Keychain, Google Password Manager, and
           hardware keys
         </p>
-      </div>
-    </div>
-  );
-}
-
-function WelcomeBackStep({
-  nickname,
-  onContinue,
-}: {
-  nickname: string;
-  onContinue: () => void;
-}) {
-  // Auto-advance after 2 seconds
-  useEffect(() => {
-    const timer = setTimeout(onContinue, 2000);
-    return () => clearTimeout(timer);
-  }, [onContinue]);
-
-  return (
-    <div className="text-center space-y-6">
-      <div className="flex justify-center">
-        <SuccessCelebration size="lg" />
-      </div>
-      <div className="space-y-2">
-        <h2 className="text-2xl font-serif text-ink">
-          Welcome back, @{nickname}!
-        </h2>
-        <p className="text-ink-muted">
-          Let&apos;s set up your look on this device
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function ProfileStep({
-  displayName,
-  onDisplayNameChange,
-  error,
-  onSubmit,
-  onSkip,
-  isPending,
-}: {
-  displayName: string;
-  onDisplayNameChange: (value: string) => void;
-  error?: string;
-  onSubmit: () => void;
-  onSkip: () => void;
-  isPending: boolean;
-}) {
-  return (
-    <div className="space-y-8">
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-serif text-ink">Choose your @handle</h2>
-        <p className="text-ink-muted">This is how others will find you</p>
-      </div>
-      <div className="space-y-4">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <span className="text-ink text-base">@</span>
-          </div>
-          <Input
-            type="text"
-            placeholder="yourname"
-            value={displayName}
-            onChange={(e) => onDisplayNameChange(e.target.value)}
-            error={error}
-            autoFocus
-            maxLength={30}
-            className="pl-8"
-          />
-        </div>
-        <Button
-          size="lg"
-          className="w-full"
-          onClick={onSubmit}
-          disabled={!displayName.trim() || isPending}
-        >
-          {isPending ? (
-            <Spinner size="sm" />
-          ) : (
-            `Claim @${displayName || "handle"}`
-          )}
-        </Button>
-        <button
-          onClick={onSkip}
-          className="w-full py-3 text-sm text-ink-muted hover:text-ink transition-colors min-h-11"
-        >
-          Skip for now
-        </button>
       </div>
     </div>
   );
@@ -728,41 +304,4 @@ function ErrorStep({
       </Button>
     </div>
   );
-}
-
-// Error message helper - kept for future error handling improvements
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _getErrorMessage(error: Error): string {
-  const message = error.message.toLowerCase();
-
-  if (
-    message.includes("rejected") ||
-    message.includes("cancelled") ||
-    message.includes("denied") ||
-    message.includes("abort") ||
-    message.includes("user cancel")
-  ) {
-    return "You cancelled the request. Try again when ready.";
-  }
-  if (
-    message.includes("biometric") ||
-    message.includes("authentication failed") ||
-    message.includes("verification")
-  ) {
-    return "Biometric authentication failed. Please try again.";
-  }
-  if (message.includes("network") || message.includes("fetch")) {
-    return "Network error. Check your connection and try again.";
-  }
-  if (message.includes("timeout")) {
-    return "Request timed out. Please try again.";
-  }
-  if (message.includes("not supported")) {
-    return "Your browser does not support passkeys. Please use Safari, Chrome, or Edge.";
-  }
-  if (message.includes("not available")) {
-    return "Biometric authentication is not available on this device.";
-  }
-
-  return "An error occurred. Please try again.";
 }
