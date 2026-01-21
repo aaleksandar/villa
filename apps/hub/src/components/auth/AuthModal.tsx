@@ -15,7 +15,7 @@ import { Modal } from "@/components/ui/Modal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 
 import { AuthenticatingState, SuccessState, ErrorState } from "./AuthStates";
-import { signInDialog, createAccountDialog } from "@/lib/porto";
+import { signInHeadless, createAccountHeadless } from "@/lib/porto";
 
 type AuthState = "idle" | "authenticating" | "success" | "error";
 
@@ -67,7 +67,7 @@ export function AuthModal({
     setAuthState("authenticating");
     setLoadingAction("signin");
 
-    const result = await signInDialog();
+    const result = await signInHeadless();
 
     if (result.success) {
       setAuthState("success");
@@ -92,7 +92,7 @@ export function AuthModal({
     setAuthState("authenticating");
     setLoadingAction("create");
 
-    const result = await createAccountDialog();
+    const result = await createAccountHeadless();
 
     if (result.success) {
       setAuthState("success");
