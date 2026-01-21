@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 import type { Config } from "tailwindcss";
 
 const villaPreset = require("@villa/config/tailwind.preset");
