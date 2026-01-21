@@ -4,32 +4,33 @@ on:
   push:
     branches: [main]
     paths:
-      - 'contracts/**'
-      - '.github/workflows/contracts.yml'
+      - "contracts/**"
+      - ".github/workflows/contracts.yml"
   pull_request:
     branches: [main]
     paths:
-      - 'contracts/**'
-      - '.github/workflows/contracts.yml'
+      - "contracts/**"
+      - ".github/workflows/contracts.yml"
   workflow_dispatch:
     inputs:
       network:
-        description: 'Network to deploy to'
+        description: "Network to deploy to"
         required: true
         type: choice
         options:
           - base-sepolia
           - base
       contract:
-        description: 'Contract to deploy'
+        description: "Contract to deploy"
         required: true
         type: choice
         options:
           - all
           - VillaNicknameResolver
+          - VillaNicknameResolverV3
           - BiometricRecoverySigner
       dry_run:
-        description: 'Dry run (no actual deployment)'
+        description: "Dry run (no actual deployment)"
         required: false
         type: boolean
         default: true
@@ -329,6 +330,9 @@ jobs:
             "VillaNicknameResolver")
               deploy_contract "DeployProxyNicknameResolver.s.sol:DeployProxyNicknameResolver" "VillaNicknameResolver"
               ;;
+            "VillaNicknameResolverV3")
+              deploy_contract "DeployProxyNicknameResolverV3.s.sol:DeployProxyNicknameResolverV3" "VillaNicknameResolverV3"
+              ;;
             "BiometricRecoverySigner")
               deploy_contract "DeployProxyRecoverySigner.s.sol:DeployProxyRecoverySigner" "BiometricRecoverySigner"
               ;;
@@ -467,6 +471,9 @@ jobs:
             "VillaNicknameResolver")
               deploy_contract "DeployProxyNicknameResolver.s.sol:DeployProxyNicknameResolver" "VillaNicknameResolver"
               ;;
+            "VillaNicknameResolverV3")
+              deploy_contract "DeployProxyNicknameResolverV3.s.sol:DeployProxyNicknameResolverV3" "VillaNicknameResolverV3"
+              ;;
             "BiometricRecoverySigner")
               deploy_contract "DeployProxyRecoverySigner.s.sol:DeployProxyRecoverySigner" "BiometricRecoverySigner"
               ;;
@@ -508,7 +515,7 @@ jobs:
   # =============================================================================
   upgrade:
     name: "⬆️ Upgrade Contract"
-    if: false  # Enable when upgrade is needed
+    if: false # Enable when upgrade is needed
     runs-on: ubuntu-latest
     steps:
       - run: echo "Upgrade workflow placeholder"
