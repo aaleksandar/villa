@@ -4,32 +4,33 @@
  * Creates and manages authentication iframe for Porto passkey flow.
  */
 
-import { z } from 'zod'
-import type { Identity } from './types'
+import { z } from "zod";
+import type { Identity } from "./types";
 
 /**
  * Trusted origins for postMessage communication
  * HTTPS-only for security - passkeys require HTTPS anyway
  */
 const TRUSTED_ORIGINS = [
-  'https://villa.cash',
-  'https://www.villa.cash',
-  'https://beta.villa.cash',
-  'https://dev-1.villa.cash',
-  'https://dev-2.villa.cash',
-  'https://developers.villa.cash',
-  'https://localhost:3000',
-  'https://localhost:3001',
-] as const
+  "https://villa.cash",
+  "https://www.villa.cash",
+  "https://beta.villa.cash",
+  "https://dev-1.villa.cash",
+  "https://dev-2.villa.cash",
+  "https://developers.villa.cash",
+  "https://key.villa.cash",
+  "https://beta-key.villa.cash",
+  "https://localhost:3000",
+  "https://localhost:3001",
+] as const;
 
 /**
  * Check if running in development mode
  */
 function isDevelopment(): boolean {
   return (
-    typeof process !== 'undefined' &&
-    process.env?.NODE_ENV === 'development'
-  )
+    typeof process !== "undefined" && process.env?.NODE_ENV === "development"
+  );
 }
 
 /**
@@ -39,80 +40,83 @@ function isDevelopment(): boolean {
  * @returns True if origin is trusted
  */
 function isOriginTrusted(origin: string): boolean {
-  return TRUSTED_ORIGINS.includes(origin as any)
+  return TRUSTED_ORIGINS.includes(origin as any);
 }
 
 export interface IframeConfig {
   /** URL to Villa auth page */
-  url: string
+  url: string;
   /** Optional width (defaults to fullscreen) */
-  width?: number
+  width?: number;
   /** Optional height (defaults to fullscreen) */
-  height?: number
+  height?: number;
 }
 
 /**
  * Message types for Villa SDK auth flow
  */
 export type AuthMessage =
-  | { type: 'VILLA_AUTH_READY' }
-  | { type: 'VILLA_AUTH_SUCCESS'; identity: Identity }
-  | { type: 'VILLA_AUTH_ERROR'; error: string; code?: string }
-  | { type: 'VILLA_AUTH_CANCEL' }
-  | { type: 'VILLA_CONSENT_GRANTED'; appId: string }
-  | { type: 'VILLA_CONSENT_DENIED'; appId: string }
+  | { type: "VILLA_AUTH_READY" }
+  | { type: "VILLA_AUTH_SUCCESS"; identity: Identity }
+  | { type: "VILLA_AUTH_ERROR"; error: string; code?: string }
+  | { type: "VILLA_AUTH_CANCEL" }
+  | { type: "VILLA_CONSENT_GRANTED"; appId: string }
+  | { type: "VILLA_CONSENT_DENIED"; appId: string }
   // Legacy support (deprecated)
-  | { type: 'AUTH_SUCCESS'; identity: Identity }
-  | { type: 'AUTH_ERROR'; error: string }
-  | { type: 'AUTH_CLOSE' }
+  | { type: "AUTH_SUCCESS"; identity: Identity }
+  | { type: "AUTH_ERROR"; error: string }
+  | { type: "AUTH_CLOSE" };
 
 /**
  * Zod schemas for message validation
  */
 const IdentitySchema = z.object({
-  address: z.string().regex(/^0x[a-fA-F0-9]{40}$/).transform((val) => val as `0x${string}`),
+  address: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{40}$/)
+    .transform((val) => val as `0x${string}`),
   nickname: z.string().min(1),
   avatar: z.object({
-    style: z.enum(['adventurer', 'avataaars', 'bottts', 'thumbs']),
+    style: z.enum(["adventurer", "avataaars", "bottts", "thumbs"]),
     seed: z.string(),
-    gender: z.enum(['male', 'female', 'other']).optional(),
+    gender: z.enum(["male", "female", "other"]).optional(),
   }),
-})
+});
 
-const AuthMessageSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('VILLA_AUTH_READY') }),
+const AuthMessageSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("VILLA_AUTH_READY") }),
   z.object({
-    type: z.literal('VILLA_AUTH_SUCCESS'),
+    type: z.literal("VILLA_AUTH_SUCCESS"),
     identity: IdentitySchema,
   }),
   z.object({
-    type: z.literal('VILLA_AUTH_ERROR'),
+    type: z.literal("VILLA_AUTH_ERROR"),
     error: z.string(),
     code: z.string().optional(),
   }),
-  z.object({ type: z.literal('VILLA_AUTH_CANCEL') }),
+  z.object({ type: z.literal("VILLA_AUTH_CANCEL") }),
   z.object({
-    type: z.literal('VILLA_CONSENT_GRANTED'),
+    type: z.literal("VILLA_CONSENT_GRANTED"),
     appId: z.string(),
   }),
   z.object({
-    type: z.literal('VILLA_CONSENT_DENIED'),
+    type: z.literal("VILLA_CONSENT_DENIED"),
     appId: z.string(),
   }),
   // Legacy support
   z.object({
-    type: z.literal('AUTH_SUCCESS'),
+    type: z.literal("AUTH_SUCCESS"),
     identity: IdentitySchema,
   }),
   z.object({
-    type: z.literal('AUTH_ERROR'),
+    type: z.literal("AUTH_ERROR"),
     error: z.string(),
   }),
-  z.object({ type: z.literal('AUTH_CLOSE') }),
-])
+  z.object({ type: z.literal("AUTH_CLOSE") }),
+]);
 
-let currentIframe: HTMLIFrameElement | null = null
-let messageHandler: ((event: MessageEvent) => void) | null = null
+let currentIframe: HTMLIFrameElement | null = null;
+let messageHandler: ((event: MessageEvent) => void) | null = null;
 
 /**
  * Creates fullscreen auth iframe
@@ -122,30 +126,30 @@ let messageHandler: ((event: MessageEvent) => void) | null = null
  */
 export function createAuthIframe(config: IframeConfig): HTMLIFrameElement {
   // Remove existing iframe if present
-  destroyAuthIframe()
+  destroyAuthIframe();
 
-  const iframe = document.createElement('iframe')
+  const iframe = document.createElement("iframe");
 
   // Set iframe attributes
-  iframe.src = config.url
-  iframe.id = 'villa-auth-iframe'
-  iframe.allow = 'publickey-credentials-get *; publickey-credentials-create *'
+  iframe.src = config.url;
+  iframe.id = "villa-auth-iframe";
+  iframe.allow = "publickey-credentials-get *; publickey-credentials-create *";
 
   // Fullscreen styling
-  iframe.style.position = 'fixed'
-  iframe.style.top = '0'
-  iframe.style.left = '0'
-  iframe.style.width = config.width ? `${config.width}px` : '100vw'
-  iframe.style.height = config.height ? `${config.height}px` : '100vh'
-  iframe.style.border = 'none'
-  iframe.style.zIndex = '9999'
-  iframe.style.backgroundColor = 'white'
+  iframe.style.position = "fixed";
+  iframe.style.top = "0";
+  iframe.style.left = "0";
+  iframe.style.width = config.width ? `${config.width}px` : "100vw";
+  iframe.style.height = config.height ? `${config.height}px` : "100vh";
+  iframe.style.border = "none";
+  iframe.style.zIndex = "9999";
+  iframe.style.backgroundColor = "white";
 
   // Append to body
-  document.body.appendChild(iframe)
+  document.body.appendChild(iframe);
 
-  currentIframe = iframe
-  return iframe
+  currentIframe = iframe;
+  return iframe;
 }
 
 /**
@@ -153,13 +157,13 @@ export function createAuthIframe(config: IframeConfig): HTMLIFrameElement {
  */
 export function destroyAuthIframe(): void {
   if (currentIframe) {
-    currentIframe.remove()
-    currentIframe = null
+    currentIframe.remove();
+    currentIframe = null;
   }
 
   if (messageHandler) {
-    window.removeEventListener('message', messageHandler)
-    messageHandler = null
+    window.removeEventListener("message", messageHandler);
+    messageHandler = null;
   }
 }
 
@@ -170,11 +174,11 @@ export function destroyAuthIframe(): void {
  */
 export function postMessage(message: AuthMessage): void {
   if (!currentIframe || !currentIframe.contentWindow) {
-    console.warn('[Villa SDK] Cannot post message: iframe not ready')
-    return
+    console.warn("[Villa SDK] Cannot post message: iframe not ready");
+    return;
   }
 
-  currentIframe.contentWindow.postMessage(message, '*')
+  currentIframe.contentWindow.postMessage(message, "*");
 }
 
 /**
@@ -185,23 +189,23 @@ export function postMessage(message: AuthMessage): void {
  */
 function validateAuthMessage(data: unknown): AuthMessage | null {
   try {
-    const parsed = AuthMessageSchema.parse(data)
+    const parsed = AuthMessageSchema.parse(data);
     // Cast address to branded type after validation
-    if ('identity' in parsed && parsed.identity) {
+    if ("identity" in parsed && parsed.identity) {
       return {
         ...parsed,
         identity: {
           ...parsed.identity,
           address: parsed.identity.address as `0x${string}`,
         },
-      } as AuthMessage
+      } as AuthMessage;
     }
-    return parsed as AuthMessage
+    return parsed as AuthMessage;
   } catch (error) {
     if (isDevelopment()) {
-      console.warn('[Villa SDK] Invalid message format:', error)
+      console.warn("[Villa SDK] Invalid message format:", error);
     }
-    return null
+    return null;
   }
 }
 
@@ -211,12 +215,10 @@ function validateAuthMessage(data: unknown): AuthMessage | null {
  * @param handler - Message handler function
  * @returns Cleanup function to remove listener
  */
-export function onMessage(
-  handler: (message: AuthMessage) => void
-): () => void {
+export function onMessage(handler: (message: AuthMessage) => void): () => void {
   // Clean up existing handler
   if (messageHandler) {
-    window.removeEventListener('message', messageHandler)
+    window.removeEventListener("message", messageHandler);
   }
 
   // Create new handler that validates message origin
@@ -225,30 +227,30 @@ export function onMessage(
     if (!isOriginTrusted(event.origin)) {
       if (isDevelopment()) {
         console.warn(
-          `[Villa SDK] Received message from untrusted origin: ${event.origin}`
-        )
+          `[Villa SDK] Received message from untrusted origin: ${event.origin}`,
+        );
       }
       // Silently ignore in production
-      return
+      return;
     }
 
     // Validate message structure with Zod
-    const message = validateAuthMessage(event.data)
+    const message = validateAuthMessage(event.data);
     if (!message) {
-      return
+      return;
     }
 
     // Call handler with validated message
-    handler(message)
-  }
+    handler(message);
+  };
 
-  window.addEventListener('message', messageHandler)
+  window.addEventListener("message", messageHandler);
 
   // Return cleanup function
   return () => {
     if (messageHandler) {
-      window.removeEventListener('message', messageHandler)
-      messageHandler = null
+      window.removeEventListener("message", messageHandler);
+      messageHandler = null;
     }
-  }
+  };
 }
