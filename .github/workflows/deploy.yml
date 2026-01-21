@@ -540,7 +540,8 @@ jobs:
           fi
           # Generate spec with explicit variable substitution
           export DATABASE_URL
-          envsubst '${DATABASE_URL}' < .do/app-staging.yaml > .do/app-staging-generated.yaml
+          export MINTER_PRIVATE_KEY="${{ secrets.DEPLOYER_PRIVATE_KEY }}"
+          envsubst '${DATABASE_URL} ${MINTER_PRIVATE_KEY}' < .do/app-staging.yaml > .do/app-staging-generated.yaml
           echo "📝 Generated staging spec"
           # Verify substitution happened (check if placeholder remains)
           if grep -q '\${DATABASE_URL}' .do/app-staging-generated.yaml; then
@@ -548,6 +549,12 @@ jobs:
             exit 1
           else
             echo "✅ DATABASE_URL substituted successfully"
+          fi
+          if grep -q '\${MINTER_PRIVATE_KEY}' .do/app-staging-generated.yaml; then
+            echo "❌ ERROR: MINTER_PRIVATE_KEY was not substituted!"
+            exit 1
+          else
+            echo "✅ MINTER_PRIVATE_KEY substituted successfully"
           fi
 
       - name: Deploy to beta.villa.cash
@@ -783,13 +790,20 @@ jobs:
             echo "❌ DATABASE_URL is NOT set"
           fi
           export DATABASE_URL
-          envsubst '${DATABASE_URL}' < .do/app-production.yaml > .do/app-production-generated.yaml
+          export MINTER_PRIVATE_KEY="${{ secrets.DEPLOYER_PRIVATE_KEY }}"
+          envsubst '${DATABASE_URL} ${MINTER_PRIVATE_KEY}' < .do/app-production.yaml > .do/app-production-generated.yaml
           echo "📝 Generated production spec"
           if grep -q '\${DATABASE_URL}' .do/app-production-generated.yaml; then
             echo "❌ ERROR: DATABASE_URL was not substituted!"
             exit 1
           else
             echo "✅ DATABASE_URL substituted successfully"
+          fi
+          if grep -q '\${MINTER_PRIVATE_KEY}' .do/app-production-generated.yaml; then
+            echo "❌ ERROR: MINTER_PRIVATE_KEY was not substituted!"
+            exit 1
+          else
+            echo "✅ MINTER_PRIVATE_KEY substituted successfully"
           fi
 
       - name: Deploy to villa.cash

@@ -48,5 +48,11 @@ services:
       - key: DATABASE_URL
         value: "${DATABASE_URL}"
         type: SECRET
+      - key: NICKNAME_RESOLVER_V3_ADDRESS
+        value: "0x180ddE044F1627156Cac6b2d068706508902AE9C"
+        scope: RUN_AND_BUILD_TIME
+      - key: MINTER_PRIVATE_KEY
+        value: "${MINTER_PRIVATE_KEY}"
+        type: SECRET
 
 region: nyc
