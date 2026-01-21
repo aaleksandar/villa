@@ -12,6 +12,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { createAccount, signIn, isPortoSupported } from "@/lib/porto";
+import { generateNickname } from "@/lib/nickname";
 
 const VILLA_ORIGINS = [
   "https://villa.cash",
@@ -148,13 +149,14 @@ function AuthPageContent() {
   }, [postToParent]);
 
   const handleSuccess = useCallback(
-    async (address: string) => {
+    async (address: string, isNewAccount: boolean = false) => {
+      const nickname = isNewAccount ? generateNickname(address) : "";
       const identity = {
         address,
-        nickname: "",
+        nickname,
         avatar: {
           style: "lorelei",
-          seed: `${address}-default`,
+          seed: address,
         },
       };
       postToParent({ type: "AUTH_SUCCESS", identity });
@@ -180,7 +182,7 @@ function AuthPageContent() {
     const result = await signIn();
     setIsLoading(false);
     if (result.success) {
-      handleSuccess(result.address);
+      handleSuccess(result.address, false);
     } else {
       setError(result.error?.message || "Sign in failed");
     }
@@ -192,7 +194,7 @@ function AuthPageContent() {
     const result = await createAccount();
     setIsLoading(false);
     if (result.success) {
-      handleSuccess(result.address);
+      handleSuccess(result.address, true);
     } else {
       setError(result.error?.message || "Account creation failed");
     }

@@ -50,7 +50,7 @@ CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON profiles
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
-`
+`;
 
 /**
  * Migration to add nickname change tracking columns to existing profiles table
@@ -75,47 +75,88 @@ BEGIN
     ALTER TABLE profiles ADD COLUMN last_nickname_change TIMESTAMP WITH TIME ZONE;
   END IF;
 END $$;
-`
+`;
+
+export const MIGRATION_ONCHAIN_MINTING = `
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'profiles' AND column_name = 'onchain_minted'
+  ) THEN
+    ALTER TABLE profiles ADD COLUMN onchain_minted BOOLEAN DEFAULT false;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'profiles' AND column_name = 'mint_tx_hash'
+  ) THEN
+    ALTER TABLE profiles ADD COLUMN mint_tx_hash VARCHAR(66);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'profiles' AND column_name = 'mint_chain_id'
+  ) THEN
+    ALTER TABLE profiles ADD COLUMN mint_chain_id INTEGER;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'profiles' AND column_name = 'tinycloud_synced'
+  ) THEN
+    ALTER TABLE profiles ADD COLUMN tinycloud_synced BOOLEAN DEFAULT false;
+  END IF;
+END $$;
+`;
 
 /**
  * Profile row type (matches database schema)
  */
 export interface ProfileRow {
-  address: string
-  nickname: string | null
-  nickname_normalized: string | null
-  avatar_style: string | null
-  avatar_selection: string | null
-  avatar_variant: number | null
-  nickname_change_count: number
-  last_nickname_change: Date | null
-  created_at: Date
-  updated_at: Date
+  address: string;
+  nickname: string | null;
+  nickname_normalized: string | null;
+  avatar_style: string | null;
+  avatar_selection: string | null;
+  avatar_variant: number | null;
+  nickname_change_count: number;
+  last_nickname_change: Date | null;
+  onchain_minted: boolean;
+  mint_tx_hash: string | null;
+  mint_chain_id: number | null;
+  tinycloud_synced: boolean;
+  created_at: Date;
+  updated_at: Date;
 }
 
 /**
  * Profile API response type
  */
 export interface Profile {
-  address: string
-  nickname: string | null
+  address: string;
+  nickname: string | null;
   avatar: {
-    style: string
-    selection: string
-    variant: number
-  } | null
-  nicknameChangeCount: number
-  lastNicknameChange: string | null
-  canChangeNickname: boolean
-  createdAt: string
-  updatedAt: string
+    style: string;
+    selection: string;
+    variant: number;
+  } | null;
+  nicknameChangeCount: number;
+  lastNicknameChange: string | null;
+  canChangeNickname: boolean;
+  onchainMinted: boolean;
+  mintTxHash: string | null;
+  mintChainId: number | null;
+  tinycloudSynced: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Maximum nickname changes allowed (first change is always allowed)
-export const MAX_NICKNAME_CHANGES = 1
+export const MAX_NICKNAME_CHANGES = 1;
 
 // Cooldown period between nickname changes (30 days in milliseconds)
-export const NICKNAME_CHANGE_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000
+export const NICKNAME_CHANGE_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
  * Check if user can change their nickname based on change count and cooldown
@@ -123,24 +164,24 @@ export const NICKNAME_CHANGE_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000
 export function canChangeNickname(row: ProfileRow): boolean {
   // First nickname (no changes yet) - can always change
   if (row.nickname_change_count === 0) {
-    return true
+    return true;
   }
 
   // Exceeded max changes
   if (row.nickname_change_count >= MAX_NICKNAME_CHANGES) {
-    return false
+    return false;
   }
 
   // Check cooldown period
   if (row.last_nickname_change) {
-    const lastChange = new Date(row.last_nickname_change).getTime()
-    const now = Date.now()
+    const lastChange = new Date(row.last_nickname_change).getTime();
+    const now = Date.now();
     if (now - lastChange < NICKNAME_CHANGE_COOLDOWN_MS) {
-      return false
+      return false;
     }
   }
 
-  return true
+  return true;
 }
 
 /**
@@ -150,17 +191,22 @@ export function rowToProfile(row: ProfileRow): Profile {
   return {
     address: row.address,
     nickname: row.nickname,
-    avatar: row.avatar_style && row.avatar_selection && row.avatar_variant !== null
-      ? {
-          style: row.avatar_style,
-          selection: row.avatar_selection,
-          variant: row.avatar_variant,
-        }
-      : null,
+    avatar:
+      row.avatar_style && row.avatar_selection && row.avatar_variant !== null
+        ? {
+            style: row.avatar_style,
+            selection: row.avatar_selection,
+            variant: row.avatar_variant,
+          }
+        : null,
     nicknameChangeCount: row.nickname_change_count ?? 0,
     lastNicknameChange: row.last_nickname_change?.toISOString() ?? null,
     canChangeNickname: canChangeNickname(row),
+    onchainMinted: row.onchain_minted ?? false,
+    mintTxHash: row.mint_tx_hash ?? null,
+    mintChainId: row.mint_chain_id ?? null,
+    tinycloudSynced: row.tinycloud_synced ?? false,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
-  }
+  };
 }

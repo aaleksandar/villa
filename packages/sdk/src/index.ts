@@ -8,7 +8,14 @@
  */
 
 // Simplified API (recommended)
-export { villa, signInWithVilla, getVillaUser, signOutVilla } from "./simple";
+export {
+  villa,
+  signInWithVilla,
+  getVillaUser,
+  signOutVilla,
+  syncProfileToTinyCloud,
+  loadProfileFromTinyCloud,
+} from "./simple";
 export type { VillaUser, SimpleSignInOptions } from "./simple";
 
 // Main SDK client (advanced)
@@ -128,3 +135,46 @@ export type {
   VillaAuthConfig,
 } from "./webauthn";
 // Note: AuthMessage and AuthMessageType not exported to avoid conflict with iframe.ts
+
+// TinyCloud integration - passkey-governed user data sync
+export {
+  VILLA_PREFIX,
+  TINYCLOUD_KEYS,
+  getTinyCloudClient,
+  signInToTinyCloud,
+  getTinyCloudSession,
+  isTinyCloudSignedIn,
+  signOutFromTinyCloud,
+  saveProfile,
+  getProfile,
+  updateProfile,
+  savePreferences,
+  getPreferences,
+  saveOnchainStatus,
+  getOnchainStatus,
+  recordNicknameMint,
+  syncProfile,
+} from "./tinycloud";
+export type {
+  VillaProfile,
+  VillaPreferences,
+  VillaOnchainStatus,
+  TinyCloudConfig,
+  TinyCloudSession,
+} from "./tinycloud";
+
+// Nickname generation
+export {
+  generateNickname,
+  generateUniqueNickname,
+  validateNickname,
+  normalizeNickname,
+  isReservedNickname,
+  getAvailableAdjectives,
+  getAvailableNouns,
+  NICKNAME_RULES,
+} from "./nickname-generator";
+export type {
+  NicknameValidationError,
+  NicknameValidationResult,
+} from "./nickname-generator";

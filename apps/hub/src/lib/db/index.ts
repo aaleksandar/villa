@@ -5,18 +5,18 @@
  * Graceful degradation: Returns appropriate errors if DATABASE_URL not set,
  * allowing app to start without DB (for CI E2E tests that don't need DB).
  */
-import postgres from 'postgres'
+import postgres from "postgres";
 
 // Singleton connection pool
-let sql: ReturnType<typeof postgres> | null = null
-let migrationRun = false
+let sql: ReturnType<typeof postgres> | null = null;
+let migrationRun = false;
 
 /**
  * Check if database is configured
  * Used by API routes to return graceful errors instead of crashing
  */
 export function isDatabaseAvailable(): boolean {
-  return !!process.env.DATABASE_URL
+  return !!process.env.DATABASE_URL;
 }
 
 /**
@@ -25,11 +25,11 @@ export function isDatabaseAvailable(): boolean {
  * Throws if DATABASE_URL not set - callers should check isDatabaseAvailable() first
  */
 export function getDb() {
-  if (sql) return sql
+  if (sql) return sql;
 
-  const dbUrl = process.env.DATABASE_URL
+  const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
-    throw new Error('DATABASE_URL environment variable is not set')
+    throw new Error("DATABASE_URL environment variable is not set");
   }
 
   sql = postgres(dbUrl, {
@@ -39,10 +39,10 @@ export function getDb() {
     connect_timeout: 10, // Connection timeout 10s
 
     // SSL required for DigitalOcean
-    ssl: dbUrl.includes('sslmode=require') ? 'require' : false,
-  })
+    ssl: dbUrl.includes("sslmode=require") ? "require" : false,
+  });
 
-  return sql
+  return sql;
 }
 
 /**
@@ -54,10 +54,10 @@ export function getDb() {
  * Gracefully skips if DATABASE_URL not configured.
  */
 export async function ensureTables() {
-  if (migrationRun) return
-  if (!isDatabaseAvailable()) return // Skip migration if no DB
+  if (migrationRun) return;
+  if (!isDatabaseAvailable()) return; // Skip migration if no DB
 
-  const db = getDb()
+  const db = getDb();
 
   // Create profiles table if not exists
   await db`
@@ -73,7 +73,7 @@ export async function ensureTables() {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     )
-  `
+  `;
 
   // Create webauthn_credentials table if not exists
   await db`
@@ -87,26 +87,25 @@ export async function ensureTables() {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
       last_used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     )
-  `
+  `;
 
   // Create indexes (IF NOT EXISTS is implicit for CREATE INDEX in PG 9.5+)
   await db`
     CREATE INDEX IF NOT EXISTS idx_profiles_nickname
     ON profiles(nickname_normalized)
-  `
+  `;
 
   await db`
     CREATE INDEX IF NOT EXISTS idx_webauthn_user_id
     ON webauthn_credentials(user_id)
-  `
+  `;
 
   await db`
     CREATE INDEX IF NOT EXISTS idx_webauthn_address
     ON webauthn_credentials(address)
-  `
+  `;
 
   // Migration: Add nickname change tracking columns if they don't exist
-  // Uses DO $$ block which is idempotent - safe to run multiple times
   await db.unsafe(`
     DO $$
     BEGIN
@@ -123,9 +122,40 @@ export async function ensureTables() {
         ALTER TABLE profiles ADD COLUMN last_nickname_change TIMESTAMP WITH TIME ZONE;
       END IF;
     END $$;
-  `)
+  `);
 
-  migrationRun = true
+  // Migration: Add on-chain minting and TinyCloud sync columns
+  await db.unsafe(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'profiles' AND column_name = 'onchain_minted'
+      ) THEN
+        ALTER TABLE profiles ADD COLUMN onchain_minted BOOLEAN DEFAULT false;
+      END IF;
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'profiles' AND column_name = 'mint_tx_hash'
+      ) THEN
+        ALTER TABLE profiles ADD COLUMN mint_tx_hash VARCHAR(66);
+      END IF;
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'profiles' AND column_name = 'mint_chain_id'
+      ) THEN
+        ALTER TABLE profiles ADD COLUMN mint_chain_id INTEGER;
+      END IF;
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'profiles' AND column_name = 'tinycloud_synced'
+      ) THEN
+        ALTER TABLE profiles ADD COLUMN tinycloud_synced BOOLEAN DEFAULT false;
+      END IF;
+    END $$;
+  `);
+
+  migrationRun = true;
 }
 
 /**
@@ -134,10 +164,10 @@ export async function ensureTables() {
  */
 export async function closeDb() {
   if (sql) {
-    await sql.end()
-    sql = null
+    await sql.end();
+    sql = null;
   }
 }
 
 // Export types for use in queries
-export type { Sql } from 'postgres'
+export type { Sql } from "postgres";

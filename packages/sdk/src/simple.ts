@@ -29,6 +29,13 @@ import {
   clearSession,
   isSessionValid,
 } from "./session";
+import {
+  signInToTinyCloud,
+  saveProfile as saveTinyCloudProfile,
+  getProfile as getTinyCloudProfile,
+  isTinyCloudSignedIn,
+  type VillaProfile,
+} from "./tinycloud";
 
 export interface VillaUser {
   address: `0x${string}`;
@@ -176,4 +183,35 @@ export function getVillaUser(): VillaUser | null {
 
 export function signOutVilla(): void {
   villa.signOut();
+}
+
+export async function syncProfileToTinyCloud(user: VillaUser): Promise<void> {
+  if (!isTinyCloudSignedIn()) {
+    await signInToTinyCloud();
+  }
+
+  const profile: VillaProfile = {
+    nickname: user.nickname,
+    avatar: {
+      style: user.raw.avatar?.style || "lorelei",
+      seed: user.raw.avatar?.seed || user.address,
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const existing = await getTinyCloudProfile();
+  if (existing) {
+    profile.createdAt = existing.createdAt;
+  }
+
+  await saveTinyCloudProfile(profile);
+}
+
+export async function loadProfileFromTinyCloud(): Promise<VillaProfile | null> {
+  if (!isTinyCloudSignedIn()) {
+    await signInToTinyCloud();
+  }
+
+  return getTinyCloudProfile();
 }

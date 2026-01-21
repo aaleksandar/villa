@@ -45,6 +45,9 @@
     "test:coverage": "vitest run --coverage",
     "prepublishOnly": "pnpm build"
   },
+  "dependencies": {
+    "@tinycloudlabs/web-sdk": "^0.2.1"
+  },
   "peerDependencies": {
     "viem": "^2.0.0",
     "zod": "^3.22.0"
