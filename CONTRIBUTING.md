@@ -1,134 +1,188 @@
 # Contributing to Villa
 
-Welcome! Villa is a privacy-first passkey authentication provider on **Base** network. We welcome code contributions and ecosystem app integrations.
+Welcome to the Villa project. We are building a privacy-first identity and community companion app that empowers users to own their digital presence without corporate intermediaries. Villa is designed for the AI-native era, providing drop-in passkey authentication, persistent identities, and cross-device synchronization.
 
-## How to Contribute Code
+As an open-source project, we value contributions from developers of all backgrounds. Whether you are fixing a bug, adding a new feature, improving documentation, or refining the user experience, your help is essential to our mission.
 
-### 1. Fork and Branch
+This guide is intended for Abu and other contributors to understand how to get started, our development workflow, and the standards we maintain to ensure quality and security.
+
+## Getting Started
+
+To contribute to Villa, you will need to set up your local development environment. We use a monorepo structure managed with pnpm workspaces and Turbo.
+
+### Prerequisites
+
+Before you begin, ensure you have the following installed on your machine:
+
+- **Node.js**: Version 18 or higher.
+- **pnpm**: Version 8 or higher.
+- **Git**: For version control.
+- **Docker**: Optional, for running local infrastructure like PostgreSQL.
+
+### Installation
+
+1. Clone the repository from GitHub:
+
+   ```bash
+   git clone https://github.com/rockfridrich/villa.git
+   cd villa
+   ```
+
+2. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+
+### Environment Setup
+
+Villa requires several environment variables for authentication and database connectivity.
+
+1. Copy the example environment files:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Configure your `.env` file with the necessary credentials. For local development, many values can be left as defaults.
+
+3. If you are working on features that require HTTPS (like WebAuthn), use `mkcert` to set up local certificates.
+
+## Project Structure
+
+Villa is organized as a monorepo to facilitate code sharing and consistent tooling.
+
+```
+villa/
+├── apps/
+│   ├── hub/          # Main web app (villa.cash)
+│   ├── key/          # Auth iframe (key.villa.cash)
+│   ├── developers/   # Docs site (developers.villa.cash)
+├── packages/
+│   ├── sdk/          # @rockfridrich/villa-sdk
+│   ├── sdk-react/    # @rockfridrich/villa-sdk-react
+│   ├── ui/           # @villa/ui shared components
+│   ├── config/       # Shared configs (Tailwind, TypeScript)
+│   ├── api/          # Shared API utilities
+├── contracts/        # Solidity smart contracts
+```
+
+## Development Workflow
+
+We use Turbo to manage our build pipeline and task execution, allowing for fast, incremental builds.
+
+### Common Commands
+
+- **Start all applications**: `pnpm dev`
+- **Build all packages and apps**: `pnpm build`
+- **Type checking**: `pnpm typecheck`
+- **Linting**: `pnpm lint`
+- **Running tests**: `pnpm test`
+- **E2E testing**: `pnpm test:e2e`
+
+## Environments
+
+Villa operates across multiple environments to ensure stability.
+
+| Environment | Apps Domain      | SDK Auth Domain     | Network      | Use Case                                              |
+| ----------- | ---------------- | ------------------- | ------------ | ----------------------------------------------------- |
+| Production  | villa.cash       | key.villa.cash      | Base         | Final stable releases.                                |
+| Staging     | beta.villa.cash  | beta-key.villa.cash | Base Sepolia | Testing with real blockchain interactions on testnet. |
+| PR Preview  | dev-1.villa.cash | beta-key.villa.cash | Base Sepolia | Automated deployments for every Pull Request.         |
+
+## Making Changes
+
+### 1. Branching Strategy
+
+Create a new branch using the pattern `type/short-description`:
+
+- `feature/add-avatar-upload`
+- `fix/passkey-error-handling`
+- `docs/update-sdk-reference`
+
+### 2. Implementation
+
+Make changes following our code style and design system. Add tests for any new functionality or bug fixes.
+
+### 3. Verification
+
+Before committing, ensure your changes don't break existing functionality:
 
 ```bash
-# Fork the repo on GitHub, then clone your fork
-git clone https://github.com/YOUR-USERNAME/villa.git
-cd villa
-pnpm install
-
-# Create a feature branch
-git checkout -b feat/your-feature-name
+pnpm typecheck && pnpm lint
 ```
 
-### 2. Make Changes
+### 4. Conventional Commits
 
-```bash
-# Set up environment
-cp .env.example .env.local
-# Edit .env.local with your values
+We use the Conventional Commits specification: `<type>(<scope>): <description>`
 
-# Start dev server
-pnpm dev
+Common types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
+Example: `feat(sdk): add support for custom session TTL`
 
-# For passkey testing (requires HTTPS)
-pnpm dev:https
-```
+### 5. Pushing and PRs
 
-### 3. Verify and Commit
+Push your branch and create a Pull Request against `main`. Explain the reasoning behind your changes and include screenshots for UI modifications.
 
-```bash
-# REQUIRED: Run before every push
-pnpm verify  # typecheck + build + tests
+## Design System
 
-# Commit with conventional format
-git commit -m "feat(scope): clear description"
-```
+Villa uses a warm, trustworthy, and modern aesthetic.
 
-Commit types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+### Tailwind Configuration
 
-### 4. Push and PR
+All apps must use the shared Tailwind preset at `@villa/config/tailwind.preset`.
 
-```bash
-# Push to your fork
-git push origin feat/your-feature-name
+### UI Components
 
-# Open PR on GitHub to main branch
-```
+Check `packages/ui` first for existing components. Shared components should be added there.
 
-PRs automatically deploy to preview environments (dev-1/dev-2.villa.cash).
+### Color Tokens
 
-**Find work:** Check [GitHub Issues](https://github.com/rockfridrich/villa/labels/good%20first%20issue) for `good first issue` labels, or use `bd ready` if you have Beads installed.
+Use Tailwind classes from our preset:
 
-## App Submission (Ecosystem Integration)
+- **Cream**: Primary backgrounds (`bg-cream-100`, `bg-cream-200`)
+- **Ink**: Primary text and deep backgrounds (`text-ink`, `bg-ink`)
+- **Accent**: Use sparingly for highlights:
+  - `accent-yellow`: Primary actions
+  - `accent-green`: Success states
+  - `accent-brown`: Deep contrast
 
-Villa provides authentication as a service for Base ecosystem apps. To integrate your app:
+### Typography
 
-### Integration Requirements
+- **Serif**: `DM Serif Display` for headings.
+- **Sans**: `Inter` for body text and interface elements.
 
-Your app must:
-- Be deployed on **Base** (8453) or **Base Sepolia** (84532)
-- Implement Villa SDK for authentication
-- Follow Villa security model (passkeys stay in device)
-- Provide privacy policy and terms of service
+## Code Style
 
-### SDK Integration
+- **TypeScript**: Strict mode is required. No `any` types. Use Zod for validation.
+- **React**: Use functional components and hooks. Ensure interactive elements have proper focus states.
+- **Security**: Never log sensitive info. Sanitize all inputs. Follow least privilege principles.
 
-Install: `npm install @rockfridrich/villa-sdk @rockfridrich/villa-sdk-react`
+## Contributing to Specifications
 
-See `specs/done/near-terminal-integration.md` for implementation guide.
+Villa is spec-driven. Architectural decisions should precede implementation.
 
-### Submit Your App
+- **Location**: All specifications are in the `specs/` directory.
+- **Process**: Draft specs in `specs/active/`, move to `specs/done/` after implementation.
+- **Format**: Markdown with clear headings and Mermaid diagrams.
+- **Review**: Architectural changes may require an ADR in `specs/decisions/`.
 
-Add your app to `apps/ecosystem/registry.json` and create a PR:
+## PR Review Process
 
-```json
-{
-  "id": "your-app-id",
-  "name": "Your App Name",
-  "description": "Brief description (max 120 chars)",
-  "url": "https://your-app.com",
-  "logo": "https://your-app.com/logo.png",
-  "category": "defi|social|gaming|other",
-  "network": "base|base-sepolia",
-  "verified": false
-}
-```
+### CI Requirements
 
-**Include in PR:** Auth flow diagram, privacy policy URL, terms URL, support contact.
+All PRs must pass the automated CI pipeline: build, typecheck, lint, and all tests.
 
-**Review:** Villa team reviews integration and security before granting `verified: true` status.
+### Preview Deployments
 
-## Code Standards
+PRs are deployed to a preview environment (e.g., `dev-1.villa.cash`) for verification.
 
-### TypeScript
-- **Strict mode** - No `any` types
-- **Zod validation** - Validate all user input
-- **Explicit types** - Type all function params and returns
+### Approval
 
-### React
-- **Functional components** - Use hooks, no class components
-- **Clean up effects** - Return cleanup functions in `useEffect`
-- **No prop drilling** - Use context for shared state
-
-### Security
-- **No passkey interception** - Passkeys stay in Porto SDK
-- **Sanitize user input** - Prevent XSS attacks
-- **No secrets in code** - Use environment variables
-- **Validate display names** - Use Zod schemas
-
-## PR Requirements
-
-Before submitting:
-
-- [ ] `pnpm verify` passes (typecheck + build + tests)
-- [ ] Tests cover new/changed code
-- [ ] No `console.log` or commented code
-- [ ] Commit format: `type(scope): description` (types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`)
-- [ ] PR description references issue/spec
+At least one approval from a maintainer is required. Reviewers check for correctness, performance, adherence to design system, and test coverage.
 
 ## Getting Help
 
-- **Bug reports:** [GitHub Issues](https://github.com/rockfridrich/villa/issues)
-- **Feature requests:** [GitHub Discussions](https://github.com/rockfridrich/villa/discussions)
-- **Security issues:** Email security@villa.cash (do not file public issues)
-- **SDK integration help:** See `specs/done/near-terminal-integration.md`
+- Join our Telegram community.
+- Open a discussion on GitHub.
+- Reach out to @rockfridrich or other maintainers.
 
-## License
-
-By contributing, you agree that your contributions will be licensed under the same license as the project.
+Thank you for contributing to Villa!

@@ -2,9 +2,12 @@
   "name": "@villa/config",
   "version": "0.1.0",
   "private": true,
+  "main": "./tailwind.preset.js",
   "exports": {
+    ".": "./tailwind.preset.js",
     "./tsconfig/base": "./tsconfig/base.json",
-    "./tsconfig/nextjs": "./tsconfig/nextjs.json"
+    "./tsconfig/nextjs": "./tsconfig/nextjs.json",
+    "./tailwind.preset": "./tailwind.preset.js"
   },
   "scripts": {
     "test": "vitest run",
@@ -12,6 +15,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
+    "tailwindcss": "^3.4.0",
     "vitest": "^2.1.8"
   }
 }

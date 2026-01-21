@@ -249,10 +249,11 @@ function AuthPageContent() {
           <button
             onClick={handleSignIn}
             disabled={isLoading}
-            className="w-full py-4 px-6 bg-gradient-to-br from-accent-yellow via-villa-500 to-accent-yellow
+            className="w-full min-h-14 py-4 px-6 bg-accent-yellow hover:bg-villa-600
                        text-accent-brown font-medium rounded-xl
+                       focus:outline-none focus:ring-2 focus:ring-accent-yellow focus:ring-offset-2 focus:ring-offset-cream-50
                        disabled:opacity-50 disabled:cursor-not-allowed
-                       transition-colors"
+                       transition-all active:scale-[0.98]"
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
@@ -267,17 +268,20 @@ function AuthPageContent() {
           <button
             onClick={handleCreateAccount}
             disabled={isLoading}
-            className="w-full py-4 px-6 bg-cream-100 border border-neutral-200
-                       text-ink font-medium rounded-xl
+            className="w-full min-h-14 py-4 px-6 bg-cream-100 border border-neutral-200
+                       text-ink font-medium rounded-xl hover:bg-cream-200
+                       focus:outline-none focus:ring-2 focus:ring-accent-yellow focus:ring-offset-2 focus:ring-offset-cream-50
                        disabled:opacity-50 disabled:cursor-not-allowed
-                       transition-colors"
+                       transition-all active:scale-[0.98]"
           >
             Create Villa ID
           </button>
 
           <button
             onClick={handleCancel}
-            className="w-full py-3 text-sm text-ink-muted hover:text-ink transition-colors"
+            className="w-full min-h-11 py-3 text-sm text-ink-muted hover:text-ink
+                       focus:outline-none focus:ring-2 focus:ring-neutral-200 focus:ring-offset-2 focus:ring-offset-cream-50
+                       rounded-lg transition-colors"
           >
             Cancel
           </button>
