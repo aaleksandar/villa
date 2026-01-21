@@ -251,6 +251,7 @@ jobs:
         id: balance
         env:
           DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          FOUNDRY_PROFILE: default
         run: |
           # Get deployer address from private key
           DEPLOYER_ADDRESS=$(cast wallet address $DEPLOYER_PRIVATE_KEY)
