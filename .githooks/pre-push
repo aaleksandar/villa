@@ -1,16 +1,20 @@
 #!/bin/bash
 # Pre-push hook: Fast verification before pushing
-# Full E2E tests run in CI - this is just a quick sanity check
+# Optimized: parallel execution + affected packages only
 #
-# Fast checks (~30s): typecheck + lint
+# Fast checks (~5-15s): typecheck + lint on changed packages only
 # Slow checks (CI): E2E tests, security scans
 #
 # For full local verification: bun run verify
+# To bypass: git push --no-verify
 
 set -e
 
-echo "🔍 Running fast pre-push checks..."
-echo ""
+# Skip if SKIP_HOOKS is set
+if [ -n "$SKIP_HOOKS" ]; then
+    echo "⏭️  SKIP_HOOKS set, skipping pre-push checks"
+    exit 0
+fi
 
 # Check if we're in the right directory
 if [ ! -f "package.json" ]; then
@@ -18,25 +22,147 @@ if [ ! -f "package.json" ]; then
     exit 0
 fi
 
-# Fast verification: typecheck + lint only
-# This catches 80% of issues in 20% of the time
-if bun run typecheck && bun run lint; then
-    echo ""
-    echo "✅ Fast checks passed. Pushing..."
-    echo "📊 Full E2E tests will run in CI"
-    echo ""
+# Get the remote ref being pushed to
+remote="$1"
+url="$2"
 
-    # Start background CI monitor (non-blocking)
-    if [ -x "./scripts/ci-monitor.sh" ]; then
-        echo "🔄 CI monitor will track status in background..."
+# Read stdin for refs being pushed
+while read local_ref local_sha remote_ref remote_sha; do
+    # Skip if deleting a branch
+    if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+        continue
     fi
 
+    # Determine the base ref for comparison
+    if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+        # New branch - compare against origin/main
+        BASE_REF="origin/main"
+    else
+        # Existing branch - compare against remote
+        BASE_REF="$remote_sha"
+    fi
+done
+
+# Default to origin/main if no refs provided (direct push)
+BASE_REF="${BASE_REF:-origin/main}"
+
+echo "🔍 Running fast pre-push checks..."
+echo "   Base: ${BASE_REF:0:12}"
+echo ""
+
+# Check if there are any changes to check
+CHANGED_FILES=$(git diff --name-only "$BASE_REF" HEAD 2>/dev/null || git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+
+if [ -z "$CHANGED_FILES" ]; then
+    echo "✅ No changes detected, skipping checks"
     exit 0
+fi
+
+# Map changed files to affected packages (POSIX-compatible, no associative arrays)
+AFFECTED_FILTERS=""
+SEEN_PACKAGES=""
+
+add_package() {
+    local pkg="$1"
+    # Check if already seen (simple string contains check)
+    case "$SEEN_PACKAGES" in
+        *"|$pkg|"*) return ;;  # Already seen
+    esac
+    SEEN_PACKAGES="${SEEN_PACKAGES}|$pkg|"
+    AFFECTED_FILTERS="$AFFECTED_FILTERS --filter=$pkg"
+}
+
+for file in $CHANGED_FILES; do
+    case "$file" in
+        apps/hub/*) add_package "@villa/hub" ;;
+        apps/developers/*) add_package "@villa/developers" ;;
+        apps/key/*) add_package "@villa/key" ;;
+        apps/api/*) add_package "@villa/api" ;;
+        apps/relay/*) add_package "@villa/relay" ;;
+        apps/web/*) add_package "@villa/web" ;;
+        packages/sdk/*) add_package "@rockfridrich/villa-sdk" ;;
+        packages/sdk-react/*) add_package "@rockfridrich/villa-sdk-react" ;;
+        packages/ui/*) add_package "@villa/ui" ;;
+        packages/config/*) add_package "@villa/config" ;;
+        contracts/*) add_package "@villa/contracts" ;;
+    esac
+done
+
+# If no specific packages affected, skip (only config/docs changed)
+if [ -z "$AFFECTED_FILTERS" ]; then
+    echo "✅ Only non-code files changed, skipping typecheck"
+    exit 0
+fi
+
+# Count packages (count | separators, divide by 2)
+AFFECTED_COUNT=$(echo "$SEEN_PACKAGES" | tr -cd '|' | wc -c)
+AFFECTED_COUNT=$((AFFECTED_COUNT / 2))
+
+echo "📦 Checking $AFFECTED_COUNT affected package(s):${AFFECTED_FILTERS}"
+echo ""
+
+# Create temp files for parallel execution output
+TYPECHECK_LOG=$(mktemp)
+LINT_LOG=$(mktemp)
+trap "rm -f $TYPECHECK_LOG $LINT_LOG ${TYPECHECK_LOG}.exit ${LINT_LOG}.exit" EXIT
+
+# Run typecheck and lint in parallel
+echo "⚡ Running typecheck and lint in parallel..."
+echo ""
+
+# Start both in background
+(bunx turbo run typecheck $AFFECTED_FILTERS --output-logs=errors-only 2>&1; echo $? > "${TYPECHECK_LOG}.exit") > "$TYPECHECK_LOG" &
+TYPECHECK_PID=$!
+
+(bunx turbo run lint $AFFECTED_FILTERS --output-logs=errors-only 2>&1; echo $? > "${LINT_LOG}.exit") > "$LINT_LOG" &
+LINT_PID=$!
+
+# Wait for both to complete
+wait $TYPECHECK_PID || true
+wait $LINT_PID || true
+
+# Read exit codes
+TYPECHECK_EXIT=$(cat "${TYPECHECK_LOG}.exit" 2>/dev/null || echo 1)
+LINT_EXIT=$(cat "${LINT_LOG}.exit" 2>/dev/null || echo 1)
+
+# Report results
+FAILED=0
+
+if [ "$TYPECHECK_EXIT" -ne 0 ]; then
+    echo "❌ Typecheck failed:"
+    cat "$TYPECHECK_LOG"
+    echo ""
+    FAILED=1
 else
+    echo "✅ Typecheck passed"
+fi
+
+if [ "$LINT_EXIT" -ne 0 ]; then
+    echo "❌ Lint failed:"
+    cat "$LINT_LOG"
     echo ""
-    echo "❌ Fast verification failed. Fix issues before pushing."
+    FAILED=1
+else
+    echo "✅ Lint passed"
+fi
+
+if [ "$FAILED" -eq 1 ]; then
     echo ""
-    echo "Run 'bun run typecheck' and 'bun run lint' to see errors"
+    echo "❌ Pre-push checks failed. Fix issues before pushing."
+    echo ""
+    echo "Run 'bun run typecheck' and 'bun run lint' to see full errors"
     echo "To bypass (not recommended): git push --no-verify"
     exit 1
 fi
+
+echo ""
+echo "✅ Fast checks passed. Pushing..."
+echo "📊 Full E2E tests will run in CI"
+echo ""
+
+# Start background CI monitor (non-blocking)
+if [ -x "./scripts/ci-monitor.sh" ]; then
+    echo "🔄 CI monitor will track status in background..."
+fi
+
+exit 0
