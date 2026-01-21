@@ -1,14 +1,14 @@
-export { Button } from './button'
-export { Input } from './input'
-export { Card, CardHeader, CardTitle, CardContent } from './card'
-export { Avatar } from './avatar'
-export { Spinner } from './spinner'
-export { LottieAnimation } from './lottie-animation'
-export { LoadingAnimation } from './loading-animation'
-export { EmptyState } from './empty-state'
-export { SuccessCelebration } from './success-celebration'
-
-// shadcn/ui components
+export { Button } from "./button";
+export { Input } from "./input";
+export { Card, CardHeader, CardTitle, CardContent } from "./card";
+export { Avatar } from "./avatar";
+export { Spinner } from "./spinner";
+export { LottieAnimation } from "./lottie-animation";
+export { LoadingAnimation } from "./loading-animation";
+export { EmptyState } from "./empty-state";
+export { SuccessCelebration } from "./success-celebration";
+export { Modal, ModalTrigger, ModalClose } from "./Modal";
+export { BottomSheet } from "./BottomSheet";
 export {
   Dialog,
   DialogPortal,
@@ -20,11 +20,16 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
-} from './dialog'
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './tooltip'
-export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs'
-export { Alert, AlertTitle, AlertDescription } from './alert'
-export { Badge } from './badge'
+} from "./dialog";
+export {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "./tooltip";
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";
+export { Alert, AlertTitle, AlertDescription } from "./alert";
+export { Badge } from "./badge";
 export {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -41,4 +46,4 @@ export {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuRadioGroup,
-} from './dropdown-menu'
+} from "./dropdown-menu";
