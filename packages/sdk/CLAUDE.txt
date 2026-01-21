@@ -3,6 +3,8 @@
 > Privacy-first passkey authentication for Base network.
 > Use this context when helping developers integrate Villa authentication.
 
+**Auto-generated:** 2026-01-21 | **Version:** 0.1.0
+
 ## Quick Reference
 
 - **Packages**: `@rockfridrich/villa-sdk`, `@rockfridrich/villa-sdk-react`
@@ -360,6 +362,261 @@ After successful authentication:
 | Production | villa.cash | Stable SDK |
 | Staging | beta.villa.cash | Latest features |
 | Developers | developers.villa.cash | Docs + this file |
+
+---
+
+## SDK Exports Reference
+
+### Classes (2)
+
+- `VillaBridge` - - Debug logging (opt-in) /
+- `Villa` - ``` /
+
+### Functions (71)
+
+- `generateWallet` - // IMPORTANT: Immediately encrypt and backup privateKey /
+- `importWallet` - const account = importWallet('0x...') /
+- `encryptPrivateKey` - localStorage.setItem('wallet_backup', JSON.stringify(encrypted)) /
+- `decryptPrivateKey` - const privateKey = await decryptPrivateKey(backup, 'my-secure-passphrase') /
+- `exportBackup` - /
+- `importBackup` - /
+- `isValidPrivateKey` - /
+- `secureClear` - /
+- `createLocalStorage` - - Hardware security modules /
+- `parseWebAuthnError` - /
+- `detectBrowserCapabilities` - /
+- `isPasskeySupported` - /
+- `getPasskeyManagerName` - /
+- `getPortoHost` - /
+- `getChainConfig` - /
+- `validatePortoConfig` - /
+- `createVillaTheme` - /
+- `getTinyCloudClient`
+- `signInToTinyCloud`
+- `getTinyCloudSession`
+- `isTinyCloudSignedIn`
+- `signOutFromTinyCloud`
+- `saveProfile`
+- `getProfile`
+- `updateProfile`
+- `savePreferences`
+- `getPreferences`
+- `saveOnchainStatus`
+- `getOnchainStatus`
+- `recordNicknameMint`
+- `syncProfile`
+- `_resetTinyCloudClient`
+- `isDevelopment` - Check if we're in development mode /
+- `getValidOrigins` - Get all valid origins based on environment /
+- `validateOrigin` - /
+- `parseVillaMessage` - /
+- `parseParentMessage` - /
+- `createVillaError` - Create a validated Villa error /
+- `signInWithVilla`
+- `getVillaUser`
+- `signOutVilla`
+- `syncProfileToTinyCloud`
+- `loadProfileFromTinyCloud`
+- `getContracts` - } /
+- `getContractsForChain` - const contracts = getContractsForChain(baseSepolia) /
+- `getNicknameResolverAddress` - /
+- `getRecoverySignerAddress` - /
+- `isDeployed`
+- `getAvatarUrl` - // => 'https://api.dicebear.com/7.x/bottts/svg?seed=bob' /
+- `createAvatarConfig` - /
+- `createAuthIframe` - /
+- `destroyAuthIframe` - Removes auth iframe from DOM /
+- `postMessage` - /
+- `onMessage` - /
+- `generateNickname`
+- `generateUniqueNickname`
+- `validateNickname`
+- `normalizeNickname`
+- `isReservedNickname`
+- `getAvailableAdjectives`
+- `getAvailableNouns`
+- `saveSession` - Saves a session to localStorage /
+- `loadSession` - /
+- `clearSession` - Clears the session from localStorage /
+- `isSessionValid` - /
+- `resolveEns` - // => '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045' /
+- `reverseEns` - // => 'vitalik.eth' /
+- `signIn` - /
+- `signOut` - Clears session from localStorage and memory. /
+- `isAuthenticated` - /
+- `getIdentity` - /
+
+### Types & Interfaces (55)
+
+- `EncryptedWallet` - Encrypted wallet backup format /
+- `WalletResult` - Wallet generation result /
+- `EncryptionOptions` - Options for wallet encryption /
+- `WalletStorage` - Storage interface for wallet backups /
+- `BrowserCapabilities`
+- `WebAuthnError`
+- `PortoThemeConfig`
+- `PortoConfig`
+- `PortoMode`
+- `VillaProfile`
+- `VillaPreferences`
+- `VillaOnchainStatus`
+- `TinyCloudConfig`
+- `TinyCloudSession`
+- `BridgeConfig` - Bridge configuration /
+- `BridgeEventMap` - Event callback types /
+- `VillaMessage` - Message types sent FROM Villa iframe TO parent app /
+- `ParentMessage` - Message types sent FROM parent app TO Villa iframe /
+- `BridgeMessage` - All message types for the bridge /
+- `VillaErrorCode` - Error codes for auth failures /
+- `BridgeEventName` - Bridge event names /
+- `BridgeState` - Bridge state /
+- `VillaUser`
+- `SimpleSignInOptions`
+- `ContractDeployment`
+- `ChainContracts`
+- `WebAuthnCredential`
+- `AuthChallenge`
+- `VillaSession`
+- `VillaIdentity`
+- `RegistrationOptions`
+- `RegistrationResponse`
+- `AuthenticationOptions`
+- `AuthenticationResponse`
+- `AuthMessage`
+- `VillaAuthConfig`
+- `AuthMessageType`
+- `Identity`
+- `AvatarConfig`
+- `Profile`
+- `NicknameCheckResult`
+- `VillaConfig`
+- `VillaSession`
+- `AvatarStyle`
+- `Result`
+- `IframeConfig`
+- `AuthMessage` - Message types for Villa SDK auth flow /
+- `NicknameValidationResult`
+- `NicknameValidationError`
+- `SignInOptions` - Sign-in options /
+- `Scope` - Data scopes that apps can request /
+- `SignInProgress` - Progress steps during sign-in flow /
+- `SignInErrorCode` - Detailed error codes for sign-in failures /
+- `SignInResult` - Sign-in result type /
+- `AuthOptions`
+
+### Enums (2)
+
+- `PasskeyManagerType`
+- `WebAuthnErrorCode`
+
+### Constants (90)
+
+- `VILLA_PREFIX`
+- `TINYCLOUD_KEYS`
+- `ALLOWED_ORIGINS` - HTTPS-only in production - passkeys require secure context /
+- `DEV_ORIGINS` - Development origins (only active when NODE_ENV === 'development') /
+- `VillaBridge`
+- `validateOrigin`
+- `parseVillaMessage`
+- `parseParentMessage`
+- `isDevelopment`
+- `getValidOrigins`
+- `ALLOWED_ORIGINS`
+- `DEV_ORIGINS`
+- `villa`
+- `CONTRACTS`
+- `DEPLOYED_CHAINS`
+- `NICKNAME_RULES`
+- `villa`
+- `signInWithVilla`
+- `getVillaUser`
+- `signOutVilla`
+- `syncProfileToTinyCloud`
+- `loadProfileFromTinyCloud`
+- `Villa`
+- `resolveEns`
+- `reverseEns`
+- `getAvatarUrl`
+- `createAvatarConfig`
+- `signIn`
+- `signOut`
+- `isAuthenticated`
+- `getIdentity`
+- `saveSession`
+- `loadSession`
+- `clearSession`
+- `createAuthIframe`
+- `destroyAuthIframe`
+- `VillaBridge`
+- `validateOrigin`
+- `parseVillaMessage`
+- `parseParentMessage`
+- `ALLOWED_ORIGINS`
+- `generateWallet`
+- `importWallet`
+- `encryptPrivateKey`
+- `decryptPrivateKey`
+- `exportBackup`
+- `importBackup`
+- `isValidPrivateKey`
+- `createLocalStorage`
+- `getContracts`
+- `getContractsForChain`
+- `getNicknameResolverAddress`
+- `getRecoverySignerAddress`
+- `isDeployed`
+- `CONTRACTS`
+- `DEPLOYED_CHAINS`
+- `PasskeyManagerType`
+- `WebAuthnErrorCode`
+- `parseWebAuthnError`
+- `detectBrowserCapabilities`
+- `isPasskeySupported`
+- `getPasskeyManagerName`
+- `getPortoHost`
+- `getChainConfig`
+- `validatePortoConfig`
+- `createVillaTheme`
+- `VILLA_PREFIX`
+- `TINYCLOUD_KEYS`
+- `getTinyCloudClient`
+- `signInToTinyCloud`
+- `getTinyCloudSession`
+- `isTinyCloudSignedIn`
+- `signOutFromTinyCloud`
+- `saveProfile`
+- `getProfile`
+- `updateProfile`
+- `savePreferences`
+- `getPreferences`
+- `saveOnchainStatus`
+- `getOnchainStatus`
+- `recordNicknameMint`
+- `syncProfile`
+- `generateNickname`
+- `generateUniqueNickname`
+- `validateNickname`
+- `normalizeNickname`
+- `isReservedNickname`
+- `getAvailableAdjectives`
+- `getAvailableNouns`
+- `NICKNAME_RULES`
+
+---
+
+## React SDK Exports Reference
+
+### Hooks (4)
+
+- `useVilla`
+- `useIdentity` - ``` /
+- `useAuth` - ``` /
+- `useVillaConfig` - Hook to access Villa SDK configuration /
+
+### Components (0)
+
+
+---
 
 ## Links
 
