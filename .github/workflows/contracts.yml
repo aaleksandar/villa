@@ -310,6 +310,7 @@ jobs:
 
             OUTPUT=$(forge script script/$script \
               --rpc-url $BASE_SEPOLIA_RPC_URL \
+              --private-key $DEPLOYER_PRIVATE_KEY \
               $BROADCAST_FLAG \
               --legacy \
               -vvv 2>&1) || true
@@ -452,6 +453,7 @@ jobs:
 
             OUTPUT=$(forge script script/$script \
               --rpc-url $BASE_RPC_URL \
+              --private-key $DEPLOYER_PRIVATE_KEY \
               $BROADCAST_FLAG \
               --slow \
               -vvv 2>&1) || true
