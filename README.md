@@ -112,6 +112,7 @@ bun verify           # Run before every push (typecheck + build + E2E)
 
 | Contract                  | Address                                      |
 | ------------------------- | -------------------------------------------- |
+| VillaNicknameResolverV3   | `0x180ddE044F1627156Cac6b2d068706508902AE9C` |
 | VillaNicknameResolverV2   | `0xf4648423aC6b3f6328018c49B2102f4E9bA6D800` |
 | BiometricRecoverySignerV2 | `0xdFb55a363bdF549EE5C2e77D0aAaC39276ED5836` |
 
