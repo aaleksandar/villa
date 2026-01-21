@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Copy, Check, ExternalLink, ChevronRight } from "lucide-react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { EditOnGitHub } from "../components/EditOnGitHub";
+import { trackCodeCopy } from "../lib/analytics";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -11,6 +13,7 @@ function CopyButton({ text }: { text: string }) {
   const handleCopy = async () => {
     await navigator.clipboard.writeText(text);
     setCopied(true);
+    trackCodeCopy("code-block");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -1484,23 +1487,28 @@ export default function App() {
 
       {/* Footer */}
       <footer className="py-12 border-t border-ink/5">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4 text-sm text-ink-muted">
-            <a
-              href="https://villa.cash"
-              className="hover:text-ink transition-colors"
-            >
-              villa.cash
-            </a>
-            <span>|</span>
-            <a
-              href="https://github.com/rockfridrich/villa"
-              className="hover:text-ink transition-colors"
-            >
-              GitHub
-            </a>
+        <div className="max-w-5xl mx-auto space-y-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4 text-sm text-ink-muted">
+              <a
+                href="https://villa.cash"
+                className="hover:text-ink transition-colors"
+              >
+                villa.cash
+              </a>
+              <span>|</span>
+              <a
+                href="https://github.com/rockfridrich/villa"
+                className="hover:text-ink transition-colors"
+              >
+                GitHub
+              </a>
+            </div>
+            <p className="text-sm text-ink-muted">Built for pop-up villages</p>
           </div>
-          <p className="text-sm text-ink-muted">Built for pop-up villages</p>
+          <div className="flex justify-center">
+            <EditOnGitHub filePath="apps/developers/src/app/page.tsx" />
+          </div>
         </div>
       </footer>
     </div>
