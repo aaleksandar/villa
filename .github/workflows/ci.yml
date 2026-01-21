@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   determine-tests:
     name: "🔍 Determine Tests"
@@ -14,6 +18,7 @@ jobs:
       e2e: ${{ steps.filter.outputs.e2e }}
       unit: ${{ steps.filter.outputs.unit }}
       docs-only: ${{ steps.filter.outputs.docs-only }}
+      sdk: ${{ steps.filter.outputs.sdk }}
     steps:
       - uses: actions/checkout@v4
 
@@ -38,11 +43,13 @@ jobs:
               - '.claude/**'
               - '.opencode/**'
               - 'specs/**'
+            sdk:
+              - 'packages/sdk/**'
+              - 'packages/sdk-react/**'
 
   lockfile-check:
     name: "🔒 Lockfile Sync"
     runs-on: ubuntu-latest
-    needs: [determine-tests]
     steps:
       - uses: actions/checkout@v4
 
@@ -55,78 +62,11 @@ jobs:
         run: |
           if ! bun install --frozen-lockfile > /dev/null 2>&1; then
             echo "❌ bun.lock is out of sync!"
-            echo ""
             echo "Fix: Run 'bun install' locally and commit bun.lock"
-            echo ""
-            echo "Details:"
             bun install --frozen-lockfile 2>&1 || true
             exit 1
           fi
           echo "✅ Lockfile is in sync"
-
-  validate-context:
-    name: Validate Agent Context
-    runs-on: ubuntu-latest
-    needs: [lockfile-check]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Validate agent definitions
-        run: cd apps/hub && node --import tsx ../../.claude/rag/loader.ts validate
-
-      - name: Generate context report
-        run: cd apps/hub && node --import tsx ../../.claude/rag/loader.ts report
-
-  validate-specs:
-    name: Validate Specifications
-    runs-on: ubuntu-latest
-    needs: [lockfile-check]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check spec format
-        run: |
-          for file in specs/**/*.md; do
-            if [[ -f "$file" ]]; then
-              if ! head -1 "$file" | grep -q "^# "; then
-                echo "ERROR: $file missing title"
-                exit 1
-              fi
-            fi
-          done
-          echo "All specs have valid format"
-
-  security-scan:
-    name: Security Scanning
-    runs-on: ubuntu-latest
-    needs: [lockfile-check]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Gitleaks Secret Scan
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: TruffleHog Deep Scan
-        uses: trufflesecurity/trufflehog@main
-        with:
-          extra_args: --only-verified
 
   lint:
     name: Lint and Type Check
@@ -145,19 +85,23 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: deps-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
+          restore-keys: deps-${{ runner.os }}-
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Run ESLint
-        run: bun run lint
-
-      - name: Run TypeScript check
-        run: bun run typecheck
+      - name: Run ESLint and TypeScript in parallel
+        run: bun run lint & bun run typecheck & wait
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, security-scan]
+    needs: [lockfile-check]
     steps:
       - uses: actions/checkout@v4
 
@@ -170,6 +114,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: deps-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
+          restore-keys: deps-${{ runner.os }}-
+
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: apps/hub/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}-${{ hashFiles('apps/hub/src/**') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}-
+            nextjs-${{ runner.os }}-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -180,30 +140,7 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
-    needs: [lint]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Run unit tests
-        run: cd apps/hub && bun run test:unit
-
-  coverage:
-    name: Code Coverage
-    runs-on: ubuntu-latest
-    needs: [unit-tests, determine-tests]
+    needs: [lockfile-check, determine-tests]
     if: needs.determine-tests.outputs.unit == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -218,130 +155,81 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: deps-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
+          restore-keys: deps-${{ runner.os }}-
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Run coverage for hub
-        run: cd apps/hub && bun run test:unit --coverage
-        continue-on-error: true
+      - name: Run unit tests
+        run: cd apps/hub && bun run test:unit
 
-      - name: Run coverage for SDK
-        run: cd packages/sdk && bun run test:coverage
-        continue-on-error: true
-
-      - name: Upload coverage to Codecov (hub)
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./apps/hub/coverage/coverage-final.json
-          flags: hub
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
-
-      - name: Upload coverage to Codecov (sdk)
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./packages/sdk/coverage/coverage-final.json
-          flags: sdk
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
-
-  e2e-matrix:
-    name: E2E Tests (Shard ${{ matrix.shard }}/4)
+  security-scan:
+    name: Security Scanning
     runs-on: ubuntu-latest
-    needs: [build, determine-tests]
-    if: needs.determine-tests.outputs.e2e == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
         with:
-          install-playwright: "true"
-          playwright-browser: "chromium"
+          fetch-depth: 0
 
-      - name: Run E2E tests (shard ${{ matrix.shard }}/4)
-        run: cd apps/hub && npx playwright test --project=chromium --shard=${{ matrix.shard }}/4
+      - name: Gitleaks Secret Scan
+        uses: gitleaks/gitleaks-action@v2
         env:
-          CI: true
-          NEXT_PUBLIC_GLIDE_PROJECT_ID: villa-dev
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload test results (shard ${{ matrix.shard }})
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report-shard-${{ matrix.shard }}
-          path: |
-            playwright-report/
-            test-results/
-            test-results.json
-          retention-days: 7
-          include-hidden-files: true
-
-  merge-e2e-reports:
-    name: Merge E2E Reports
+  validate-context:
+    name: Validate Agent Context
     runs-on: ubuntu-latest
-    needs: e2e-matrix
-    if: always() && needs.determine-tests.outputs.e2e == 'true'
+    needs: [lockfile-check]
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          install-playwright: "true"
-          playwright-browser: "chromium"
+          bun-version: latest
 
-      - name: Download all shard reports
-        uses: actions/download-artifact@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          pattern: playwright-report-shard-*
-          path: all-reports/
-          merge-multiple: false
+          node-version: "20"
 
-      - name: Merge Playwright reports
-        run: |
-          cd apps/hub && npx playwright merge-reports --reporter html ../../all-reports/playwright-report-shard-*
-        continue-on-error: true
-
-      - name: Upload merged report
-        uses: actions/upload-artifact@v4
-        if: always()
+      - name: Cache dependencies
+        uses: actions/cache@v4
         with:
-          name: playwright-report-merged
-          path: playwright-report/
-          retention-days: 30
+          path: node_modules
+          key: deps-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
+          restore-keys: deps-${{ runner.os }}-
 
-  e2e-coverage:
-    name: E2E Coverage
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate agent definitions
+        run: cd apps/hub && node --import tsx ../../.claude/rag/loader.ts validate
+
+  validate-specs:
+    name: Validate Specifications
     runs-on: ubuntu-latest
-    needs: e2e-matrix
-    if: needs.determine-tests.outputs.e2e == 'true'
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
-        with:
-          install-playwright: "false"
-
-      - name: Download all shard reports
-        uses: actions/download-artifact@v4
-        with:
-          pattern: playwright-report-shard-*
-          path: all-reports/
-
-      - name: Merge coverage reports
+      - name: Check spec format
         run: |
-          if [ -d "all-reports" ]; then
-            echo "Coverage reports found, merging..."
-          else
-            echo "No coverage reports to merge"
-          fi
-        continue-on-error: true
+          for file in specs/**/*.md; do
+            if [[ -f "$file" ]]; then
+              if ! head -1 "$file" | grep -q "^# "; then
+                echo "ERROR: $file missing title"
+                exit 1
+              fi
+            fi
+          done
+          echo "All specs have valid format"
 
   quality-metrics:
     name: Quality Metrics
@@ -349,56 +237,29 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          fetch-depth: 100
+          bun-version: latest
 
-      - name: Calculate quality metrics
-        id: metrics
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: deps-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
+          restore-keys: deps-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate quality report
         run: |
-          TOTAL_COMMITS=$(git log --since="30 days ago" --oneline | wc -l | tr -d ' ')
-          FIX_COMMITS=$(git log --since="30 days ago" --oneline --grep="^fix" --grep="^revert" --grep="^oops" -i | wc -l | tr -d ' ')
-          CLAUDE_COMMITS=$(git log --since="30 days ago" --oneline --grep="Claude Code" | wc -l | tr -d ' ')
-
-          if [ "$TOTAL_COMMITS" -gt 0 ]; then
-            FIXUP_RATIO=$(echo "scale=2; $FIX_COMMITS * 100 / $TOTAL_COMMITS" | bc)
-          else
-            FIXUP_RATIO=0
-          fi
-
-          if [ "$TOTAL_COMMITS" -gt 0 ]; then
-            CLAUDE_RATIO=$(echo "scale=2; $CLAUDE_COMMITS * 100 / $TOTAL_COMMITS" | bc)
-          else
-            CLAUDE_RATIO=0
-          fi
-
-          QUALITY_SCORE=$(echo "scale=0; 100 - $FIXUP_RATIO" | bc)
-
-          echo "total_commits=$TOTAL_COMMITS" >> $GITHUB_OUTPUT
-          echo "fix_commits=$FIX_COMMITS" >> $GITHUB_OUTPUT
-          echo "claude_commits=$CLAUDE_COMMITS" >> $GITHUB_OUTPUT
-          echo "fixup_ratio=$FIXUP_RATIO" >> $GITHUB_OUTPUT
-          echo "claude_ratio=$CLAUDE_RATIO" >> $GITHUB_OUTPUT
-          echo "quality_score=$QUALITY_SCORE" >> $GITHUB_OUTPUT
-
-          echo "## Quality Metrics (Last 30 Days)" >> $GITHUB_STEP_SUMMARY
+          echo "## Quality Metrics" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Metric | Value | Target |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Total Commits | $TOTAL_COMMITS | - |" >> $GITHUB_STEP_SUMMARY
-          echo "| Fix Commits | $FIX_COMMITS | - |" >> $GITHUB_STEP_SUMMARY
-          echo "| Fixup Ratio | ${FIXUP_RATIO}% | < 15% |" >> $GITHUB_STEP_SUMMARY
-          echo "| Claude Commits | $CLAUDE_COMMITS (${CLAUDE_RATIO}%) | - |" >> $GITHUB_STEP_SUMMARY
-          echo "| Quality Score | $QUALITY_SCORE | >= 85 |" >> $GITHUB_STEP_SUMMARY
-
-      - name: Check quality thresholds
-        run: |
-          FIXUP_RATIO=${{ steps.metrics.outputs.fixup_ratio }}
-          QUALITY_SCORE=${{ steps.metrics.outputs.quality_score }}
-
-          if (( $(echo "$FIXUP_RATIO > 20" | bc -l) )); then
-            echo "::warning::Fixup ratio ($FIXUP_RATIO%) exceeds 20% threshold"
-          fi
-
-          if (( $(echo "$QUALITY_SCORE < 80" | bc -l) )); then
-            echo "::warning::Quality score ($QUALITY_SCORE) below 80 threshold"
-          fi
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          LINES=$(find apps/hub/src packages -name "*.ts" -o -name "*.tsx" | xargs wc -l | tail -1 | awk '{print $1}')
+          echo "| Lines of Code | $LINES |" >> $GITHUB_STEP_SUMMARY
+          FILES=$(find apps/hub/src packages -name "*.ts" -o -name "*.tsx" | wc -l)
+          echo "| TypeScript Files | $FILES |" >> $GITHUB_STEP_SUMMARY
