@@ -17,8 +17,8 @@ services:
     routes:
       - path: /
     health_check:
-      http_path: /
-      initial_delay_seconds: 10
+      http_path: /api/health
+      initial_delay_seconds: 60
       period_seconds: 10
       timeout_seconds: 5
       success_threshold: 1
@@ -28,5 +28,17 @@ services:
         value: production
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
+      - key: NEXT_PUBLIC_PORTO_ENV
+        value: stg
+        scope: RUN_AND_BUILD_TIME
+      - key: NEXT_PUBLIC_PORTO_DIALOG_HOST
+        value: https://id.porto.sh
+        scope: RUN_AND_BUILD_TIME
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://villa.ondigitalocean.app
+        scope: RUN_AND_BUILD_TIME
+      - key: NEXT_PUBLIC_CHAIN_ID
+        value: "84532"
+        scope: RUN_AND_BUILD_TIME
 
 region: nyc
