@@ -6,41 +6,27 @@
 
 import { z } from "zod";
 import type { Identity } from "./types";
+import {
+  isDevelopment,
+  isLanOrigin,
+  ALLOWED_ORIGINS,
+  DEV_ORIGINS,
+} from "./iframe/validation";
 
-/**
- * Trusted origins for postMessage communication
- * HTTPS-only for security - passkeys require HTTPS anyway
- */
 const TRUSTED_ORIGINS = [
-  "https://villa.cash",
-  "https://www.villa.cash",
-  "https://beta.villa.cash",
-  "https://dev-1.villa.cash",
-  "https://dev-2.villa.cash",
+  ...ALLOWED_ORIGINS,
+  ...DEV_ORIGINS,
   "https://developers.villa.cash",
-  "https://key.villa.cash",
-  "https://beta-key.villa.cash",
-  "https://localhost:3000",
-  "https://localhost:3001",
 ] as const;
 
-/**
- * Check if running in development mode
- */
-function isDevelopment(): boolean {
-  return (
-    typeof process !== "undefined" && process.env?.NODE_ENV === "development"
-  );
-}
-
-/**
- * Validates if origin is trusted
- *
- * @param origin - Origin to validate
- * @returns True if origin is trusted
- */
 function isOriginTrusted(origin: string): boolean {
-  return TRUSTED_ORIGINS.includes(origin as any);
+  if (TRUSTED_ORIGINS.includes(origin as (typeof TRUSTED_ORIGINS)[number])) {
+    return true;
+  }
+  if (isDevelopment() && isLanOrigin(origin)) {
+    return true;
+  }
+  return false;
 }
 
 export interface IframeConfig {

@@ -56,13 +56,32 @@ localhost:443 {
         X-Villa-Env local
     }
 
-    # Health check
     @health path /caddy-health
     handle @health {
         respond "OK" 200
     }
 
-    # All other requests go to Next.js
+    handle {
+        reverse_proxy host.docker.internal:3000
+    }
+}
+
+# LAN access (mobile testing) - IP-based access needs self-signed cert
+https:// {
+    tls internal {
+        on_demand
+    }
+
+    header {
+        X-Forwarded-Proto https
+        X-Villa-Env local
+    }
+
+    @health path /caddy-health
+    handle @health {
+        respond "OK" 200
+    }
+
     handle {
         reverse_proxy host.docker.internal:3000
     }
