@@ -93,3 +93,40 @@ export const ENVIRONMENT_URLS: Record<Environment, string> = {
   production: "https://villa.cash/api/health",
   developers: "https://developers.villa.cash",
 };
+
+export const PIPELINE_STAGES = [
+  {
+    id: "local",
+    name: "Local Dev",
+    description: "bun dev + bun verify",
+    url: "https://local.villa.cash",
+    trigger: "manual",
+  },
+  {
+    id: "pr",
+    name: "Pull Request",
+    description: "CI: lint, type, E2E tests",
+    url: null,
+    trigger: "auto",
+  },
+  {
+    id: "staging",
+    name: "Staging",
+    description: "Auto-deploy on merge to main",
+    url: "https://beta.villa.cash",
+    trigger: "auto",
+  },
+  {
+    id: "production",
+    name: "Production",
+    description: "Deploy on v* tag",
+    url: "https://villa.cash",
+    trigger: "manual",
+  },
+] as const;
+
+export const ENVIRONMENT_HEALTH_ENDPOINTS = {
+  staging: "https://beta.villa.cash/api/health",
+  production: "https://villa.cash/api/health",
+  developers: "https://developers.villa.cash",
+} as const;
