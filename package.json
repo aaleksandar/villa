@@ -19,6 +19,7 @@
     "dev:docker": "docker compose --profile dev up -d && bun dev",
     "dev:docker:down": "docker compose down",
     "dev:developers": "bun run --cwd apps/developers dev",
+    "dev:telemetry": "turbo run dev --filter=@villa/telemetry",
     "docker:dev": "docker compose --profile dev up -d",
     "docker:https": "docker compose --profile https up -d",
     "docker:full": "docker compose --profile full up -d",
