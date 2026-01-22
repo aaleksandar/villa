@@ -1,19 +1,21 @@
-import { Porto, Dialog, Mode } from 'porto'
-import * as Chains from 'porto/core/Chains'
-import type { ThemeFragment } from 'porto/theme'
+import { Porto, Dialog, Mode } from "porto";
+import * as Chains from "porto/core/Chains";
+import type { ThemeFragment } from "porto/theme";
 
 /**
  * Get Porto chains based on environment
  * - Production: Base mainnet only
  * - Staging/Dev: Base Sepolia only (for testing with deployed contracts)
  */
-function getPortoChains(): readonly [typeof Chains.base] | readonly [typeof Chains.baseSepolia] {
-  const chainId = process.env.NEXT_PUBLIC_CHAIN_ID
-  if (chainId === '84532') {
-    return [Chains.baseSepolia] as const
+function getPortoChains():
+  | readonly [typeof Chains.base]
+  | readonly [typeof Chains.baseSepolia] {
+  const chainId = process.env.NEXT_PUBLIC_CHAIN_ID;
+  if (chainId === "84532") {
+    return [Chains.baseSepolia] as const;
   }
   // Default to Base mainnet for production
-  return [Chains.base] as const
+  return [Chains.base] as const;
 }
 
 /**
@@ -21,49 +23,49 @@ function getPortoChains(): readonly [typeof Chains.base] | readonly [typeof Chai
  * Cream backgrounds, ink text, yellow accents
  */
 export const villaTheme: ThemeFragment = {
-  colorScheme: 'light',
+  colorScheme: "light",
 
   // Yellow accent (#ffe047)
-  accent: '#ffe047',
+  accent: "#ffe047",
 
   // Primary button styling (yellow with brown text)
-  primaryBackground: '#ffe047',
-  primaryContent: '#382207',
-  primaryBorder: '#ffe047',
-  primaryHoveredBackground: '#f5d63d',
-  primaryHoveredBorder: '#f5d63d',
+  primaryBackground: "#ffe047",
+  primaryContent: "#382207",
+  primaryBorder: "#ffe047",
+  primaryHoveredBackground: "#f5d63d",
+  primaryHoveredBorder: "#f5d63d",
 
   // Secondary button (cream with ink)
-  secondaryBackground: '#fef9f0',
-  secondaryContent: '#0d0d17',
-  secondaryBorder: '#e0e0e6',
-  secondaryHoveredBackground: '#fdf3e0',
-  secondaryHoveredBorder: '#c4c4cc',
+  secondaryBackground: "#fef9f0",
+  secondaryContent: "#0d0d17",
+  secondaryBorder: "#e0e0e6",
+  secondaryHoveredBackground: "#fdf3e0",
+  secondaryHoveredBorder: "#c4c4cc",
 
   // Base colors (cream backgrounds, ink text)
-  baseBackground: '#fffcf8',
-  baseAltBackground: '#fef9f0',
-  basePlaneBackground: '#fdf3e0',
-  baseContent: '#0d0d17',
-  baseContentSecondary: '#45454f',
-  baseContentTertiary: '#61616b',
-  baseBorder: '#e0e0e6',
-  baseHoveredBackground: '#fef9f0',
+  baseBackground: "#fffcf8",
+  baseAltBackground: "#fef9f0",
+  basePlaneBackground: "#fdf3e0",
+  baseContent: "#0d0d17",
+  baseContentSecondary: "#45454f",
+  baseContentTertiary: "#61616b",
+  baseBorder: "#e0e0e6",
+  baseHoveredBackground: "#fef9f0",
 
   // Frame (dialog container)
-  frameBackground: '#fffcf8',
-  frameBorder: '#e0e0e6',
-  frameContent: '#0d0d17',
+  frameBackground: "#fffcf8",
+  frameBorder: "#e0e0e6",
+  frameContent: "#0d0d17",
   frameRadius: 14,
 
   // Form fields
-  fieldBackground: '#fffcf8',
-  fieldContent: '#0d0d17',
-  fieldContentSecondary: '#45454f',
-  fieldBorder: '#e0e0e6',
-  fieldFocusedBackground: '#fffcf8',
-  fieldFocusedContent: '#0d0d17',
-  fieldErrorBorder: '#ef4444',
+  fieldBackground: "#fffcf8",
+  fieldContent: "#0d0d17",
+  fieldContentSecondary: "#45454f",
+  fieldBorder: "#e0e0e6",
+  fieldFocusedBackground: "#fffcf8",
+  fieldFocusedContent: "#0d0d17",
+  fieldErrorBorder: "#ef4444",
 
   // Border radius (matches Tailwind config)
   radiusSmall: 6,
@@ -71,29 +73,29 @@ export const villaTheme: ThemeFragment = {
   radiusLarge: 14,
 
   // Status colors (green from brand)
-  positiveBackground: '#e8f5e8',
-  positiveContent: '#698f69',
-  positiveBorder: '#698f69',
+  positiveBackground: "#e8f5e8",
+  positiveContent: "#698f69",
+  positiveBorder: "#698f69",
 
-  negativeBackground: '#fee2e2',
-  negativeContent: '#dc2626',
-  negativeBorder: '#fca5a5',
+  negativeBackground: "#fee2e2",
+  negativeContent: "#dc2626",
+  negativeBorder: "#fca5a5",
 
   // Focus ring (yellow)
-  focus: '#ffe047',
+  focus: "#ffe047",
 
   // Links (brown accent)
-  link: '#382207',
+  link: "#382207",
 
   // Separators
-  separator: '#e0e0e6',
-}
+  separator: "#e0e0e6",
+};
 
 // Porto instance management
-let portoInstance: ReturnType<typeof Porto.create> | null = null
-let portoRelayInstance: ReturnType<typeof Porto.create> | null = null
-let themeController: Dialog.ThemeController | null = null
-let currentMode: 'popup' | 'inline' = 'popup'
+let portoInstance: ReturnType<typeof Porto.create> | null = null;
+let portoRelayInstance: ReturnType<typeof Porto.create> | null = null;
+let themeController: Dialog.ThemeController | null = null;
+let currentMode: "popup" | "inline" = "popup";
 
 /**
  * Custom WebAuthn handlers for relay mode
@@ -101,23 +103,23 @@ let currentMode: 'popup' | 'inline' = 'popup'
  */
 export interface VillaWebAuthnHandlers {
   /** Called before passkey creation starts */
-  onPasskeyCreate?: (options: CredentialCreationOptions) => Promise<void>
+  onPasskeyCreate?: (options: CredentialCreationOptions) => Promise<void>;
   /** Called before passkey selection starts */
-  onPasskeyGet?: (options: CredentialRequestOptions) => Promise<void>
+  onPasskeyGet?: (options: CredentialRequestOptions) => Promise<void>;
   /** Called when authentication completes successfully */
-  onComplete?: (result: { address: string }) => void
+  onComplete?: (result: { address: string }) => void;
   /** Called when authentication fails */
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void;
 }
 
-let webAuthnHandlers: VillaWebAuthnHandlers = {}
+let webAuthnHandlers: VillaWebAuthnHandlers = {};
 
 /**
  * Set custom WebAuthn handlers for relay mode
  * Must be called before using relay mode functions
  */
 export function setWebAuthnHandlers(handlers: VillaWebAuthnHandlers): void {
-  webAuthnHandlers = handlers
+  webAuthnHandlers = handlers;
 }
 
 // Note: Porto SDK labels customization is documented but not yet in types
@@ -141,9 +143,9 @@ export function setWebAuthnHandlers(handlers: VillaWebAuthnHandlers): void {
 
 export interface PortoOptions {
   /** Container element for inline rendering */
-  container?: HTMLElement | null
+  container?: HTMLElement | null;
   /** Force recreate instance even if one exists */
-  forceRecreate?: boolean
+  forceRecreate?: boolean;
 }
 
 /**
@@ -151,20 +153,22 @@ export interface PortoOptions {
  * @param options.container - If provided, uses experimental_inline mode
  * @param options.forceRecreate - Force recreate instance for mode switch
  */
-export function getPorto(options: PortoOptions = {}): ReturnType<typeof Porto.create> {
-  const { container, forceRecreate } = options
-  const requestedMode = container ? 'inline' : 'popup'
+export function getPorto(
+  options: PortoOptions = {},
+): ReturnType<typeof Porto.create> {
+  const { container, forceRecreate } = options;
+  const requestedMode = container ? "inline" : "popup";
 
   // Recreate if mode changed or forced
   if (portoInstance && (forceRecreate || currentMode !== requestedMode)) {
-    portoInstance = null
-    themeController = null
+    portoInstance = null;
+    themeController = null;
   }
 
   if (!portoInstance) {
     // Create theme controller for dynamic updates
-    themeController = Dialog.createThemeController()
-    currentMode = requestedMode
+    themeController = Dialog.createThemeController();
+    currentMode = requestedMode;
 
     if (container) {
       // Use experimental_inline for embedded dialog
@@ -173,49 +177,76 @@ export function getPorto(options: PortoOptions = {}): ReturnType<typeof Porto.cr
         chains: getPortoChains(),
         mode: Mode.dialog({
           renderer: Dialog.experimental_inline({ element: () => container }),
-          host: 'https://id.porto.sh/dialog',
+          host: "https://id.porto.sh/dialog",
           theme: villaTheme,
           themeController,
         }),
-      })
+      });
     } else {
       // Use popup for standalone dialog
       portoInstance = Porto.create({
         chains: getPortoChains(),
         mode: Mode.dialog({
           renderer: Dialog.popup({
-            type: 'popup',
+            type: "popup",
             size: { width: 380, height: 520 },
           }),
-          host: 'https://id.porto.sh/dialog',
+          host: "https://id.porto.sh/dialog",
           theme: villaTheme,
           themeController,
         }),
-      })
+      });
     }
   }
-  return portoInstance
+  return portoInstance;
 }
 
 /**
  * Reset Porto instance (useful when switching between modes)
  */
 export function resetPorto(): void {
-  portoInstance = null
-  themeController = null
+  portoInstance = null;
+  themeController = null;
 }
 
-/**
- * Villa Passkey Domain Configuration
- *
- * keystoreHost determines the WebAuthn Relying Party ID (rpId).
- * Passkeys are permanently bound to this domain - users see "villa.cash"
- * in browser/OS passkey prompts instead of "porto.sh".
- *
- * Always using 'villa.cash' ensures consistent passkey domain across
- * all environments (dev, staging, production).
- */
-const VILLA_KEYSTORE_HOST = 'villa.cash'
+function isLanOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return /^(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})$/.test(
+      url.hostname,
+    );
+  } catch {
+    return false;
+  }
+}
+
+function getKeystoreHost(): string {
+  if (process.env.NODE_ENV === "production") {
+    return "villa.cash";
+  }
+
+  if (typeof window === "undefined") {
+    return "villa.cash";
+  }
+
+  const hostname = window.location.hostname;
+
+  if (isLanOrigin(window.location.origin)) {
+    return hostname;
+  }
+
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return "localhost";
+  }
+
+  if (hostname === "local.villa.cash") {
+    return "villa.cash";
+  }
+
+  return "villa.cash";
+}
+
+const VILLA_KEYSTORE_HOST = getKeystoreHost();
 
 /**
  * Get or create Porto relay instance with custom WebAuthn handlers
@@ -241,80 +272,85 @@ export function getPortoRelay(): ReturnType<typeof Porto.create> {
         webAuthn: {
           createFn: async (options) => {
             if (!options) {
-              throw new Error('WebAuthn creation options are required')
+              throw new Error("WebAuthn creation options are required");
             }
             // Override rp.name to show "Villa" in passkey managers
-            const createOptions = options as CredentialCreationOptions
+            const createOptions = options as CredentialCreationOptions;
             if (createOptions.publicKey?.rp) {
-              createOptions.publicKey.rp.name = 'Villa'
+              createOptions.publicKey.rp.name = "Villa";
             }
             // Notify Villa UI that passkey creation is starting
-            await webAuthnHandlers.onPasskeyCreate?.(createOptions)
+            await webAuthnHandlers.onPasskeyCreate?.(createOptions);
             // Browser shows biometric prompt - user sees "Villa" as the passkey name
-            const credential = await navigator.credentials.create(createOptions)
-            return credential as PublicKeyCredential
+            const credential =
+              await navigator.credentials.create(createOptions);
+            return credential as PublicKeyCredential;
           },
           getFn: async (options) => {
             if (!options) {
-              throw new Error('WebAuthn request options are required')
+              throw new Error("WebAuthn request options are required");
             }
             // Notify Villa UI that passkey selection is starting
-            await webAuthnHandlers.onPasskeyGet?.(options as CredentialRequestOptions)
+            await webAuthnHandlers.onPasskeyGet?.(
+              options as CredentialRequestOptions,
+            );
             // Browser shows biometric prompt - user sees "villa.cash"
-            const assertion = await navigator.credentials.get(options as CredentialRequestOptions)
-            return assertion as PublicKeyCredential
+            const assertion = await navigator.credentials.get(
+              options as CredentialRequestOptions,
+            );
+            return assertion as PublicKeyCredential;
           },
         },
       }),
-    })
+    });
   }
-  return portoRelayInstance
+  return portoRelayInstance;
 }
 
 /**
  * Update Porto theme dynamically
  */
 export function updateTheme(theme: ThemeFragment): void {
-  themeController?.setTheme(theme)
+  themeController?.setTheme(theme);
 }
 
 export interface ConnectResult {
-  success: true
-  address: string
+  success: true;
+  address: string;
 }
 
 export interface ConnectError {
-  success: false
-  error: Error
+  success: false;
+  error: Error;
 }
 
-export type PortoConnectResult = ConnectResult | ConnectError
+export type PortoConnectResult = ConnectResult | ConnectError;
 
 /**
  * Check if user has an existing Porto account connected
  */
 export async function checkExistingAccount(): Promise<string | null> {
   try {
-    const porto = getPorto()
+    const porto = getPorto();
     const result = await porto.provider.request({
-      method: 'eth_accounts',
-    })
+      method: "eth_accounts",
+    });
 
-    const accounts = result as string[]
+    const accounts = result as string[];
     if (accounts && accounts.length > 0) {
-      return accounts[0]
+      return accounts[0];
     }
-    return null
+    return null;
   } catch {
-    return null
+    return null;
   }
 }
 
 export interface AuthOptions {
   /** Container element for inline rendering */
-  container?: HTMLElement | null
+  container?: HTMLElement | null;
   /** Force recreate Porto instance (use when switching modes) */
-  forceRecreate?: boolean
+  forceRecreate?: boolean;
 }
 
 /**
@@ -323,46 +359,56 @@ export interface AuthOptions {
  * @param options.container - Optional element for inline rendering
  * @param options.forceRecreate - Force new instance (default: true for clean state)
  */
-export async function createAccount(options: AuthOptions | HTMLElement | null = {}): Promise<PortoConnectResult> {
+export async function createAccount(
+  options: AuthOptions | HTMLElement | null = {},
+): Promise<PortoConnectResult> {
   // Support legacy signature: createAccount(containerElement)
-  const opts: AuthOptions = options instanceof HTMLElement || options === null
-    ? { container: options, forceRecreate: true }
-    : { forceRecreate: true, ...options }
+  const opts: AuthOptions =
+    options instanceof HTMLElement || options === null
+      ? { container: options, forceRecreate: true }
+      : { forceRecreate: true, ...options };
 
   try {
     // getPorto handles mode switching atomically - no separate resetPorto() needed
-    const porto = getPorto({ container: opts.container, forceRecreate: opts.forceRecreate })
+    const porto = getPorto({
+      container: opts.container,
+      forceRecreate: opts.forceRecreate,
+    });
 
     // Use wallet_connect with createAccount: true to force account creation
     // This ensures Porto shows the passkey creation flow, not sign-in
     const result = await porto.provider.request({
-      method: 'wallet_connect',
-      params: [{
-        capabilities: {
-          createAccount: true,  // Force account creation flow
-          email: false,         // Don't require email for v1
+      method: "wallet_connect",
+      params: [
+        {
+          capabilities: {
+            createAccount: true, // Force account creation flow
+            email: false, // Don't require email for v1
+          },
         },
-      }],
-    })
+      ],
+    });
 
-    const response = result as unknown as { accounts: readonly { address: string }[] }
+    const response = result as unknown as {
+      accounts: readonly { address: string }[];
+    };
 
     if (response.accounts && response.accounts.length > 0) {
       return {
         success: true,
         address: response.accounts[0].address,
-      }
+      };
     }
 
     return {
       success: false,
-      error: new Error('No account returned from Porto'),
-    }
+      error: new Error("No account returned from Porto"),
+    };
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err : new Error('Unknown error'),
-    }
+      error: err instanceof Error ? err : new Error("Unknown error"),
+    };
   }
 }
 
@@ -372,37 +418,43 @@ export async function createAccount(options: AuthOptions | HTMLElement | null = 
  * @param options.container - Optional element for inline rendering
  * @param options.forceRecreate - Force new instance (default: true for clean state)
  */
-export async function signIn(options: AuthOptions | HTMLElement | null = {}): Promise<PortoConnectResult> {
+export async function signIn(
+  options: AuthOptions | HTMLElement | null = {},
+): Promise<PortoConnectResult> {
   // Support legacy signature: signIn(containerElement)
-  const opts: AuthOptions = options instanceof HTMLElement || options === null
-    ? { container: options, forceRecreate: true }
-    : { forceRecreate: true, ...options }
+  const opts: AuthOptions =
+    options instanceof HTMLElement || options === null
+      ? { container: options, forceRecreate: true }
+      : { forceRecreate: true, ...options };
 
   try {
     // getPorto handles mode switching atomically - no separate resetPorto() needed
-    const porto = getPorto({ container: opts.container, forceRecreate: opts.forceRecreate })
+    const porto = getPorto({
+      container: opts.container,
+      forceRecreate: opts.forceRecreate,
+    });
 
     // eth_requestAccounts prompts user to select existing passkey
     const accounts = await porto.provider.request({
-      method: 'eth_requestAccounts',
-    })
+      method: "eth_requestAccounts",
+    });
 
     if (accounts && accounts.length > 0) {
       return {
         success: true,
         address: accounts[0],
-      }
+      };
     }
 
     return {
       success: false,
-      error: new Error('No account selected'),
-    }
+      error: new Error("No account selected"),
+    };
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err : new Error('Unknown error'),
-    }
+      error: err instanceof Error ? err : new Error("Unknown error"),
+    };
   }
 }
 
@@ -411,7 +463,7 @@ export async function signIn(options: AuthOptions | HTMLElement | null = {}): Pr
  * @deprecated Use createAccount() or signIn() for explicit flows
  */
 export async function connectPorto(): Promise<PortoConnectResult> {
-  return createAccount()
+  return createAccount();
 }
 
 /**
@@ -420,19 +472,19 @@ export async function connectPorto(): Promise<PortoConnectResult> {
  */
 export async function disconnectPorto(): Promise<void> {
   try {
-    const porto = getPorto()
+    const porto = getPorto();
     await porto.provider.request({
-      method: 'wallet_disconnect',
-    })
+      method: "wallet_disconnect",
+    });
   } catch {
     // Ignore disconnect errors
   }
 
   // Clear Porto cached session to force passkey re-verification
-  clearPortoStorage()
+  clearPortoStorage();
 
   // Reset instance so next connection is fresh
-  resetPorto()
+  resetPorto();
 }
 
 /**
@@ -440,25 +492,35 @@ export async function disconnectPorto(): Promise<void> {
  * Forces re-authentication on next sign-in
  */
 function clearPortoStorage(): void {
-  if (typeof window === 'undefined') return
+  if (typeof window === "undefined") return;
 
   // Clear all Porto-related storage keys
-  const keysToRemove: string[] = []
+  const keysToRemove: string[] = [];
 
   for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i)
-    if (key && (key.startsWith('porto') || key.includes('porto') || key.includes('ithaca'))) {
-      keysToRemove.push(key)
+    const key = localStorage.key(i);
+    if (
+      key &&
+      (key.startsWith("porto") ||
+        key.includes("porto") ||
+        key.includes("ithaca"))
+    ) {
+      keysToRemove.push(key);
     }
   }
 
-  keysToRemove.forEach(key => localStorage.removeItem(key))
+  keysToRemove.forEach((key) => localStorage.removeItem(key));
 
   // Also clear sessionStorage
   for (let i = sessionStorage.length - 1; i >= 0; i--) {
-    const key = sessionStorage.key(i)
-    if (key && (key.startsWith('porto') || key.includes('porto') || key.includes('ithaca'))) {
-      sessionStorage.removeItem(key)
+    const key = sessionStorage.key(i);
+    if (
+      key &&
+      (key.startsWith("porto") ||
+        key.includes("porto") ||
+        key.includes("ithaca"))
+    ) {
+      sessionStorage.removeItem(key);
     }
   }
 }
@@ -468,9 +530,9 @@ function clearPortoStorage(): void {
  */
 export function isPortoSupported(): boolean {
   return (
-    typeof window !== 'undefined' &&
-    typeof window.PublicKeyCredential !== 'undefined'
-  )
+    typeof window !== "undefined" &&
+    typeof window.PublicKeyCredential !== "undefined"
+  );
 }
 
 /**
@@ -480,16 +542,19 @@ export function isPortoSupported(): boolean {
  * @param address The address signing the message
  * @returns The signature as a hex string
  */
-export async function signMessage(message: string, address: string): Promise<string> {
-  const porto = getPorto()
+export async function signMessage(
+  message: string,
+  address: string,
+): Promise<string> {
+  const porto = getPorto();
 
   // Porto's provider.request expects typed params
   const signature = await porto.provider.request({
-    method: 'personal_sign',
+    method: "personal_sign",
     params: [message as `0x${string}`, address as `0x${string}`],
-  })
+  });
 
-  return signature as string
+  return signature as string;
 }
 
 /**
@@ -499,15 +564,18 @@ export async function signMessage(message: string, address: string): Promise<str
  * @param address The address signing the message
  * @returns The signature as a hex string
  */
-export async function signMessageHeadless(message: string, address: string): Promise<string> {
-  const porto = getPortoRelay()
+export async function signMessageHeadless(
+  message: string,
+  address: string,
+): Promise<string> {
+  const porto = getPortoRelay();
 
   const signature = await porto.provider.request({
-    method: 'personal_sign',
+    method: "personal_sign",
     params: [message as `0x${string}`, address as `0x${string}`],
-  })
+  });
 
-  return signature as string
+  return signature as string;
 }
 
 /**
@@ -516,25 +584,25 @@ export async function signMessageHeadless(message: string, address: string): Pro
  * @returns Transaction hash
  */
 export async function sendTransaction(params: {
-  to: `0x${string}`
-  value?: bigint
-  data?: `0x${string}`
+  to: `0x${string}`;
+  value?: bigint;
+  data?: `0x${string}`;
 }): Promise<string> {
-  const porto = getPorto()
+  const porto = getPorto();
 
   // Get the connected accounts first
   const accounts = await porto.provider.request({
-    method: 'eth_accounts',
-  })
+    method: "eth_accounts",
+  });
 
   if (!accounts || accounts.length === 0) {
-    throw new Error('No connected account')
+    throw new Error("No connected account");
   }
 
-  const from = accounts[0] as `0x${string}`
+  const from = accounts[0] as `0x${string}`;
 
   const txHash = await porto.provider.request({
-    method: 'eth_sendTransaction',
+    method: "eth_sendTransaction",
     params: [
       {
         from,
@@ -543,9 +611,9 @@ export async function sendTransaction(params: {
         data: params.data,
       },
     ],
-  })
+  });
 
-  return txHash as string
+  return txHash as string;
 }
 
 /**
@@ -555,25 +623,25 @@ export async function sendTransaction(params: {
  * @returns Transaction hash
  */
 export async function sendTransactionHeadless(params: {
-  to: `0x${string}`
-  value?: bigint
-  data?: `0x${string}`
+  to: `0x${string}`;
+  value?: bigint;
+  data?: `0x${string}`;
 }): Promise<string> {
-  const porto = getPortoRelay()
+  const porto = getPortoRelay();
 
   // Get the connected accounts first
   const accounts = await porto.provider.request({
-    method: 'eth_accounts',
-  })
+    method: "eth_accounts",
+  });
 
   if (!accounts || accounts.length === 0) {
-    throw new Error('No connected account')
+    throw new Error("No connected account");
   }
 
-  const from = accounts[0] as `0x${string}`
+  const from = accounts[0] as `0x${string}`;
 
   const txHash = await porto.provider.request({
-    method: 'eth_sendTransaction',
+    method: "eth_sendTransaction",
     params: [
       {
         from,
@@ -582,9 +650,9 @@ export async function sendTransactionHeadless(params: {
         data: params.data,
       },
     ],
-  })
+  });
 
-  return txHash as string
+  return txHash as string;
 }
 
 /**
@@ -592,71 +660,80 @@ export async function sendTransactionHeadless(params: {
  * Compatible with EIP-4361
  */
 export function generateSiweMessage(params: {
-  address: string
-  domain?: string
-  uri?: string
-  nonce?: string
-  issuedAt?: string
-  expirationTime?: string
-  statement?: string
+  address: string;
+  domain?: string;
+  uri?: string;
+  nonce?: string;
+  issuedAt?: string;
+  expirationTime?: string;
+  statement?: string;
 }): string {
   const {
     address,
-    domain = typeof window !== 'undefined' ? window.location.host : 'villa.cash',
-    uri = typeof window !== 'undefined' ? window.location.origin : 'https://villa.cash',
+    domain = typeof window !== "undefined"
+      ? window.location.host
+      : "villa.cash",
+    uri = typeof window !== "undefined"
+      ? window.location.origin
+      : "https://villa.cash",
     nonce = generateNonce(),
     issuedAt = new Date().toISOString(),
-    statement = 'Sign in to Villa',
-  } = params
+    statement = "Sign in to Villa",
+  } = params;
 
   // EIP-4361 SIWE message format
   return [
     `${domain} wants you to sign in with your Ethereum account:`,
     address,
-    '',
+    "",
     statement,
-    '',
+    "",
     `URI: ${uri}`,
     `Version: 1`,
     `Chain ID: 8453`, // Base mainnet
     `Nonce: ${nonce}`,
     `Issued At: ${issuedAt}`,
-  ].join('\n')
+  ].join("\n");
 }
 
 /**
  * Generate a random nonce for SIWE
  */
 function generateNonce(): string {
-  const array = new Uint8Array(16)
-  if (typeof window !== 'undefined' && window.crypto) {
-    window.crypto.getRandomValues(array)
+  const array = new Uint8Array(16);
+  if (typeof window !== "undefined" && window.crypto) {
+    window.crypto.getRandomValues(array);
   } else {
     // Fallback for SSR
     for (let i = 0; i < array.length; i++) {
-      array[i] = Math.floor(Math.random() * 256)
+      array[i] = Math.floor(Math.random() * 256);
     }
   }
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join(
+    "",
+  );
 }
 
 /**
  * Sign a SIWE message for authentication
  * Returns both the message and signature for verification
  */
-export async function signSiweMessage(address: string, options?: {
-  statement?: string
-  nonce?: string
-}): Promise<{ message: string; signature: string }> {
+export async function signSiweMessage(
+  address: string,
+  options?: {
+    statement?: string;
+    nonce?: string;
+  },
+): Promise<{ message: string; signature: string }> {
   const message = generateSiweMessage({
     address,
     statement: options?.statement,
     nonce: options?.nonce,
-  })
+  });
 
-  const signature = await signMessage(message, address)
+  const signature = await signMessage(message, address);
 
-  return { message, signature }
+  return { message, signature };
 }
 
 /**
@@ -666,36 +743,40 @@ export async function signSiweMessage(address: string, options?: {
  */
 export async function createAccountHeadless(): Promise<PortoConnectResult> {
   try {
-    const porto = getPortoRelay()
+    const porto = getPortoRelay();
     const result = await porto.provider.request({
-      method: 'wallet_connect',
-      params: [{
-        capabilities: {
-          createAccount: true,  // Force account creation flow
-          email: false,
+      method: "wallet_connect",
+      params: [
+        {
+          capabilities: {
+            createAccount: true, // Force account creation flow
+            email: false,
+          },
         },
-      }],
-    })
+      ],
+    });
 
-    const response = result as unknown as { accounts: readonly { address: string }[] }
+    const response = result as unknown as {
+      accounts: readonly { address: string }[];
+    };
 
     if (response.accounts && response.accounts.length > 0) {
-      const address = response.accounts[0].address
-      webAuthnHandlers.onComplete?.({ address })
-      return { success: true, address }
+      const address = response.accounts[0].address;
+      webAuthnHandlers.onComplete?.({ address });
+      return { success: true, address };
     }
 
     return {
       success: false,
-      error: new Error('No account returned from Porto'),
-    }
+      error: new Error("No account returned from Porto"),
+    };
   } catch (err) {
-    const error = err instanceof Error ? err : new Error('Unknown error')
-    webAuthnHandlers.onError?.(error)
+    const error = err instanceof Error ? err : new Error("Unknown error");
+    webAuthnHandlers.onError?.(error);
     return {
       success: false,
       error,
-    }
+    };
   }
 }
 
@@ -706,28 +787,28 @@ export async function createAccountHeadless(): Promise<PortoConnectResult> {
  */
 export async function signInHeadless(): Promise<PortoConnectResult> {
   try {
-    const porto = getPortoRelay()
+    const porto = getPortoRelay();
     const accounts = await porto.provider.request({
-      method: 'eth_requestAccounts',
-    })
+      method: "eth_requestAccounts",
+    });
 
     if (accounts && accounts.length > 0) {
-      const address = accounts[0]
-      webAuthnHandlers.onComplete?.({ address })
-      return { success: true, address }
+      const address = accounts[0];
+      webAuthnHandlers.onComplete?.({ address });
+      return { success: true, address };
     }
 
     return {
       success: false,
-      error: new Error('No account selected'),
-    }
+      error: new Error("No account selected"),
+    };
   } catch (err) {
-    const error = err instanceof Error ? err : new Error('Unknown error')
-    webAuthnHandlers.onError?.(error)
+    const error = err instanceof Error ? err : new Error("Unknown error");
+    webAuthnHandlers.onError?.(error);
     return {
       success: false,
       error,
-    }
+    };
   }
 }
 
@@ -737,31 +818,31 @@ export async function signInHeadless(): Promise<PortoConnectResult> {
  */
 export async function signInImmediate(): Promise<PortoConnectResult> {
   try {
-    const porto = getPortoRelay()
+    const porto = getPortoRelay();
     const accounts = await porto.provider.request({
-      method: 'eth_requestAccounts',
-    })
+      method: "eth_requestAccounts",
+    });
 
     if (accounts && accounts.length > 0) {
-      const address = accounts[0]
-      webAuthnHandlers.onComplete?.({ address })
-      return { success: true, address }
+      const address = accounts[0];
+      webAuthnHandlers.onComplete?.({ address });
+      return { success: true, address };
     }
 
     return {
       success: false,
-      error: new Error('No account selected'),
-    }
+      error: new Error("No account selected"),
+    };
   } catch (err) {
-    const error = err instanceof Error ? err : new Error('Unknown error')
-    webAuthnHandlers.onError?.(error)
-    return { success: false, error }
+    const error = err instanceof Error ? err : new Error("Unknown error");
+    webAuthnHandlers.onError?.(error);
+    return { success: false, error };
   }
 }
 
 // Porto iframe instance for key.villa.cash auth
-let portoIframeInstance: ReturnType<typeof Porto.create> | null = null
-let portoRpcServerInstance: ReturnType<typeof Porto.create> | null = null
+let portoIframeInstance: ReturnType<typeof Porto.create> | null = null;
+let portoRpcServerInstance: ReturnType<typeof Porto.create> | null = null;
 
 /**
  * Get environment-aware dialog host for rpcServer mode
@@ -769,10 +850,10 @@ let portoRpcServerInstance: ReturnType<typeof Porto.create> | null = null
  * - Development: https://localhost:3000/auth
  */
 function getDialogHost(): string {
-  if (process.env.NODE_ENV === 'production') {
-    return 'https://key.villa.cash/auth'
+  if (process.env.NODE_ENV === "production") {
+    return "https://key.villa.cash/auth";
   }
-  return 'https://localhost:3000/auth'
+  return "https://localhost:3000/auth";
 }
 
 /**
@@ -784,7 +865,9 @@ function getDialogHost(): string {
  *
  * @param container - Optional container for inline rendering
  */
-export function getPortoIframe(container?: HTMLElement): ReturnType<typeof Porto.create> {
+export function getPortoIframe(
+  container?: HTMLElement,
+): ReturnType<typeof Porto.create> {
   // Always create fresh instance to ensure clean state
   portoIframeInstance = Porto.create({
     chains: getPortoChains(),
@@ -792,15 +875,15 @@ export function getPortoIframe(container?: HTMLElement): ReturnType<typeof Porto
       renderer: container
         ? Dialog.experimental_inline({ element: () => container })
         : Dialog.popup({
-            type: 'popup',
+            type: "popup",
             size: { width: 380, height: 520 },
           }),
-      host: 'https://id.porto.sh/dialog',
+      host: "https://id.porto.sh/dialog",
       theme: villaTheme,
     }),
-  })
+  });
 
-  return portoIframeInstance
+  return portoIframeInstance;
 }
 
 /**
@@ -812,7 +895,9 @@ export function getPortoIframe(container?: HTMLElement): ReturnType<typeof Porto
  * Uses Mode.dialog with custom host pointing to our self-hosted auth page
  * This allows us to control the dialog rendering while maintaining 1Password compatibility
  */
-export function getPortoRpcServer(container?: HTMLElement): ReturnType<typeof Porto.create> {
+export function getPortoRpcServer(
+  container?: HTMLElement,
+): ReturnType<typeof Porto.create> {
   // Always create fresh instance to ensure clean state
   portoRpcServerInstance = Porto.create({
     chains: getPortoChains(),
@@ -820,14 +905,14 @@ export function getPortoRpcServer(container?: HTMLElement): ReturnType<typeof Po
       renderer: container
         ? Dialog.experimental_inline({ element: () => container })
         : Dialog.popup({
-            type: 'popup',
+            type: "popup",
             size: { width: 380, height: 520 },
           }),
       host: getDialogHost(), // Points to key.villa.cash/auth (production) or localhost:3000/auth (dev)
       theme: villaTheme,
     }),
-  })
-  return portoRpcServerInstance
+  });
+  return portoRpcServerInstance;
 }
 
 /**
@@ -835,34 +920,40 @@ export function getPortoRpcServer(container?: HTMLElement): ReturnType<typeof Po
  * Shows Porto dialog, 1Password can intercept
  * Uses createAccount: true capability to force new account creation
  */
-export async function createAccountDialog(container?: HTMLElement): Promise<PortoConnectResult> {
+export async function createAccountDialog(
+  container?: HTMLElement,
+): Promise<PortoConnectResult> {
   try {
-    const porto = getPortoIframe(container)
+    const porto = getPortoIframe(container);
     const result = await porto.provider.request({
-      method: 'wallet_connect',
-      params: [{
-        capabilities: {
-          createAccount: true,  // Force account creation flow
-          email: false,
+      method: "wallet_connect",
+      params: [
+        {
+          capabilities: {
+            createAccount: true, // Force account creation flow
+            email: false,
+          },
         },
-      }],
-    })
+      ],
+    });
 
-    const response = result as unknown as { accounts: readonly { address: string }[] }
+    const response = result as unknown as {
+      accounts: readonly { address: string }[];
+    };
 
     if (response.accounts && response.accounts.length > 0) {
-      return { success: true, address: response.accounts[0].address }
+      return { success: true, address: response.accounts[0].address };
     }
 
     return {
       success: false,
-      error: new Error('No account returned from Porto'),
-    }
+      error: new Error("No account returned from Porto"),
+    };
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err : new Error('Unknown error'),
-    }
+      error: err instanceof Error ? err : new Error("Unknown error"),
+    };
   }
 }
 
@@ -870,26 +961,28 @@ export async function createAccountDialog(container?: HTMLElement): Promise<Port
  * Sign in using dialog mode (for key.villa.cash iframe)
  * Shows Porto dialog, 1Password can intercept
  */
-export async function signInDialog(container?: HTMLElement): Promise<PortoConnectResult> {
+export async function signInDialog(
+  container?: HTMLElement,
+): Promise<PortoConnectResult> {
   try {
-    const porto = getPortoIframe(container)
+    const porto = getPortoIframe(container);
     const accounts = await porto.provider.request({
-      method: 'eth_requestAccounts',
-    })
+      method: "eth_requestAccounts",
+    });
 
     if (accounts && accounts.length > 0) {
-      return { success: true, address: accounts[0] }
+      return { success: true, address: accounts[0] };
     }
 
     return {
       success: false,
-      error: new Error('No account selected'),
-    }
+      error: new Error("No account selected"),
+    };
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err : new Error('Unknown error'),
-    }
+      error: err instanceof Error ? err : new Error("Unknown error"),
+    };
   }
 }
 
@@ -899,34 +992,40 @@ export async function signInDialog(container?: HTMLElement): Promise<PortoConnec
  * Passkeys bound to key.villa.cash domain - 1Password works
  * @param container - Optional container element for inline rendering
  */
-export async function createAccountRpcServer(container?: HTMLElement): Promise<PortoConnectResult> {
+export async function createAccountRpcServer(
+  container?: HTMLElement,
+): Promise<PortoConnectResult> {
   try {
-    const porto = getPortoRpcServer(container)
+    const porto = getPortoRpcServer(container);
     const result = await porto.provider.request({
-      method: 'wallet_connect',
-      params: [{
-        capabilities: {
-          createAccount: true,  // Force account creation flow
-          email: false,
+      method: "wallet_connect",
+      params: [
+        {
+          capabilities: {
+            createAccount: true, // Force account creation flow
+            email: false,
+          },
         },
-      }],
-    })
+      ],
+    });
 
-    const response = result as unknown as { accounts: readonly { address: string }[] }
+    const response = result as unknown as {
+      accounts: readonly { address: string }[];
+    };
 
     if (response.accounts && response.accounts.length > 0) {
-      return { success: true, address: response.accounts[0].address }
+      return { success: true, address: response.accounts[0].address };
     }
 
     return {
       success: false,
-      error: new Error('No account returned from Porto'),
-    }
+      error: new Error("No account returned from Porto"),
+    };
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err : new Error('Unknown error'),
-    }
+      error: err instanceof Error ? err : new Error("Unknown error"),
+    };
   }
 }
 
@@ -936,25 +1035,27 @@ export async function createAccountRpcServer(container?: HTMLElement): Promise<P
  * Passkeys bound to key.villa.cash domain - 1Password works
  * @param container - Optional container element for inline rendering
  */
-export async function signInRpcServer(container?: HTMLElement): Promise<PortoConnectResult> {
+export async function signInRpcServer(
+  container?: HTMLElement,
+): Promise<PortoConnectResult> {
   try {
-    const porto = getPortoRpcServer(container)
+    const porto = getPortoRpcServer(container);
     const accounts = await porto.provider.request({
-      method: 'eth_requestAccounts',
-    })
+      method: "eth_requestAccounts",
+    });
 
     if (accounts && accounts.length > 0) {
-      return { success: true, address: accounts[0] }
+      return { success: true, address: accounts[0] };
     }
 
     return {
       success: false,
-      error: new Error('No account selected'),
-    }
+      error: new Error("No account selected"),
+    };
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err : new Error('Unknown error'),
-    }
+      error: err instanceof Error ? err : new Error("Unknown error"),
+    };
   }
 }

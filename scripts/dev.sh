@@ -61,6 +61,30 @@ check_docker() {
     return 0
 }
 
+get_lan_ip() {
+    if command -v ipconfig &> /dev/null; then
+        ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null
+    elif command -v ip &> /dev/null; then
+        ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}'
+    fi
+}
+
+show_mobile_qr() {
+    local IP=$(get_lan_ip)
+    if [ -n "$IP" ]; then
+        echo ""
+        echo -e "${CYAN}📱 Mobile Testing:${NC}"
+        echo -e "   URL: ${GREEN}https://$IP${NC}"
+        echo ""
+        if command -v npx &> /dev/null; then
+            npx --yes qrcode-terminal "https://$IP" --small 2>/dev/null || true
+        fi
+        echo ""
+        echo -e "${YELLOW}⚠️  Accept the self-signed certificate on mobile${NC}"
+        echo ""
+    fi
+}
+
 # ─────────────────────────────────────────
 # HYBRID MODE: Native Next.js + Docker HTTPS
 # ─────────────────────────────────────────
@@ -125,7 +149,8 @@ start_hybrid() {
 
     echo -e "App: ${GREEN}$DEV_URL${NC}"
     echo -e "${BLUE}────────────────────────────────────────${NC}"
-    echo ""
+
+    show_mobile_qr
 
     # Cleanup on exit
     trap 'echo ""; echo -e "${YELLOW}Stopping...${NC}"; docker-compose -f docker-compose.local.yml down 2>/dev/null; exit' INT TERM

@@ -118,6 +118,25 @@ bun dev:https        # Passkey testing (requires mkcert)
 bun verify           # Run before every push (typecheck + build + E2E)
 ```
 
+### Mobile Device Testing (LAN)
+
+Test on real mobile devices over your local network:
+
+```bash
+# 1. Start the local dev server with HTTPS proxy
+pnpm dev:local
+
+# 2. Get your machine's local IP
+ipconfig getifaddr en0  # macOS
+
+# 3. On your phone (same WiFi network)
+# Navigate to: https://<YOUR_IP>
+# Example: https://192.168.1.100
+# Accept the self-signed certificate warning
+```
+
+The SDK automatically detects LAN IP addresses and routes auth through the local server.
+
 ## Contract Addresses (Base Sepolia)
 
 | Contract                  | Address                                      |

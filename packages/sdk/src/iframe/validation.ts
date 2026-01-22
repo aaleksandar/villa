@@ -38,6 +38,23 @@ export const DEV_ORIGINS = [
 ] as const;
 
 /**
+ * Check if origin is a LAN IP address (for mobile device testing)
+ * Matches patterns like https://192.168.1.100 or https://10.0.0.5
+ */
+export function isLanOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    const hostname = url.hostname;
+    // Match private IP ranges: 10.x.x.x, 172.16-31.x.x, 192.168.x.x
+    return /^(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})$/.test(
+      hostname,
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Check if we're in development mode
  */
 export function isDevelopment(): boolean {
@@ -47,11 +64,13 @@ export function isDevelopment(): boolean {
   ) {
     return true;
   }
-  // Browser environment check
   if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
     return (
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1"
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "local.villa.cash" ||
+      isLanOrigin(window.location.origin)
     );
   }
   return false;
@@ -65,6 +84,19 @@ export function getValidOrigins(): readonly string[] {
     return [...ALLOWED_ORIGINS, ...DEV_ORIGINS];
   }
   return ALLOWED_ORIGINS;
+}
+
+/**
+ * Validate if an origin is trusted (includes LAN IPs in dev mode)
+ */
+export function isOriginAllowed(origin: string): boolean {
+  if (validateOrigin(origin)) {
+    return true;
+  }
+  if (isDevelopment() && isLanOrigin(origin)) {
+    return true;
+  }
+  return false;
 }
 
 /**

@@ -33,6 +33,8 @@ import {
   validateOrigin,
   parseVillaMessage,
   isDevelopment,
+  isLanOrigin,
+  isOriginAllowed,
   ALLOWED_ORIGINS,
 } from "./validation";
 
@@ -47,20 +49,16 @@ const AUTH_URLS = {
   "base-sepolia": "https://beta.villa.cash/auth",
 } as const;
 
-/**
- * Get auth URL based on network and environment
- * In development: uses current origin (local.villa.cash or localhost)
- */
 function getAuthUrl(network: "base" | "base-sepolia"): string {
-  // In development, use the same origin as the current page
   if (isDevelopment() && typeof window !== "undefined") {
     const { hostname, protocol, port } = window.location;
-    // local.villa.cash, localhost, or 127.0.0.1
-    if (
+    const isLocalDev =
       hostname === "local.villa.cash" ||
       hostname === "localhost" ||
-      hostname === "127.0.0.1"
-    ) {
+      hostname === "127.0.0.1" ||
+      isLanOrigin(window.location.origin);
+
+    if (isLocalDev) {
       const portSuffix = port ? `:${port}` : "";
       return `${protocol}//${hostname}${portSuffix}/auth`;
     }
@@ -870,10 +868,10 @@ export class VillaBridge {
   }
 
   /**
-   * Check if origin is in allowlist
+   * Check if origin is in allowlist (includes LAN IPs in dev mode)
    */
   private isOriginAllowed(origin: string): boolean {
-    return validateOrigin(origin);
+    return isOriginAllowed(origin);
   }
 
   /**
