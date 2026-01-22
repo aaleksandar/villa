@@ -123,6 +123,34 @@
 
 ---
 
+### Deployment Workflow (NEW)
+
+**File:** `specs/infrastructure/deployment-workflow.spec.md`
+**Status:** Proposed (ready for implementation)
+**Created:** 2026-01-22
+**Priority:** P1 (infrastructure optimization)
+
+**Summary:** Simplified DigitalOcean deployment infrastructure with clear multi-person workflow. Reduces from 7 environments to 3 essential environments while maintaining quality gates.
+
+**Key Deliverables:**
+
+- Simplified environment map (Production, Staging, Developers)
+- Multi-person workflow with branch conventions
+- PR checklist template
+- Cost optimization: $32/mo → $22/mo (31% savings)
+- Telemetry pipeline display specification
+
+**Blockers:** None (can start immediately)
+
+**Next Actions:**
+
+1. Delete `villa-dev-1` and `villa-dev-2` DO apps
+2. Remove dev-\* CNAME records from CloudFlare
+3. Update deploy.yml to remove preview jobs
+4. Update Telemetry dashboard with new pipeline
+
+---
+
 ## Reference Specs (Future Work)
 
 - `passkey-domain-ownership.md` - Custom RP ID investigation (Phase 2)
