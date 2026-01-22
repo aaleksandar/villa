@@ -9,6 +9,7 @@ export { EmptyState } from "./empty-state";
 export { SuccessCelebration } from "./success-celebration";
 export { Modal, ModalTrigger, ModalClose } from "./Modal";
 export { BottomSheet } from "./BottomSheet";
+export { SheetDialog } from "./SheetDialog";
 export {
   Dialog,
   DialogPortal,

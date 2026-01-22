@@ -569,7 +569,7 @@ export default function HomePage() {
 
       {showSettings &&
         (loadingProfile ? (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-ink/60 backdrop-blur-sm z-50 flex items-center justify-center">
             <div className="bg-cream rounded-lg p-6">
               <Spinner size="lg" />
             </div>

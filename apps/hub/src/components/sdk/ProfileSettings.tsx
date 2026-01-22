@@ -233,7 +233,7 @@ export function ProfileSettings({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 bg-ink/60 backdrop-blur-sm z-50"
             />
           </Dialog.Overlay>
           <Dialog.Content asChild>

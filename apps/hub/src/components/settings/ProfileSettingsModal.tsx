@@ -11,8 +11,7 @@ import {
   Check,
 } from "lucide-react";
 import { clsx } from "clsx";
-import { Modal } from "@/components/ui/Modal";
-import { BottomSheet } from "@/components/ui/BottomSheet";
+import { SheetDialog } from "@/components/ui";
 import { Button, Input, Avatar } from "@/components/ui";
 import { AvatarPicker } from "./AvatarPicker";
 import { useIdentityStore } from "@/lib/store";
@@ -35,19 +34,11 @@ export function ProfileSettingsModal({
   const router = useRouter();
   const { identity, updateProfile, clearIdentity } = useIdentityStore();
   const [view, setView] = useState<SettingsView>("main");
-  const [isMobile, setIsMobile] = useState(false);
   const [nickname, setNickname] = useState("");
   const [nicknameError, setNicknameError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const shouldReduceMotion = useReducedMotion();
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 640);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   useEffect(() => {
     if (open) {
@@ -281,36 +272,8 @@ export function ProfileSettingsModal({
         ? "Change Avatar"
         : "Change Username";
 
-  if (isMobile) {
-    return (
-      <BottomSheet open={open} onOpenChange={onOpenChange} title={title}>
-        <div className="px-6 py-4 pb-8">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={view}
-              initial={
-                shouldReduceMotion
-                  ? {}
-                  : { opacity: 0, x: view === "main" ? -20 : 20 }
-              }
-              animate={{ opacity: 1, x: 0 }}
-              exit={
-                shouldReduceMotion
-                  ? {}
-                  : { opacity: 0, x: view === "main" ? 20 : -20 }
-              }
-              transition={{ duration: 0.15 }}
-            >
-              {renderContent()}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </BottomSheet>
-    );
-  }
-
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title={title} size="sm">
+    <SheetDialog open={open} onOpenChange={onOpenChange} title={title}>
       <AnimatePresence mode="wait">
         <motion.div
           key={view}
@@ -330,7 +293,7 @@ export function ProfileSettingsModal({
           {renderContent()}
         </motion.div>
       </AnimatePresence>
-    </Modal>
+    </SheetDialog>
   );
 }
 
