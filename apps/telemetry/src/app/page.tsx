@@ -25,20 +25,68 @@ interface HealthData {
   env?: string;
 }
 
+interface HealthProxyResponse {
+  environment: string;
+  url: string;
+  status: "ok" | "error";
+  latency: number;
+  data?: HealthData;
+  error?: string;
+  fetchedAt: string;
+}
+
 interface ServiceStatus {
   name: string;
-  url: string;
+  env: string;
   status: "checking" | "ok" | "error";
   latency?: number;
   data?: HealthData;
   error?: string;
 }
 
-const SERVICES = [
-  { name: "Local Hub", url: "http://localhost:3000/api/health" },
-  { name: "Staging", url: "https://beta.villa.cash/api/health" },
-  { name: "Production", url: "https://villa.cash/api/health" },
-  { name: "Developers", url: "https://developers.villa.cash" },
+interface WorkflowRun {
+  id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  branch: string;
+  sha: string;
+  url: string;
+  createdAt: string;
+  duration?: number;
+}
+
+interface CommitInfo {
+  sha: string;
+  shortSha: string;
+  message: string;
+  author: string;
+  date: string;
+  url: string;
+}
+
+interface PipelineStage {
+  name: string;
+  status: "success" | "running" | "failed" | "pending";
+  url?: string;
+  details?: string;
+}
+
+interface PipelineData {
+  stages: PipelineStage[];
+  lastCommit: CommitInfo | null;
+  lastDeploy: {
+    production: string | null;
+    staging: string | null;
+  };
+  fetchedAt: string;
+}
+
+const ENVIRONMENTS = [
+  { name: "Local Hub", env: "local" },
+  { name: "Staging", env: "staging" },
+  { name: "Production", env: "production" },
+  { name: "Developers", env: "developers" },
 ];
 
 function StatusBadge({ status }: { status: ServiceStatus["status"] }) {
@@ -56,6 +104,22 @@ function StatusBadge({ status }: { status: ServiceStatus["status"] }) {
   );
 }
 
+function PipelineStatusBadge({ status }: { status: PipelineStage["status"] }) {
+  return (
+    <span
+      className={clsx(
+        "px-2 py-1 rounded-full text-xs font-medium",
+        status === "pending" && "bg-gray-100 text-gray-800",
+        status === "running" && "bg-blue-100 text-blue-800",
+        status === "success" && "bg-green-100 text-green-800",
+        status === "failed" && "bg-red-100 text-red-800",
+      )}
+    >
+      {status.toUpperCase()}
+    </span>
+  );
+}
+
 function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
@@ -63,6 +127,27 @@ function formatUptime(seconds: number): string {
   if (days > 0) return `${days}d ${hours}h`;
   if (hours > 0) return `${hours}h ${mins}m`;
   return `${mins}m`;
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}m ${secs}s`;
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
 }
 
 function ServiceCard({ service }: { service: ServiceStatus }) {
@@ -224,53 +309,217 @@ function BuildComparison({ services }: { services: ServiceStatus[] }) {
   );
 }
 
+function PipelineCard({ pipeline }: { pipeline: PipelineData | null }) {
+  if (!pipeline) {
+    return (
+      <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+        <h3 className="font-medium text-ink mb-3">Pipeline Status</h3>
+        <div className="text-sm text-gray-500">Loading pipeline data...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+      <h3 className="font-medium text-ink mb-3">Pipeline Status</h3>
+
+      <div className="flex items-center gap-2 mb-4">
+        {pipeline.stages.map((stage, idx) => (
+          <div key={stage.name} className="flex items-center">
+            {idx > 0 && <span className="mx-2 text-gray-300">→</span>}
+            <div className="flex flex-col items-center">
+              <a
+                href={stage.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                <PipelineStatusBadge status={stage.status} />
+              </a>
+              <span className="text-xs text-gray-500 mt-1">{stage.name}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {pipeline.lastCommit && (
+        <div className="text-xs border-t border-neutral-100 pt-3">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">Last commit:</span>
+            <a
+              href={pipeline.lastCommit.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-blue-600 hover:underline"
+            >
+              {pipeline.lastCommit.shortSha}
+            </a>
+            <span className="text-gray-700 truncate max-w-[200px]">
+              {pipeline.lastCommit.message}
+            </span>
+            <span className="text-gray-400">
+              {formatRelativeTime(pipeline.lastCommit.date)}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {(pipeline.lastDeploy.production || pipeline.lastDeploy.staging) && (
+        <div className="text-xs mt-2 flex gap-4">
+          {pipeline.lastDeploy.staging && (
+            <span>
+              <span className="text-gray-500">Staging:</span>{" "}
+              <span className="font-mono">{pipeline.lastDeploy.staging}</span>
+            </span>
+          )}
+          {pipeline.lastDeploy.production && (
+            <span>
+              <span className="text-gray-500">Production:</span>{" "}
+              <span className="font-mono">
+                {pipeline.lastDeploy.production}
+              </span>
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WorkflowCard({ runs }: { runs: WorkflowRun[] }) {
+  if (runs.length === 0) {
+    return (
+      <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+        <h3 className="font-medium text-ink mb-3">GitHub Actions</h3>
+        <div className="text-sm text-gray-500">Loading workflow runs...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+      <h3 className="font-medium text-ink mb-3">GitHub Actions</h3>
+      <div className="space-y-2">
+        {runs.slice(0, 5).map((run) => (
+          <div
+            key={run.id}
+            className="flex items-center justify-between text-sm"
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className={clsx(
+                  "w-2 h-2 rounded-full",
+                  run.conclusion === "success" && "bg-green-500",
+                  run.conclusion === "failure" && "bg-red-500",
+                  run.conclusion === null &&
+                    run.status === "in_progress" &&
+                    "bg-blue-500 animate-pulse",
+                  run.conclusion === null &&
+                    run.status !== "in_progress" &&
+                    "bg-gray-400",
+                )}
+              />
+              <a
+                href={run.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                {run.name}
+              </a>
+              <span className="text-gray-400 text-xs">({run.branch})</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              {run.duration && <span>{formatDuration(run.duration)}</span>}
+              <span>{formatRelativeTime(run.createdAt)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CommitsCard({ commits }: { commits: CommitInfo[] }) {
+  if (commits.length === 0) {
+    return (
+      <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+        <h3 className="font-medium text-ink mb-3">Recent Commits</h3>
+        <div className="text-sm text-gray-500">Loading commits...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+      <h3 className="font-medium text-ink mb-3">Recent Commits</h3>
+      <div className="space-y-2">
+        {commits.slice(0, 5).map((commit) => (
+          <div key={commit.sha} className="flex items-start gap-2 text-sm">
+            <a
+              href={commit.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-blue-600 hover:underline shrink-0"
+            >
+              {commit.shortSha}
+            </a>
+            <span className="text-gray-700 truncate">{commit.message}</span>
+            <span className="text-xs text-gray-400 shrink-0">
+              {formatRelativeTime(commit.date)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function TelemetryDashboard() {
   const [services, setServices] = useState<ServiceStatus[]>(
-    SERVICES.map((s) => ({ ...s, status: "checking" as const })),
+    ENVIRONMENTS.map((e) => ({ ...e, status: "checking" as const })),
   );
+  const [pipeline, setPipeline] = useState<PipelineData | null>(null);
+  const [workflowRuns, setWorkflowRuns] = useState<WorkflowRun[]>([]);
+  const [commits, setCommits] = useState<CommitInfo[]>([]);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const checkServices = useCallback(async () => {
     const results = await Promise.all(
-      SERVICES.map(async (service) => {
-        const start = Date.now();
+      ENVIRONMENTS.map(async (env) => {
         try {
-          const res = await fetch(service.url, {
+          const res = await fetch(`/api/health/${env.env}`, {
             cache: "no-store",
-            signal: AbortSignal.timeout(5000),
           });
 
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-          const contentType = res.headers.get("content-type");
-          if (contentType?.includes("application/json")) {
-            const data = await res.json();
+          if (!res.ok) {
             return {
-              ...service,
-              status: "ok" as const,
-              latency: Date.now() - start,
-              data,
+              ...env,
+              status: "error" as const,
+              error: `HTTP ${res.status}`,
+            };
+          }
+
+          const data: HealthProxyResponse = await res.json();
+
+          if (data.status === "error") {
+            return {
+              ...env,
+              status: "error" as const,
+              latency: data.latency,
+              error: data.error,
             };
           }
 
           return {
-            ...service,
+            ...env,
             status: "ok" as const,
-            latency: Date.now() - start,
-            data: {
-              status: "ok",
-              timestamp: new Date().toISOString(),
-              version: "static",
-            },
+            latency: data.latency,
+            data: data.data,
           };
         } catch (err) {
           return {
-            ...service,
+            ...env,
             status: "error" as const,
             error: err instanceof Error ? err.message : "Unknown error",
           };
@@ -282,15 +531,42 @@ export default function TelemetryDashboard() {
     setLastRefresh(new Date());
   }, []);
 
+  const fetchGitHubData = useCallback(async () => {
+    try {
+      const [pipelineRes, actionsRes, commitsRes] = await Promise.allSettled([
+        fetch("/api/pipeline").then((r) => r.json()),
+        fetch("/api/github/actions").then((r) => r.json()),
+        fetch("/api/github/commits").then((r) => r.json()),
+      ]);
+
+      if (pipelineRes.status === "fulfilled" && !pipelineRes.value.error) {
+        setPipeline(pipelineRes.value);
+      }
+
+      if (actionsRes.status === "fulfilled" && actionsRes.value.runs) {
+        setWorkflowRuns(actionsRes.value.runs);
+      }
+
+      if (commitsRes.status === "fulfilled" && commitsRes.value.commits) {
+        setCommits(commitsRes.value.commits);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     checkServices();
-    const interval = setInterval(checkServices, 30000);
-    return () => clearInterval(interval);
-  }, [checkServices]);
+    fetchGitHubData();
+    const serviceInterval = setInterval(checkServices, 30000);
+    const githubInterval = setInterval(fetchGitHubData, 60000);
+    return () => {
+      clearInterval(serviceInterval);
+      clearInterval(githubInterval);
+    };
+  }, [checkServices, fetchGitHubData]);
 
   return (
     <div className="min-h-screen bg-cream p-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-ink">Villa Telemetry</h1>
@@ -300,7 +576,10 @@ export default function TelemetryDashboard() {
           </div>
           <div className="text-right">
             <button
-              onClick={checkServices}
+              onClick={() => {
+                checkServices();
+                fetchGitHubData();
+              }}
               className="px-4 py-2 bg-ink text-cream rounded-lg hover:bg-ink/90 transition"
             >
               Refresh
@@ -311,6 +590,10 @@ export default function TelemetryDashboard() {
           </div>
         </div>
 
+        <div className="mb-6">
+          <PipelineCard pipeline={pipeline} />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {services.map((service) => (
             <ServiceCard key={service.name} service={service} />
@@ -318,6 +601,11 @@ export default function TelemetryDashboard() {
         </div>
 
         <BuildComparison services={services} />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+          <WorkflowCard runs={workflowRuns} />
+          <CommitsCard commits={commits} />
+        </div>
 
         <div className="mt-6 bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
           <h3 className="font-medium text-ink mb-3">Quick Links</h3>
@@ -358,7 +646,7 @@ export default function TelemetryDashboard() {
         </div>
 
         <div className="mt-6 text-center text-xs text-gray-500">
-          <p>Telemetry Dashboard v0.1.0 | Auto-refreshes every 30s</p>
+          <p>Telemetry Dashboard v0.2.0 | Auto-refreshes every 30s</p>
         </div>
       </div>
     </div>
