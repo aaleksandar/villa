@@ -1,11 +1,50 @@
+const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+
+// Generate content hash from key source files for build verification
+function generateBuildHash() {
+  const filesToHash = [
+    "src/app/page.tsx",
+    "src/app/home/page.tsx",
+    "src/app/layout.tsx",
+    "package.json",
+  ];
+
+  const hashes = filesToHash
+    .map((file) => {
+      try {
+        const fullPath = path.join(__dirname, file);
+        const content = fs.readFileSync(fullPath, "utf8");
+        return crypto
+          .createHash("md5")
+          .update(content)
+          .digest("hex")
+          .slice(0, 8);
+      } catch {
+        return "00000000";
+      }
+    })
+    .join("");
+
+  return crypto.createHash("md5").update(hashes).digest("hex").slice(0, 12);
+}
+
+const buildTime = new Date().toISOString();
+const gitSha =
+  process.env.GITHUB_SHA || process.env.VERCEL_GIT_COMMIT_SHA || "local";
+const buildHash = generateBuildHash();
+const packageVersion = require("./package.json").version;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
 
   env: {
-    NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
-    NEXT_PUBLIC_GIT_SHA:
-      process.env.GITHUB_SHA || process.env.VERCEL_GIT_COMMIT_SHA || "local",
+    NEXT_PUBLIC_BUILD_TIME: buildTime,
+    NEXT_PUBLIC_GIT_SHA: gitSha,
+    NEXT_PUBLIC_BUILD_HASH: buildHash,
+    NEXT_PUBLIC_VERSION: packageVersion,
   },
 
   // Enable standalone output for Docker deployment
