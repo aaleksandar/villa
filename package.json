@@ -1,6 +1,6 @@
 {
   "name": "villa",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "private": true,
   "description": "Privacy-first identity and community companion app",
   "repository": {

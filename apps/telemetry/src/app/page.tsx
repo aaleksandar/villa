@@ -711,41 +711,92 @@ export default function TelemetryDashboard() {
           <CommitsCard commits={commits} />
         </div>
 
-        <div className="mt-6 bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
-          <h3 className="font-medium text-ink mb-3">Quick Links</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-            <a
-              href="https://github.com/rockfridrich/villa/actions"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              GitHub Actions
-            </a>
-            <a
-              href="https://cloud.digitalocean.com/apps"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              DigitalOcean Apps
-            </a>
-            <a
-              href="https://github.com/rockfridrich/villa/pulls"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              Pull Requests
-            </a>
-            <a
-              href="https://github.com/rockfridrich/villa/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              Issues
-            </a>
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+            <h3 className="font-medium text-ink mb-3">GitHub</h3>
+            <div className="space-y-2 text-sm">
+              <a
+                href="https://github.com/rockfridrich/villa/actions"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-blue-600 hover:underline"
+              >
+                Actions (CI/CD)
+              </a>
+              <a
+                href="https://github.com/rockfridrich/villa/releases"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-blue-600 hover:underline"
+              >
+                Releases & Tags
+              </a>
+              <a
+                href="https://github.com/rockfridrich/villa/pulls"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-blue-600 hover:underline"
+              >
+                Pull Requests
+              </a>
+              <a
+                href="https://github.com/rockfridrich/villa/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-blue-600 hover:underline"
+              >
+                Issues
+              </a>
+              <a
+                href="https://github.com/rockfridrich/villa/compare"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-blue-600 hover:underline"
+              >
+                Compare Branches
+              </a>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+            <h3 className="font-medium text-ink mb-3">DigitalOcean</h3>
+            <div className="space-y-2 text-sm">
+              <a
+                href="https://cloud.digitalocean.com/apps"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-blue-600 hover:underline"
+              >
+                Apps Dashboard
+              </a>
+              <div className="pt-2 border-t border-neutral-100 mt-2">
+                <p className="text-xs text-gray-500 mb-2">Environments:</p>
+                <a
+                  href="https://villa.cash"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-blue-600 hover:underline"
+                >
+                  Production → villa.cash
+                </a>
+                <a
+                  href="https://beta.villa.cash"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-blue-600 hover:underline"
+                >
+                  Staging → beta.villa.cash
+                </a>
+                <a
+                  href="https://developers.villa.cash"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-blue-600 hover:underline"
+                >
+                  Docs → developers.villa.cash
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 

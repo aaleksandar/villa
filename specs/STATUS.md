@@ -1,10 +1,37 @@
 # Spec Status Tracker
 
-**Last Updated:** 2025-01-22
+**Last Updated:** 2026-01-22
 
 ---
 
 ## Active Specs
+
+### Infrastructure Telemetry Dashboard
+
+**File:** `specs/product/telemetry-dashboard.product.md`
+**Status:** Ready for implementation
+**Created:** 2026-01-22
+**Priority:** P1 (developer experience)
+
+**Summary:** Local development tool for Villa developers and AI agents to diagnose infrastructure issues. Fixes current CORS problems by moving fetches server-side. Provides human-readable dashboard + AI-consumable JSON/text endpoints.
+
+**Key Deliverables:**
+
+- Server-side API aggregation (fixes CORS)
+- GitHub CI/CD status integration
+- Environment health cards (local/staging/production)
+- AI-readable endpoints (`/api/telemetry/status.json`, `.txt`)
+- Build comparison (detect staging/production drift)
+
+**Blockers:** None (can start immediately)
+
+**Next Actions:**
+
+1. `@build "Fix telemetry CORS: create server-side API route"`
+2. `@build "Add GitHub CI status via gh CLI"`
+3. `@build "Add AI-readable endpoints"`
+
+---
 
 ### Documentation Architecture
 
