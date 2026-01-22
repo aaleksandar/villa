@@ -1,17 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextResponse } from "next/server";
+import packageJson from "../../../../package.json";
 
-// Disable caching for health check - must return fresh data
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-/**
- * Health check endpoint for monitoring and debugging
- * Used by ngrok scripts to verify the app is running
- */
 export async function GET() {
   return NextResponse.json({
-    status: 'ok',
+    status: "ok",
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '0.1.0',
-  })
+    version: packageJson.version,
+  });
 }

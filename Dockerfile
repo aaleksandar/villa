@@ -47,7 +47,8 @@ ENV NEXT_PUBLIC_ENV=$NEXT_PUBLIC_ENV
 ENV NEXT_PUBLIC_DOMAIN=$NEXT_PUBLIC_DOMAIN
 ENV NEXT_PUBLIC_GLIDE_PROJECT_ID=$NEXT_PUBLIC_GLIDE_PROJECT_ID
 
-RUN bun --filter @villa/hub run build
+# Use turbo for workspace-aware builds (bun --filter doesn't work with bun workspaces)
+RUN bun turbo run build --filter=@villa/hub
 
 FROM node:20-alpine AS runner
 WORKDIR /app

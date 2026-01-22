@@ -653,14 +653,23 @@ jobs:
 
             const body = `## 🎉 Villa ${tag}\n\nLive at **[villa.cash](https://villa.cash)**\n\n### Changes\n${changelog}\n\n---\nCommit: \`${sha}\``;
 
-            await github.rest.repos.createRelease({
-              owner, repo,
-              tag_name: tag,
-              name: `Villa ${tag}`,
-              body,
-              draft: false,
-              prerelease: false
-            });
+            try {
+              await github.rest.repos.createRelease({
+                owner, repo,
+                tag_name: tag,
+                name: `Villa ${tag}`,
+                body,
+                draft: false,
+                prerelease: false
+              });
+              console.log(`Created release ${tag}`);
+            } catch (e) {
+              if (e.status === 422 && e.message.includes('already_exists')) {
+                console.log(`Release ${tag} already exists, skipping creation`);
+              } else {
+                throw e;
+              }
+            }
 
   # =============================================================================
   # CLEANUP PREVIEW - Frees up dev slot on PR close
