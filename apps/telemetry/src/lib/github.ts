@@ -113,3 +113,55 @@ export async function checkGhAuth(): Promise<{
     };
   }
 }
+
+export interface WorkflowJob {
+  id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  started_at: string;
+  completed_at: string | null;
+  steps: Array<{
+    name: string;
+    status: string;
+    conclusion: string | null;
+    number: number;
+  }>;
+}
+
+export async function getLatestDeployRun(): Promise<{
+  id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  html_url: string;
+  head_sha: string;
+  created_at: string;
+  jobs: WorkflowJob[];
+} | null> {
+  try {
+    const { stdout: runsOutput } = await ghExec(
+      `api repos/rockfridrich/villa/actions/workflows/deploy.yml/runs --jq '.workflow_runs[0]'`,
+    );
+    const run = JSON.parse(runsOutput);
+    if (!run?.id) return null;
+
+    const { stdout: jobsOutput } = await ghExec(
+      `api repos/rockfridrich/villa/actions/runs/${run.id}/jobs --jq '.jobs'`,
+    );
+    const jobs = JSON.parse(jobsOutput);
+
+    return {
+      id: run.id,
+      name: run.name,
+      status: run.status,
+      conclusion: run.conclusion,
+      html_url: run.html_url,
+      head_sha: run.head_sha,
+      created_at: run.created_at,
+      jobs,
+    };
+  } catch {
+    return null;
+  }
+}

@@ -354,42 +354,109 @@ function BuildComparison({ services }: { services: ServiceStatus[] }) {
 }
 
 function PipelineCard({ pipeline }: { pipeline: PipelineData | null }) {
-  if (!pipeline) {
-    return (
-      <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
-        <h3 className="font-medium text-ink mb-3">Pipeline Status</h3>
-        <div className="text-sm text-gray-500">Loading pipeline data...</div>
-      </div>
+  const workflowStages = [
+    {
+      id: "local",
+      name: "Local",
+      description: "bun dev + verify",
+      trigger: "manual",
+      icon: "💻",
+    },
+    {
+      id: "pr",
+      name: "PR",
+      description: "CI checks",
+      trigger: "auto",
+      icon: "🔍",
+    },
+    {
+      id: "staging",
+      name: "Staging",
+      description: "beta.villa.cash",
+      trigger: "auto",
+      icon: "🎯",
+    },
+    {
+      id: "production",
+      name: "Production",
+      description: "villa.cash",
+      trigger: "manual",
+      icon: "🚀",
+    },
+  ];
+
+  const getStageStatus = (
+    stageId: string,
+  ): "success" | "running" | "failed" | "pending" => {
+    if (!pipeline) return "pending";
+    const stage = pipeline.stages.find(
+      (s) => s.name.toLowerCase() === stageId || s.name === stageId,
     );
-  }
+    if (stage) return stage.status;
+    if (stageId === "local") return "pending";
+    if (stageId === "pr") {
+      const ci = pipeline.stages.find((s) => s.name === "CI");
+      return ci?.status || "pending";
+    }
+    return "pending";
+  };
 
   return (
     <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
-      <h3 className="font-medium text-ink mb-3">Pipeline Status</h3>
-
-      <div className="flex items-center gap-2 mb-4">
-        {pipeline.stages.map((stage, idx) => (
-          <div key={stage.name} className="flex items-center">
-            {idx > 0 && <span className="mx-2 text-gray-300">→</span>}
-            <div className="flex flex-col items-center">
-              <a
-                href={stage.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:underline"
-              >
-                <PipelineStatusBadge status={stage.status} />
-              </a>
-              <span className="text-xs text-gray-500 mt-1">{stage.name}</span>
-            </div>
-          </div>
-        ))}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-medium text-ink">Deployment Pipeline</h3>
+        <span className="text-xs text-gray-400">
+          Local → PR → Staging → Production
+        </span>
       </div>
 
-      {pipeline.lastCommit && (
+      <div className="flex items-stretch gap-1 mb-4">
+        {workflowStages.map((stage, idx) => {
+          const status = getStageStatus(stage.id);
+          const isActive = status === "running";
+          const isSuccess = status === "success";
+          const isFailed = status === "failed";
+
+          return (
+            <div key={stage.id} className="flex items-center flex-1">
+              <div
+                className={clsx(
+                  "flex-1 p-3 rounded-lg border-2 transition-all",
+                  isActive && "border-blue-400 bg-blue-50 animate-pulse",
+                  isSuccess && "border-green-400 bg-green-50",
+                  isFailed && "border-red-400 bg-red-50",
+                  !isActive &&
+                    !isSuccess &&
+                    !isFailed &&
+                    "border-gray-200 bg-gray-50",
+                )}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">{stage.icon}</span>
+                  <span className="font-medium text-sm">{stage.name}</span>
+                  {stage.trigger === "manual" && (
+                    <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded">
+                      manual
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500">{stage.description}</p>
+                <div className="mt-2">
+                  <PipelineStatusBadge status={status} />
+                </div>
+              </div>
+              {idx < workflowStages.length - 1 && (
+                <div className="px-1 text-gray-300 text-lg">→</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {pipeline?.lastCommit && (
         <div className="text-xs border-t border-neutral-100 pt-3">
-          <div className="flex items-center gap-2">
-            <span className="text-gray-500">Last commit:</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-gray-500">Latest:</span>
             <a
               href={pipeline.lastCommit.url}
               target="_blank"
@@ -398,7 +465,7 @@ function PipelineCard({ pipeline }: { pipeline: PipelineData | null }) {
             >
               {pipeline.lastCommit.shortSha}
             </a>
-            <span className="text-gray-700 truncate max-w-[200px]">
+            <span className="text-gray-700 truncate max-w-[300px]">
               {pipeline.lastCommit.message}
             </span>
             <span className="text-gray-400">
@@ -408,24 +475,39 @@ function PipelineCard({ pipeline }: { pipeline: PipelineData | null }) {
         </div>
       )}
 
-      {(pipeline.lastDeploy.production || pipeline.lastDeploy.staging) && (
-        <div className="text-xs mt-2 flex gap-4">
-          {pipeline.lastDeploy.staging && (
-            <span>
-              <span className="text-gray-500">Staging:</span>{" "}
-              <span className="font-mono">{pipeline.lastDeploy.staging}</span>
-            </span>
-          )}
-          {pipeline.lastDeploy.production && (
-            <span>
-              <span className="text-gray-500">Production:</span>{" "}
-              <span className="font-mono">
-                {pipeline.lastDeploy.production}
+      {pipeline &&
+        (pipeline.lastDeploy.production || pipeline.lastDeploy.staging) && (
+          <div className="text-xs mt-2 flex gap-4 flex-wrap">
+            {pipeline.lastDeploy.staging && (
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-yellow-400" />
+                <span className="text-gray-500">Staging:</span>
+                <a
+                  href="https://beta.villa.cash"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-blue-600 hover:underline"
+                >
+                  {pipeline.lastDeploy.staging}
+                </a>
               </span>
-            </span>
-          )}
-        </div>
-      )}
+            )}
+            {pipeline.lastDeploy.production && (
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-green-400" />
+                <span className="text-gray-500">Production:</span>
+                <a
+                  href="https://villa.cash"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-blue-600 hover:underline"
+                >
+                  {pipeline.lastDeploy.production}
+                </a>
+              </span>
+            )}
+          </div>
+        )}
     </div>
   );
 }
@@ -519,6 +601,155 @@ function CommitsCard({ commits }: { commits: CommitInfo[] }) {
   );
 }
 
+interface BuildJob {
+  name: string;
+  status: string;
+  conclusion: string | null;
+  currentStep: string | null;
+  totalSteps: number;
+  completedSteps: number;
+}
+
+interface BuildStatusData {
+  run: {
+    id: number;
+    name: string;
+    status: string;
+    conclusion: string | null;
+    url: string;
+    sha: string;
+    createdAt: string;
+  } | null;
+  jobs: BuildJob[];
+  fetchedAt: string;
+  error?: string;
+}
+
+function BuildStatusCard({
+  buildStatus,
+}: {
+  buildStatus: BuildStatusData | null;
+}) {
+  if (!buildStatus || !buildStatus.run) {
+    return (
+      <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+        <h3 className="font-medium text-ink mb-3">Current Build</h3>
+        <div className="text-sm text-gray-500">Loading build status...</div>
+      </div>
+    );
+  }
+
+  const { run, jobs } = buildStatus;
+  const isRunning = run.status === "in_progress" || run.status === "queued";
+  const isSuccess = run.conclusion === "success";
+  const isFailed = run.conclusion === "failure";
+
+  const activeJobs = jobs.filter(
+    (j) => j.status === "in_progress" || j.status === "queued",
+  );
+
+  return (
+    <div
+      className={clsx(
+        "bg-white rounded-lg border-2 p-4 shadow-sm",
+        isRunning && "border-blue-400",
+        isSuccess && "border-green-400",
+        isFailed && "border-red-400",
+        !isRunning && !isSuccess && !isFailed && "border-neutral-200",
+      )}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-medium text-ink">Current Build</h3>
+        <a
+          href={run.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={clsx(
+            "px-2 py-1 rounded-full text-xs font-medium",
+            isRunning && "bg-blue-100 text-blue-800 animate-pulse",
+            isSuccess && "bg-green-100 text-green-800",
+            isFailed && "bg-red-100 text-red-800",
+            !isRunning &&
+              !isSuccess &&
+              !isFailed &&
+              "bg-gray-100 text-gray-800",
+          )}
+        >
+          {isRunning
+            ? "BUILDING"
+            : run.conclusion?.toUpperCase() || run.status.toUpperCase()}
+        </a>
+      </div>
+
+      <div className="text-xs text-gray-500 mb-3">
+        <span className="font-mono">{run.sha.slice(0, 7)}</span>
+        <span className="mx-2">•</span>
+        <span>{formatRelativeTime(run.createdAt)}</span>
+      </div>
+
+      {isRunning && activeJobs.length > 0 && (
+        <div className="mb-3 p-2 bg-blue-50 rounded-lg">
+          <div className="text-xs font-medium text-blue-800 mb-1">
+            Currently running:
+          </div>
+          {activeJobs.map((job) => (
+            <div key={job.name} className="text-xs text-blue-700">
+              <span className="font-medium">{job.name}</span>
+              {job.currentStep && (
+                <span className="text-blue-600 ml-1">→ {job.currentStep}</span>
+              )}
+              <span className="text-blue-500 ml-2">
+                ({job.completedSteps}/{job.totalSteps} steps)
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-1">
+        {jobs
+          .filter((j) => j.status !== "skipped" || j.name.includes("Deploy"))
+          .slice(0, 6)
+          .map((job) => (
+            <div
+              key={job.name}
+              className="flex items-center justify-between text-xs"
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={clsx(
+                    "w-2 h-2 rounded-full",
+                    job.conclusion === "success" && "bg-green-500",
+                    job.conclusion === "failure" && "bg-red-500",
+                    job.conclusion === "skipped" && "bg-gray-300",
+                    job.status === "in_progress" && "bg-blue-500 animate-pulse",
+                    job.status === "queued" && "bg-yellow-400",
+                    !job.conclusion &&
+                      job.status !== "in_progress" &&
+                      job.status !== "queued" &&
+                      "bg-gray-400",
+                  )}
+                />
+                <span
+                  className={clsx(
+                    job.conclusion === "skipped" && "text-gray-400",
+                  )}
+                >
+                  {job.name}
+                </span>
+              </div>
+              {job.status === "in_progress" && (
+                <span className="text-blue-600">
+                  {job.completedSteps}/{job.totalSteps}
+                </span>
+              )}
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}
+
 export default function TelemetryDashboard() {
   const [services, setServices] = useState<ServiceStatus[]>(
     ENVIRONMENTS.map((e) => ({ ...e, status: "checking" as const })),
@@ -526,6 +757,7 @@ export default function TelemetryDashboard() {
   const [pipeline, setPipeline] = useState<PipelineData | null>(null);
   const [workflowRuns, setWorkflowRuns] = useState<WorkflowRun[]>([]);
   const [commits, setCommits] = useState<CommitInfo[]>([]);
+  const [buildStatus, setBuildStatus] = useState<BuildStatusData | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState<{
@@ -620,11 +852,13 @@ export default function TelemetryDashboard() {
 
   const fetchGitHubData = useCallback(async () => {
     try {
-      const [pipelineRes, actionsRes, commitsRes] = await Promise.allSettled([
-        fetch("/api/pipeline").then((r) => r.json()),
-        fetch("/api/github/actions").then((r) => r.json()),
-        fetch("/api/github/commits").then((r) => r.json()),
-      ]);
+      const [pipelineRes, actionsRes, commitsRes, buildRes] =
+        await Promise.allSettled([
+          fetch("/api/pipeline").then((r) => r.json()),
+          fetch("/api/github/actions").then((r) => r.json()),
+          fetch("/api/github/commits").then((r) => r.json()),
+          fetch("/api/build-status").then((r) => r.json()),
+        ]);
 
       if (pipelineRes.status === "fulfilled" && !pipelineRes.value.error) {
         setPipeline(pipelineRes.value);
@@ -636,6 +870,10 @@ export default function TelemetryDashboard() {
 
       if (commitsRes.status === "fulfilled" && commitsRes.value.commits) {
         setCommits(commitsRes.value.commits);
+      }
+
+      if (buildRes.status === "fulfilled" && !buildRes.value.error) {
+        setBuildStatus(buildRes.value);
       }
     } catch {}
   }, []);
@@ -706,7 +944,8 @@ export default function TelemetryDashboard() {
 
         <BuildComparison services={services} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <BuildStatusCard buildStatus={buildStatus} />
           <WorkflowCard runs={workflowRuns} />
           <CommitsCard commits={commits} />
         </div>

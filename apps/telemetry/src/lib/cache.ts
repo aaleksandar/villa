@@ -41,4 +41,5 @@ export const CACHE_TTL = {
   GITHUB_ACTIONS: 30_000,
   GITHUB_COMMITS: 60_000,
   PIPELINE: 15_000,
+  BUILD_STATUS: 10_000,
 } as const;
