@@ -392,15 +392,15 @@ ci (push to main/tags)
 - [ ] Delete `villa-dev-1` DO app
 - [ ] Delete `villa-dev-2` DO app
 - [ ] Remove dev-1/dev-2 CNAME records from CloudFlare
-- [ ] Update deploy.yml to remove preview deploy jobs
+- [x] Update deploy.yml to remove preview deploy jobs
 
 ### Phase 2: Cleanup (Week 2)
 
-- [ ] Delete `.do/app-dev-1.yaml`
-- [ ] Delete `.do/app-preview.yaml`
+- [x] Delete `.do/app-dev-1.yaml`
+- [x] Delete `.do/app-preview.yaml`
 - [ ] Update domains.json
 - [ ] Update CLAUDE.md documentation
-- [ ] Update README environment table
+- [x] Update README environment table (already correct)
 
 ### Phase 3: Verification (Week 3)
 

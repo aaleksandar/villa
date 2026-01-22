@@ -20,8 +20,6 @@ concurrency:
 env:
   PRODUCTION_DOMAIN: villa.cash
   STAGING_DOMAIN: beta.villa.cash
-  DEV_1_DOMAIN: dev-1.villa.cash
-  DEV_2_DOMAIN: dev-2.villa.cash
 
 jobs:
   # =============================================================================
@@ -76,7 +74,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       should-e2e: ${{ steps.check-paths.outputs.run }}
-      dev-slot: ${{ steps.slot.outputs.slot }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -89,13 +86,6 @@ jobs:
 
       - name: Run linting and type checking
         run: bun run typecheck && bun run lint
-
-      - name: Assign dev slot (1 or 2)
-        id: slot
-        run: |
-          PR_NUM=${{ github.event.pull_request.number }}
-          SLOT=$(( (PR_NUM % 2) + 1 ))
-          echo "slot=${SLOT}" >> $GITHUB_OUTPUT
 
       - name: Check if E2E needed
         id: check-paths
@@ -185,141 +175,6 @@ jobs:
           name: e2e-report-merged
           path: playwright-report/
           retention-days: 30
-
-  # =============================================================================
-  # CHECK PERMISSION - For preview deploys
-  # =============================================================================
-  check-permission:
-    name: "🔐 Check Permission"
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.action != 'closed' &&
-      github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
-    outputs:
-      is-collaborator: ${{ steps.check.outputs.is-collaborator }}
-    steps:
-      - name: Check if PR author is collaborator
-        id: check
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data: permissionLevel } = await github.rest.repos.getCollaboratorPermissionLevel({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              username: context.payload.pull_request.user.login
-            });
-            const hasAccess = ['admin', 'write', 'maintain'].includes(permissionLevel.permission);
-            core.setOutput('is-collaborator', hasAccess);
-
-  # =============================================================================
-  # DEPLOY PREVIEW - To dev-1 or dev-2
-  # =============================================================================
-  deploy-preview:
-    name: "🚀 Deploy Preview (dev-${{ needs.quick-ci.outputs.dev-slot }})"
-    needs: [quick-ci, check-permission]
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.action != 'closed' &&
-      github.event.pull_request.draft == false &&
-      needs.check-permission.outputs.is-collaborator == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      url: ${{ steps.deploy.outputs.url }}
-      slot: ${{ needs.quick-ci.outputs.dev-slot }}
-    environment:
-      name: preview-${{ needs.quick-ci.outputs.dev-slot }}
-      url: ${{ steps.deploy.outputs.url }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: digitalocean/action-doctl@v2
-        with:
-          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-
-      - name: Get PR info
-        id: pr-info
-        run: |
-          echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      - name: Generate app spec
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          export DEV_SLOT="${{ needs.quick-ci.outputs.dev-slot }}"
-          export PR_NUMBER="${{ github.event.pull_request.number }}"
-          export BRANCH_NAME="${{ github.head_ref }}"
-          export DATABASE_URL
-          envsubst < .do/app-preview.yaml > .do/app-preview-generated.yaml
-
-      - name: Deploy to dev-${{ needs.quick-ci.outputs.dev-slot }}.villa.cash
-        id: deploy
-        env:
-          DEV_SLOT: ${{ needs.quick-ci.outputs.dev-slot }}
-        run: |
-          APP_NAME="villa-dev-${DEV_SLOT}"
-          DOMAIN="dev-${DEV_SLOT}.villa.cash"
-
-          APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "${APP_NAME}$" | awk '{print $1}')
-
-          if [ -n "$APP_ID" ]; then
-            doctl apps update $APP_ID --spec .do/app-preview-generated.yaml
-          else
-            doctl apps create --spec .do/app-preview-generated.yaml
-          fi
-
-          for i in {1..30}; do
-            APP_ID=$(doctl apps list --format ID,Spec.Name --no-header | grep "${APP_NAME}$" | awk '{print $1}')
-            if [ -n "$APP_ID" ]; then
-              ACTIVE_PHASE=$(doctl apps get $APP_ID --output json | jq -r '.[0].active_deployment.phase // empty')
-              if [ "$ACTIVE_PHASE" = "ACTIVE" ]; then
-                echo "url=https://${DOMAIN}" >> $GITHUB_OUTPUT
-                exit 0
-              fi
-            fi
-            sleep 10
-          done
-          exit 1
-
-      - name: Comment PR with preview URL
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const url = '${{ steps.deploy.outputs.url }}';
-            const sha = '${{ steps.pr-info.outputs.sha }}';
-            const slot = '${{ needs.quick-ci.outputs.dev-slot }}';
-
-            const body = `## 🚀 Preview Ready
-
-            **[${url}](${url})** • \`${sha}\` • dev-${slot}
-
-            <sub>Auto-deployed on push</sub>`;
-
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-
-            const botComment = comments.find(c => c.user.type === 'Bot' && c.body.includes('Preview Ready'));
-
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body
-              });
-            } else {
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body
-              });
-            }
 
   # =============================================================================
   # CI - Runs on push to main and tags (shared job)
@@ -672,25 +527,20 @@ jobs:
             }
 
   # =============================================================================
-  # CLEANUP PREVIEW - Frees up dev slot on PR close
+  # PR MERGED NOTIFICATION
   # =============================================================================
-  cleanup-preview:
-    name: "🗑️ Cleanup Preview"
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+  pr-merged:
+    name: "🎉 PR Merged"
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
-      - name: Comment cleanup
+      - name: Comment on merged PR
         uses: actions/github-script@v7
         with:
           script: |
-            const merged = context.payload.pull_request.merged;
-            const slot = (context.payload.pull_request.number % 2) + 1;
-
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: merged 
-                ? `🎉 Merged! Changes on [beta.villa.cash](https://beta.villa.cash). Create \`v*\` tag to deploy to production.`
-                : `👋 Closed. dev-${slot} slot freed.`
+              body: `🎉 Merged! Changes will auto-deploy to [beta.villa.cash](https://beta.villa.cash).\n\nCreate \`v*\` tag to deploy to production.`
             });
