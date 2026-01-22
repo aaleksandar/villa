@@ -150,10 +150,46 @@ function formatRelativeTime(dateStr: string): string {
   return `${diffDays}d ago`;
 }
 
-function ServiceCard({ service }: { service: ServiceStatus }) {
+function LaunchButtons({
+  onAction,
+  loading,
+}: {
+  onAction: (action: string) => void;
+  loading: boolean;
+}) {
+  return (
+    <div className="flex gap-2 mt-3 pt-3 border-t border-neutral-100">
+      <button
+        onClick={() => onAction("launch-local")}
+        disabled={loading}
+        className="flex-1 px-3 py-1.5 text-xs font-medium bg-ink text-cream rounded hover:bg-ink/90 transition disabled:opacity-50"
+      >
+        {loading ? "Starting..." : "Launch Dev"}
+      </button>
+      <button
+        onClick={() => onAction("launch-docker")}
+        disabled={loading}
+        className="flex-1 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-50"
+      >
+        {loading ? "Starting..." : "Launch Docker"}
+      </button>
+    </div>
+  );
+}
+
+function ServiceCard({
+  service,
+  onAction,
+  actionLoading,
+}: {
+  service: ServiceStatus;
+  onAction?: (action: string) => void;
+  actionLoading?: boolean;
+}) {
   const build = service.data?.build;
   const runtime = service.data?.runtime;
   const version = build?.version || service.data?.version || "unknown";
+  const isLocal = service.env === "local";
 
   return (
     <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
@@ -220,7 +256,15 @@ function ServiceCard({ service }: { service: ServiceStatus }) {
       )}
 
       {service.status === "error" && (
-        <div className="text-sm text-red-600">{service.error}</div>
+        <div className="space-y-2">
+          <div className="text-sm text-red-600">{service.error}</div>
+          {isLocal && onAction && (
+            <LaunchButtons
+              onAction={onAction}
+              loading={actionLoading || false}
+            />
+          )}
+        </div>
       )}
 
       {service.status === "checking" && (
@@ -483,6 +527,11 @@ export default function TelemetryDashboard() {
   const [workflowRuns, setWorkflowRuns] = useState<WorkflowRun[]>([]);
   const [commits, setCommits] = useState<CommitInfo[]>([]);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionMessage, setActionMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const checkServices = useCallback(async () => {
     const results = await Promise.all(
@@ -530,6 +579,44 @@ export default function TelemetryDashboard() {
     setServices(results);
     setLastRefresh(new Date());
   }, []);
+
+  const executeAction = useCallback(
+    async (action: string) => {
+      setActionLoading(true);
+      setActionMessage(null);
+      try {
+        const res = await fetch("/api/actions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setActionMessage({
+            type: "success",
+            text: `${action} started successfully`,
+          });
+          setTimeout(() => {
+            checkServices();
+            setActionMessage(null);
+          }, 3000);
+        } else {
+          setActionMessage({
+            type: "error",
+            text: data.error || "Action failed",
+          });
+        }
+      } catch (err) {
+        setActionMessage({
+          type: "error",
+          text: err instanceof Error ? err.message : "Action failed",
+        });
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [checkServices],
+  );
 
   const fetchGitHubData = useCallback(async () => {
     try {
@@ -594,9 +681,26 @@ export default function TelemetryDashboard() {
           <PipelineCard pipeline={pipeline} />
         </div>
 
+        {actionMessage && (
+          <div
+            className={clsx(
+              "mb-4 px-4 py-2 rounded-lg text-sm",
+              actionMessage.type === "success" && "bg-green-100 text-green-800",
+              actionMessage.type === "error" && "bg-red-100 text-red-800",
+            )}
+          >
+            {actionMessage.text}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {services.map((service) => (
-            <ServiceCard key={service.name} service={service} />
+            <ServiceCard
+              key={service.name}
+              service={service}
+              onAction={executeAction}
+              actionLoading={actionLoading}
+            />
           ))}
         </div>
 
