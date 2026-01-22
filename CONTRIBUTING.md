@@ -92,8 +92,8 @@ docs: update integration guide
 
 - Push your branch
 - Open PR against `main`
-- CI runs automatically
-- Preview deploys to `dev-1.villa.cash`
+- CI runs (lint, typecheck, E2E tests)
+- Merge to main auto-deploys to `beta.villa.cash`
 
 ## Design System
 
@@ -126,11 +126,11 @@ Check `packages/ui` first. Add new shared components there.
 
 ## Environments
 
-| Env        | URL              | Network      |
-| ---------- | ---------------- | ------------ |
-| Production | villa.cash       | Base         |
-| Staging    | beta.villa.cash  | Base Sepolia |
-| Preview    | dev-1.villa.cash | Base Sepolia |
+| Env        | URL                   | Network      | Deploy Trigger  |
+| ---------- | --------------------- | ------------ | --------------- |
+| Production | villa.cash            | Base         | Manual `v*` tag |
+| Staging    | beta.villa.cash       | Base Sepolia | Push to `main`  |
+| Developers | developers.villa.cash | -            | Push to `main`  |
 
 ## Getting Help
 

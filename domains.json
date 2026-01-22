@@ -15,25 +15,14 @@
       "provider": "digitalocean",
       "dns": "cloudflare",
       "deployTrigger": "push-to-main",
-      "description": "Pre-release testing, mirrors production data"
+      "description": "Pre-release testing, auto-deploys on merge to main"
     },
-    "preview": {
-      "slots": [
-        {
-          "domain": "dev-1.villa.cash",
-          "provider": "digitalocean",
-          "dns": "cloudflare",
-          "usage": "pr-preview",
-          "description": "PR preview slot 1 (odd PR numbers)"
-        },
-        {
-          "domain": "dev-2.villa.cash",
-          "provider": "digitalocean",
-          "dns": "cloudflare",
-          "usage": "pr-preview",
-          "description": "PR preview slot 2 (even PR numbers)"
-        }
-      ]
+    "developers": {
+      "domain": "developers.villa.cash",
+      "provider": "digitalocean",
+      "dns": "cloudflare",
+      "deployTrigger": "push-to-main",
+      "description": "Developer documentation portal"
     },
     "development": {
       "domain": "dev-3.villa.cash",
@@ -48,15 +37,14 @@
     "registeredDomains": [
       "villa.cash",
       "beta.villa.cash",
-      "dev-1.villa.cash",
-      "dev-2.villa.cash",
+      "developers.villa.cash",
       "dev-3.villa.cash"
     ]
   },
   "security": {
     "productionProtected": true,
     "stagingProtected": false,
-    "previewProtected": false,
+    "developersProtected": false,
     "note": "Production requires release tag, prevents accidental deploys"
   }
 }

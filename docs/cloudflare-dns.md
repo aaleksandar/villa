@@ -39,13 +39,14 @@ Zone Resources: Include → Specific zone → `villa.cash`
 
 ## Domain Architecture
 
-| Domain | Environment | Deploy Trigger | Provider |
-|--------|-------------|----------------|----------|
-| `villa.cash` | Production | Release tag `v*` | DigitalOcean |
-| `beta.villa.cash` | Staging | Push to `main` | DigitalOcean |
-| `dev-1.villa.cash` | Preview | PR (odd numbers) | DigitalOcean |
-| `dev-2.villa.cash` | Preview | PR (even numbers) | DigitalOcean |
-| `dev-3.villa.cash` | Local dev | ngrok tunnel | ngrok |
+| Domain                  | Environment | Deploy Trigger   | Provider     |
+| ----------------------- | ----------- | ---------------- | ------------ |
+| `villa.cash`            | Production  | Release tag `v*` | DigitalOcean |
+| `beta.villa.cash`       | Staging     | Push to `main`   | DigitalOcean |
+| `developers.villa.cash` | Docs Portal | Push to `main`   | DigitalOcean |
+| `dev-3.villa.cash`      | Local dev   | ngrok tunnel     | ngrok        |
+
+> **Note:** Preview environments (dev-1, dev-2) were removed in Jan 2026. All PRs now use staging after merge.
 
 ## Prerequisites
 
@@ -65,22 +66,20 @@ doctl apps list --format Spec.Name,DefaultIngress
 # Expected output (example):
 # villa-production    villa-production-xxxxx.ondigitalocean.app
 # villa-staging       villa-staging-xxxxx.ondigitalocean.app
-# villa-dev-1         villa-dev-1-xxxxx.ondigitalocean.app
-# villa-dev-2         villa-dev-2-xxxxx.ondigitalocean.app
+# villa-developers    villa-developers-xxxxx.ondigitalocean.app
 ```
 
 ### Step 2: Configure CloudFlare DNS
 
 Add these records in CloudFlare DNS settings:
 
-| Type | Name | Target | Proxy | TTL |
-|------|------|--------|-------|-----|
-| CNAME | `@` | `villa-production-xxxxx.ondigitalocean.app` | Proxied (orange) | Auto |
-| CNAME | `www` | `villa.cash` | Proxied (orange) | Auto |
-| CNAME | `beta` | `villa-staging-xxxxx.ondigitalocean.app` | Proxied (orange) | Auto |
-| CNAME | `dev-1` | `villa-dev-1-xxxxx.ondigitalocean.app` | Proxied (orange) | Auto |
-| CNAME | `dev-2` | `villa-dev-2-xxxxx.ondigitalocean.app` | Proxied (orange) | Auto |
-| CNAME | `dev-3` | `[your-ngrok-tunnel].ngrok.io` | DNS only (grey) | Auto |
+| Type  | Name         | Target                                      | Proxy            | TTL  |
+| ----- | ------------ | ------------------------------------------- | ---------------- | ---- |
+| CNAME | `@`          | `villa-production-xxxxx.ondigitalocean.app` | Proxied (orange) | Auto |
+| CNAME | `www`        | `villa.cash`                                | Proxied (orange) | Auto |
+| CNAME | `beta`       | `villa-staging-xxxxx.ondigitalocean.app`    | Proxied (orange) | Auto |
+| CNAME | `developers` | `villa-developers-xxxxx.ondigitalocean.app` | Proxied (orange) | Auto |
+| CNAME | `dev-3`      | `[your-ngrok-tunnel].ngrok.io`              | DNS only (grey)  | Auto |
 
 **Important:** Set proxy status to **Proxied (orange cloud)** for CDN, caching, and SSL.
 Only use **DNS only (grey)** for dev-3 since ngrok handles its own SSL.
@@ -98,49 +97,51 @@ For `dev-3.villa.cash` (local development):
 
 ### SSL/TLS
 
-| Setting | Value | Reason |
-|---------|-------|--------|
-| Encryption mode | **Full** | DigitalOcean provides valid SSL |
-| Always Use HTTPS | **On** | Required for passkeys |
-| Minimum TLS | **TLS 1.2** | Security |
-| TLS 1.3 | **On** | Modern encryption |
-| Automatic HTTPS Rewrites | **On** | Fix mixed content |
+| Setting                  | Value       | Reason                          |
+| ------------------------ | ----------- | ------------------------------- |
+| Encryption mode          | **Full**    | DigitalOcean provides valid SSL |
+| Always Use HTTPS         | **On**      | Required for passkeys           |
+| Minimum TLS              | **TLS 1.2** | Security                        |
+| TLS 1.3                  | **On**      | Modern encryption               |
+| Automatic HTTPS Rewrites | **On**      | Fix mixed content               |
 
 **Note:** "Full" mode validates DigitalOcean's Let's Encrypt cert.
 
 ### Security (Recommended)
 
-| Setting | Value |
-|---------|-------|
-| Security Level | Medium |
-| Browser Integrity Check | On |
-| Hotlink Protection | Off |
+| Setting                 | Value  |
+| ----------------------- | ------ |
+| Security Level          | Medium |
+| Browser Integrity Check | On     |
+| Hotlink Protection      | Off    |
 
 ### Performance
 
-| Setting | Value |
-|---------|-------|
+| Setting     | Value                      |
+| ----------- | -------------------------- |
 | Auto Minify | Off (Next.js handles this) |
-| Brotli | On |
-| Early Hints | On |
-| HTTP/3 | On |
+| Brotli      | On                         |
+| Early Hints | On                         |
+| HTTP/3      | On                         |
 
 ### Caching
 
-| Setting | Value |
-|---------|-------|
-| Caching Level | Standard |
+| Setting           | Value           |
+| ----------------- | --------------- |
+| Caching Level     | Standard        |
 | Browser Cache TTL | Respect headers |
 
 ## Page Rules (Optional)
 
 ### Force HTTPS
+
 ```
 URL: http://*villa.cash/*
 Action: Always Use HTTPS
 ```
 
 ### Cache static assets
+
 ```
 URL: *villa.cash/_next/static/*
 Actions:
@@ -154,6 +155,7 @@ Actions:
 **Critical:** All domains must be registered with Ithaca for passkey WebAuthn support.
 
 Domains to register:
+
 - `villa.cash`
 - `beta.villa.cash`
 - `dev-1.villa.cash`
@@ -283,22 +285,23 @@ npm run infra:status
 ```
 
 For programmatic use:
+
 ```typescript
-import { cloudflare } from '@/lib/infra/cloudflare';
+import { cloudflare } from "@/lib/infra/cloudflare";
 
 await cloudflare.cache.purgeAll();
-await cloudflare.cache.purgeUrls(['https://villa.cash/']);
+await cloudflare.cache.purgeUrls(["https://villa.cash/"]);
 await cloudflare.zone.enableDevMode();
 ```
 
 ## Cost Optimization
 
-| Resource | Cost | Notes |
-|----------|------|-------|
-| CloudFlare DNS | Free | Unlimited queries |
-| CloudFlare SSL | Free | Universal SSL |
-| DigitalOcean basic-xxs | ~$5/mo | Preview apps |
-| DigitalOcean basic-xs | ~$10/mo | Production/Staging |
-| ngrok custom domain | ~$8/mo | Optional for dev-3 |
+| Resource               | Cost    | Notes              |
+| ---------------------- | ------- | ------------------ |
+| CloudFlare DNS         | Free    | Unlimited queries  |
+| CloudFlare SSL         | Free    | Universal SSL      |
+| DigitalOcean basic-xxs | ~$5/mo  | Preview apps       |
+| DigitalOcean basic-xs  | ~$10/mo | Production/Staging |
+| ngrok custom domain    | ~$8/mo  | Optional for dev-3 |
 
 **Tip:** Delete preview apps after PRs close (CI does this automatically).
