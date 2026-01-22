@@ -128,7 +128,7 @@ function ServiceCard({ service }: { service: ServiceStatus }) {
 
           {build?.time && (
             <div className="text-xs text-gray-500 pt-1">
-              Built: {new Date(build.time).toLocaleString()}
+              Built: {build.time}
             </div>
           )}
         </div>
@@ -228,7 +228,12 @@ export default function TelemetryDashboard() {
   const [services, setServices] = useState<ServiceStatus[]>(
     SERVICES.map((s) => ({ ...s, status: "checking" as const })),
   );
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const checkServices = useCallback(async () => {
     const results = await Promise.all(
@@ -301,7 +306,7 @@ export default function TelemetryDashboard() {
               Refresh
             </button>
             <p className="text-xs text-gray-500 mt-1">
-              Last: {lastRefresh.toLocaleTimeString()}
+              Last: {lastRefresh ? lastRefresh.toLocaleTimeString() : "—"}
             </p>
           </div>
         </div>
