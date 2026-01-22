@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useRef, useMemo, Suspense } from 'react'
-import { VillaAuthScreen } from '@/components/sdk'
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useMemo, Suspense } from "react";
+import { VillaAuthScreen } from "@/components/sdk";
 
 /**
  * Auth Page - SDK iframe target
@@ -21,41 +21,64 @@ import { VillaAuthScreen } from '@/components/sdk'
 
 // Villa-owned origins (always trusted, no query param needed)
 const VILLA_ORIGINS = [
-  'https://villa.cash',
-  'https://www.villa.cash',
-  'https://beta.villa.cash',
-  'https://dev-1.villa.cash',
-  'https://dev-2.villa.cash',
-  'https://developers.villa.cash',
-  'https://key.villa.cash',
-  'https://beta-key.villa.cash',
-] as const
+  "https://villa.cash",
+  "https://www.villa.cash",
+  "https://beta.villa.cash",
+  "https://dev-1.villa.cash",
+  "https://dev-2.villa.cash",
+  "https://developers.villa.cash",
+  "https://key.villa.cash",
+  "https://beta-key.villa.cash",
+] as const;
 
 // Development origins (localhost/local.villa.cash - NEVER use wildcard)
 const DEV_ORIGINS = [
-  'https://local.villa.cash',
-  'https://localhost',
-  'https://localhost:443',
-  'https://localhost:3000',
-  'https://localhost:3001',
-  'http://localhost:3000',
-  'http://localhost:3001',
-] as const
+  "https://local.villa.cash",
+  "https://localhost",
+  "https://localhost:443",
+  "https://localhost:3000",
+  "https://localhost:3001",
+  "http://localhost:3000",
+  "http://localhost:3001",
+] as const;
+
+function isLanOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    const hostname = url.hostname;
+    return /^(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})$/.test(
+      hostname,
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isDevelopment(): boolean {
+  if (typeof window === "undefined") return false;
+  const hostname = window.location.hostname;
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "local.villa.cash" ||
+    isLanOrigin(window.location.origin)
+  );
+}
 
 // Registered external app origins (allowlist for third-party integrations)
 // Apps must register via developers.villa.cash to be added here
 const REGISTERED_APP_ORIGINS = [
   // Lovable.dev (registered partner)
-  'https://lovable.dev',
-  'https://www.lovable.dev',
+  "https://lovable.dev",
+  "https://www.lovable.dev",
   // Add registered apps here after verification
-] as const
+] as const;
 
 function isInIframe(): boolean {
   try {
-    return window.self !== window.top
+    return window.self !== window.top;
   } catch {
-    return true // Blocked access means we're in an iframe
+    return true; // Blocked access means we're in an iframe
   }
 }
 
@@ -63,23 +86,29 @@ function isInPopup(): boolean {
   // Check if we're in a popup window opened by Villa SDK
   // 1. Check if window.opener exists (indicates popup)
   // 2. Check URL param for explicit mode=popup
-  if (typeof window === 'undefined') return false
+  if (typeof window === "undefined") return false;
 
-  const params = new URLSearchParams(window.location.search)
-  const explicitMode = params.get('mode')
+  const params = new URLSearchParams(window.location.search);
+  const explicitMode = params.get("mode");
 
-  return explicitMode === 'popup' || (window.opener != null && window.opener !== window)
+  return (
+    explicitMode === "popup" ||
+    (window.opener != null && window.opener !== window)
+  );
 }
 
-/**
- * Check if origin is in the allowlist
- */
 function isAllowedOrigin(origin: string): boolean {
-  return (
-    VILLA_ORIGINS.includes(origin as typeof VILLA_ORIGINS[number]) ||
-    DEV_ORIGINS.includes(origin as typeof DEV_ORIGINS[number]) ||
-    REGISTERED_APP_ORIGINS.includes(origin as typeof REGISTERED_APP_ORIGINS[number])
+  if (VILLA_ORIGINS.includes(origin as (typeof VILLA_ORIGINS)[number]))
+    return true;
+  if (DEV_ORIGINS.includes(origin as (typeof DEV_ORIGINS)[number])) return true;
+  if (
+    REGISTERED_APP_ORIGINS.includes(
+      origin as (typeof REGISTERED_APP_ORIGINS)[number],
+    )
   )
+    return true;
+  if (isDevelopment() && isLanOrigin(origin)) return true;
+  return false;
 }
 
 /**
@@ -93,12 +122,12 @@ function isAllowedOrigin(origin: string): boolean {
  */
 function getValidatedParentOrigin(queryOrigin: string | null): string | null {
   // 1. Check Villa-owned origins first (from referrer)
-  if (typeof document !== 'undefined' && document.referrer) {
+  if (typeof document !== "undefined" && document.referrer) {
     try {
-      const referrerUrl = new URL(document.referrer)
-      const referrerOrigin = referrerUrl.origin
+      const referrerUrl = new URL(document.referrer);
+      const referrerOrigin = referrerUrl.origin;
       if (isAllowedOrigin(referrerOrigin)) {
-        return referrerOrigin
+        return referrerOrigin;
       }
     } catch {
       // Invalid referrer URL
@@ -108,126 +137,145 @@ function getValidatedParentOrigin(queryOrigin: string | null): string | null {
   // 2. Accept query param origin ONLY if in allowlist (registered apps)
   // SECURITY: Never accept arbitrary HTTPS origins - must be pre-registered
   if (queryOrigin && isAllowedOrigin(queryOrigin)) {
-    return queryOrigin
+    return queryOrigin;
   }
 
-  // 3. In development, check for localhost origins (NEVER return wildcard)
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      // Return the specific localhost origin based on referrer or default
-      if (typeof document !== 'undefined' && document.referrer) {
+  // 3. In development, check for localhost/LAN origins
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    const currentOrigin = window.location.origin;
+
+    // Handle localhost
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      if (typeof document !== "undefined" && document.referrer) {
         try {
-          const referrerUrl = new URL(document.referrer)
-          if (DEV_ORIGINS.includes(referrerUrl.origin as typeof DEV_ORIGINS[number])) {
-            return referrerUrl.origin
+          const referrerUrl = new URL(document.referrer);
+          if (
+            DEV_ORIGINS.includes(
+              referrerUrl.origin as (typeof DEV_ORIGINS)[number],
+            )
+          ) {
+            return referrerUrl.origin;
           }
         } catch {
           // Invalid referrer
         }
       }
-      // Default to https localhost for passkey compatibility
-      return 'https://localhost'
+      return "https://localhost";
+    }
+
+    // Handle LAN IP addresses for mobile testing
+    if (isLanOrigin(currentOrigin)) {
+      if (queryOrigin && isLanOrigin(queryOrigin)) {
+        return queryOrigin;
+      }
+      return currentOrigin;
     }
   }
 
-  return null
+  return null;
 }
 
 function AuthPageContent() {
-  const searchParams = useSearchParams()
-  const hasNotifiedReady = useRef(false)
+  const searchParams = useSearchParams();
+  const hasNotifiedReady = useRef(false);
 
   // Parse query params
-  const queryOrigin = searchParams.get('origin')
+  const queryOrigin = searchParams.get("origin");
 
   // Get validated parent origin once
   const targetOrigin = useMemo(() => {
-    return getValidatedParentOrigin(queryOrigin)
-  }, [queryOrigin])
+    return getValidatedParentOrigin(queryOrigin);
+  }, [queryOrigin]);
 
   // Detect context: popup or iframe
-  const inPopup = useMemo(() => isInPopup(), [])
-  const inIframe = useMemo(() => isInIframe(), [])
+  const inPopup = useMemo(() => isInPopup(), []);
+  const inIframe = useMemo(() => isInIframe(), []);
 
   // Post message to parent window (iframe) or opener (popup) with validated origin
-  const postToParent = useCallback((message: Record<string, unknown>) => {
-    if (!inPopup && !inIframe) {
-      // Not in iframe or popup context, skip posting
-      return
-    }
+  const postToParent = useCallback(
+    (message: Record<string, unknown>) => {
+      if (!inPopup && !inIframe) {
+        // Not in iframe or popup context, skip posting
+        return;
+      }
 
-    if (!targetOrigin) {
-      console.warn('[Villa Auth] No trusted origin found, message not sent:', message)
-      return
-    }
+      if (!targetOrigin) {
+        console.warn(
+          "[Villa Auth] No trusted origin found, message not sent:",
+          message,
+        );
+        return;
+      }
 
-    // Post to opener (popup mode) or parent (iframe mode)
-    const target = inPopup ? window.opener : window.parent
-    if (target) {
-      target.postMessage(message, targetOrigin)
-    }
-  }, [targetOrigin, inPopup, inIframe])
+      // Post to opener (popup mode) or parent (iframe mode)
+      const target = inPopup ? window.opener : window.parent;
+      if (target) {
+        target.postMessage(message, targetOrigin);
+      }
+    },
+    [targetOrigin, inPopup, inIframe],
+  );
 
   // Notify parent that auth is ready
   useEffect(() => {
     if (!hasNotifiedReady.current) {
-      hasNotifiedReady.current = true
-      postToParent({ type: 'VILLA_READY' })
+      hasNotifiedReady.current = true;
+      postToParent({ type: "VILLA_READY" });
     }
-  }, [postToParent])
+  }, [postToParent]);
 
   // Handle auth success
-  const handleSuccess = useCallback(async (address: string, nickname?: string) => {
-    // Create identity object
-    const identity = {
-      address,
-      nickname: nickname || '',
-      avatar: {
-        style: 'lorelei',
-        seed: `${address}-default`,
-      },
-    }
+  const handleSuccess = useCallback(
+    async (address: string, nickname?: string) => {
+      // Create identity object
+      const identity = {
+        address,
+        nickname: nickname || "",
+        avatar: {
+          style: "lorelei",
+          seed: `${address}-default`,
+        },
+      };
 
-    // Post to parent (both legacy and new formats for compatibility)
-    postToParent({ type: 'AUTH_SUCCESS', identity })
-    postToParent({ type: 'VILLA_AUTH_SUCCESS', payload: { identity } })
+      // Post to parent (both legacy and new formats for compatibility)
+      postToParent({ type: "AUTH_SUCCESS", identity });
+      postToParent({ type: "VILLA_AUTH_SUCCESS", payload: { identity } });
 
-    // Close popup after delay if in popup mode
-    if (inPopup) {
-      setTimeout(() => window.close(), 500)
-    }
-  }, [postToParent, inPopup])
+      // Close popup after delay if in popup mode
+      if (inPopup) {
+        setTimeout(() => window.close(), 500);
+      }
+    },
+    [postToParent, inPopup],
+  );
 
   // Handle auth cancel
   const handleCancel = useCallback(() => {
-    postToParent({ type: 'AUTH_CLOSE' })
-    postToParent({ type: 'VILLA_AUTH_CANCEL' })
+    postToParent({ type: "AUTH_CLOSE" });
+    postToParent({ type: "VILLA_AUTH_CANCEL" });
     if (inPopup) {
-      setTimeout(() => window.close(), 500)
+      setTimeout(() => window.close(), 500);
     }
-  }, [postToParent, inPopup])
+  }, [postToParent, inPopup]);
 
   // Always use relay mode - Villa's own passkeys, no external Porto UI
-  return (
-    <VillaAuthScreen
-      onSuccess={handleSuccess}
-      onCancel={handleCancel}
-    />
-  )
+  return <VillaAuthScreen onSuccess={handleSuccess} onCancel={handleCancel} />;
 }
 
 export default function AuthPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-cream-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-accent-yellow border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-ink-muted">Loading...</p>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-cream-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-accent-yellow border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="mt-4 text-ink-muted">Loading...</p>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <AuthPageContent />
     </Suspense>
-  )
+  );
 }
